@@ -51,7 +51,7 @@ bucket_name = "sourceclip-support"
 BETTER_AUTH_URL = "https://support.sourceclip.app"
 AUTH_EMAIL_ENABLED = "true"
 AUTH_EMAIL_VERIFY = "true"
-EMAIL_FROM = "SourceClip Support <noreply@sourceclip.app>"
+EMAIL_FROM = "SourceClip <noreply@sourceclip.app>"
 # GOOGLE_CLIENT_ID is set as a Worker secret (see below).
 
 # Secrets to configure via `wrangler secret put` (manual-deploy path):

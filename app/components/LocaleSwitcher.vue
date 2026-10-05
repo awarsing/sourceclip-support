@@ -8,7 +8,7 @@ async function switchLocale(code: string) {
 </script>
 
 <template>
-  <DropdownMenu>
+  <DropdownMenu v-if="locales.length > 1">
     <DropdownMenuTrigger as-child>
       <button
         type="button"

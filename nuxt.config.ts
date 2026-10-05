@@ -135,7 +135,6 @@ export default defineNuxtConfig({
     },
     locales: [
       { code: 'en', language: 'en-US', name: 'English', file: 'en.json' },
-      { code: 'zh', language: 'zh-CN', name: '中文', file: 'zh.json' },
     ],
   },
   hub: {

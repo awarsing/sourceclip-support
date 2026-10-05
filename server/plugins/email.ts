@@ -11,8 +11,11 @@ export default defineNitroPlugin(() => {
 
   // Resend — register when API key is available
   if (resendApiKey) {
-    const fromAddress = emailFrom || FALLBACK_FROM_ADDRESS
-    const from = `${FROM_DISPLAY_NAME} <${fromAddress}>`
+    // EMAIL_FROM may already be a full "Name <address>" value; otherwise fall
+    // back to the built-in display name. Wrapping it again produced an invalid
+    // `from` (e.g. "FeedLog <SourceClip Support <noreply@…>>") that Resend
+    // rejected, so no mail was delivered.
+    const from = emailFrom || `${FROM_DISPLAY_NAME} <${FALLBACK_FROM_ADDRESS}>`
 
     registerEmailProvider({
       name: 'resend',
