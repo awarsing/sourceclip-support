@@ -1,6 +1,11 @@
-name = "feedlog"
+name = "sourceclip-support"
 compatibility_date = "2026-03-01"
 compatibility_flags = ["nodejs_compat"]
+
+# SourceClip support surface custom domain.
+routes = [
+  { pattern = "support.sourceclip.app", custom_domain = true }
+]
 
 # Bundle the Drizzle migrations folder into the Worker as Text modules so
 # runtime-migrate can read `.sql` files and `meta/_journal.json` via
@@ -19,28 +24,35 @@ type = "Text"
 globs = ["**/*.sql", "**/_journal.json"]
 fallthrough = true
 
-# Hyperdrive accelerates your external Postgres connection.
-# Create one with: wrangler hyperdrive create feedlog --connection-string="postgresql://..."
-# Replace the placeholder id below with the output. The one-click Deploy
-# Button walks the user through creating a Hyperdrive config and patches the
-# id in automatically.
+# Nuxt/Nitro cloudflare-module emits a wasm module (xxhash) referenced from
+# the server chunk; declare it so wrangler bundles it into the Worker.
+[[rules]]
+type = "CompiledWasm"
+globs = ["**/*.wasm"]
+fallthrough = true
+
+# Hyperdrive accelerates the external PostgreSQL (Neon) connection for
+# SourceClip support. Config id created under the Three Things Media account.
 [[hyperdrive]]
 binding = "POSTGRES"
-id = "REPLACE_WITH_YOUR_HYPERDRIVE_ID"
+id = "357834a5927f419aa1bdc981724a59de"
 
-# R2 bucket for blob storage (file uploads).
-# Create one with: wrangler r2 bucket create feedlog
+# R2 bucket for blob storage (file uploads), separate from the SourceClip
+# library bucket.
 [[r2_buckets]]
 binding = "BLOB"
-bucket_name = "feedlog"
+bucket_name = "sourceclip-support"
 
 # Public (non-secret) configuration.
 # Secrets (BETTER_AUTH_SECRET, SYSTEM_ADMIN_EMAILS, GOOGLE_CLIENT_SECRET,
 # OPENAI_API_KEY, etc.) must be set via `wrangler secret put <NAME>` or via
 # the Deploy Button form (backed by .dev.vars.example), NOT declared here.
 [vars]
-BETTER_AUTH_URL = "https://your-worker.workers.dev"
-# GOOGLE_CLIENT_ID = "your-google-oauth-client-id.apps.googleusercontent.com"
+BETTER_AUTH_URL = "https://support.sourceclip.app"
+AUTH_EMAIL_ENABLED = "true"
+AUTH_EMAIL_VERIFY = "true"
+EMAIL_FROM = "SourceClip Support <noreply@sourceclip.app>"
+# GOOGLE_CLIENT_ID is set as a Worker secret (see below).
 
 # Secrets to configure via `wrangler secret put` (manual-deploy path):
 #   wrangler secret put BETTER_AUTH_SECRET       # random 32+ char string
@@ -62,10 +74,10 @@ crons = ["0 3 * * *"]
 
 [[queues.producers]]
 binding = "INBOX_QUEUE"
-queue = "feedlog-inbox"
+queue = "sourceclip-support-inbox"
 
 [[queues.consumers]]
-queue = "feedlog-inbox"
+queue = "sourceclip-support-inbox"
 max_batch_size = 1
 max_retries = 3
 retry_delay = 60

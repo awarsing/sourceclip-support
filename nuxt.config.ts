@@ -27,6 +27,14 @@ for (const [alias, specifier] of Object.entries(mastraDependencies)) {
   mastraTraceAlias[`.nitro/${pkg.name}@${pkg.version}`] = alias
 }
 
+// xxhash-wasm's `workerd` build imports a separate `.wasm` module that Nitro
+// emits with a relative path wrangler cannot resolve on Workers, failing the
+// deploy with "No such module ...xxhash...wasm". The default ESM build inlines
+// the wasm bytes, so alias Mastra's dependency to it for Cloudflare builds.
+const xxhashWasmEsm = mastraRequire
+  .resolve('xxhash-wasm')
+  .replace(/[\\/]cjs[\\/]xxhash-wasm\.cjs$/, '/esm/xxhash-wasm.js')
+
 export default defineNuxtConfig({
   // `$meta.name` makes Nuxt auto-generate a `#layers/feedlog` alias pointing
   // at this layer's rootDir, whether this project runs standalone (`cd` in,
@@ -196,6 +204,11 @@ export default defineNuxtConfig({
       ? {
           'pg-native': resolver.resolve('./server/lib/agent/pg-native-unavailable.cjs'),
           '@vercel/queue': resolver.resolve('./server/lib/inbox/vercel-queue-unavailable.ts'),
+          'xxhash-wasm': xxhashWasmEsm,
+          // Specific subpath must precede the bare specifier so rollup's
+          // prefix match does not resolve it to `<stub>/sync.js`.
+          'probe-image-size/sync.js': resolver.resolve('./server/lib/agent/probe-image-size-unavailable.mjs'),
+          'probe-image-size': resolver.resolve('./server/lib/agent/probe-image-size-unavailable.mjs'),
         }
       : {},
     // Keep CF Workers' native node:fs / path / process available at runtime so
