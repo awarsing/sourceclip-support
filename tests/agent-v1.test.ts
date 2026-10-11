@@ -356,7 +356,7 @@ test('Widget hides internal lifecycle events and exposes only a short handoff no
     const visible = publicItem(item)
     if (kind === 'handoff') {
       assert.equal(visible?.notice, 'handoff')
-      assert.deepEqual(visible?.content, { parts: [{ type: 'text', text: "I've passed your request to our support team. They'll follow up and help you with it." }] })
+      assert.deepEqual(visible?.content, { parts: [{ type: 'text', text: 'Your question has been passed to our support team. You can send more details or screenshots here.' }] })
     } else assert.equal(visible, null)
     assert.equal(item.content.parts[0]!.kind, kind)
   }
