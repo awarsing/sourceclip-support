@@ -1,4 +1,4 @@
-import { getMethod, getRequestIP, getRequestURL, getResponseStatus, getHeader } from 'h3'
+import { getMethod, getRequestURL, getResponseStatus } from 'h3'
 
 export default defineNitroPlugin((nitroApp) => {
   nitroApp.hooks.hook('request', (event) => {

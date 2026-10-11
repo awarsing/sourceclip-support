@@ -123,7 +123,7 @@ export default defineEventHandler(async (event) => {
   const topItems = hasMore ? topRows.slice(0, limit) : topRows
 
   // Eager-load children if requested
-  let childrenMap = new Map<string, any[]>()
+  const childrenMap = new Map<string, any[]>()
   if (withChildren && topItems.length > 0) {
     const topIds = topItems.map((t) => t.id)
     const childRows = await db
@@ -166,8 +166,8 @@ export default defineEventHandler(async (event) => {
   const mergedPostItems = topItems.filter((t) => t.type === 'mergedPost' && t.metadata)
   const mergedPostIds = mergedPostItems.map((t) => (t.metadata as any)?.merged_post_id).filter(Boolean) as string[]
 
-  let mergedPostInfoMap = new Map<string, any>()
-  let mergedPostCommentsMap = new Map<string, { data: any[]; pagination: { nextCursor: string | null } }>()
+  const mergedPostInfoMap = new Map<string, any>()
+  const mergedPostCommentsMap = new Map<string, { data: any[]; pagination: { nextCursor: string | null } }>()
 
   if (mergedPostIds.length > 0) {
     // Step 3: Fetch merged post info (parallel with Step 2B)
@@ -240,7 +240,7 @@ export default defineEventHandler(async (event) => {
     }
 
     // Fetch second-level merged post info (title + excerpt only, no recursive comments)
-    let level2PostInfoMap = new Map<string, any>()
+    const level2PostInfoMap = new Map<string, any>()
     if (level2MergedPostIds.length > 0) {
       const l2Rows = await db
         .select({

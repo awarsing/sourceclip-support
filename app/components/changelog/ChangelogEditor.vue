@@ -271,7 +271,7 @@ const router = useRouter()
 let removeGuard: (() => void) | null = null
 
 onMounted(() => {
-  removeGuard = router.beforeEach(async (to, from) => {
+  removeGuard = router.beforeEach(async () => {
     if (!isDirty.value) return true
     const ok = await confirm({
       title: t('changelog.editor.unsavedTitle'),

@@ -172,7 +172,7 @@ function showGhostPreview(targetStatus: RoadmapStatus) {
 async function setupDragAndDrop() {
   if (!props.editable || !import.meta.client) return
 
-  cleanupFns.forEach((fn) => fn())
+  for (const fn of cleanupFns) fn()
   cleanupFns.length = 0
 
   const { draggable: makeDraggable, dropTargetForElements } = await import(
@@ -280,7 +280,7 @@ onMounted(() => {
 })
 
 onUnmounted(() => {
-  cleanupFns.forEach((fn) => fn())
+  for (const fn of cleanupFns) fn()
 })
 
 // ---- Handle drop (pessimistic update) ----

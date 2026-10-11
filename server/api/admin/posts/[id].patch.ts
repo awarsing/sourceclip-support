@@ -9,7 +9,7 @@ export default defineEventHandler(async (event) => {
   const id = getRouterParam(event, 'id')!
   const body = await readValidatedBody(event, updatePostSchema.parse)
 
-  const { session, orgId } = await requireOrgPermission(event, { feedlog: ['moderate'] })
+  const { orgId } = await requireOrgPermission(event, { feedlog: ['moderate'] })
 
   const db = useDB()
 

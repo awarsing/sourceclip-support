@@ -1,5 +1,3 @@
-import { set } from 'zod'
-
 const MD_EDITOR_MODAL_WRAPPER_SELECTOR = '.md-editor-modal-container > div'
 const MD_EDITOR_ZOOM_LAYER_SELECTOR = '.medium-zoom-overlay, .medium-zoom-image--opened'
 const MD_EDITOR_EXTERNAL_LAYER_SELECTOR = [

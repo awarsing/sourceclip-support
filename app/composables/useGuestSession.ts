@@ -159,7 +159,8 @@ export function useGuestSession() {
     // The lock is per-realm while the token is shared across the whole origin,
     // so it only dedupes within this context. Overlap between contexts is left
     // to the endpoint, which answers a spent token with claimed:false.
-    claimInFlight ??= runClaim(token).finally(() => {
+    if (claimInFlight) return
+    claimInFlight = runClaim(token).finally(() => {
       claimInFlight = null
     })
   }

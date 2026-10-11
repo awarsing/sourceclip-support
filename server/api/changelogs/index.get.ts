@@ -45,8 +45,8 @@ export default defineEventHandler(async (event): Promise<CursorPaginatedList<Cha
 
   // Batch query reaction counts
   const changelogIds = items.map((r) => r.id)
-  let reactionCountsMap: Record<string, Record<string, number>> = {}
-  let userReactionsMap: Record<string, string[]> = {}
+  const reactionCountsMap: Record<string, Record<string, number>> = {}
+  const userReactionsMap: Record<string, string[]> = {}
 
   if (changelogIds.length > 0) {
     const reactionRows = await db

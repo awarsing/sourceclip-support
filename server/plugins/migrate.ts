@@ -1,5 +1,5 @@
 import { consola } from 'consola'
-import { resolve } from 'path'
+import { resolve } from 'node:path'
 
 const logger = consola.withTag('migrate')
 
