@@ -16,9 +16,9 @@ function flatten(obj, prefix = '', out = {}) {
   return out
 }
 
-const files = readdirSync(localesDir).filter(f => f.endsWith('.json'))
+const files = readdirSync(localesDir).filter((f) => f.endsWith('.json'))
 const catalogs = Object.fromEntries(
-  files.map(f => [f.replace(/\.json$/, ''), flatten(JSON.parse(readFileSync(join(localesDir, f), 'utf8')))]),
+  files.map((f) => [f.replace(/\.json$/, ''), flatten(JSON.parse(readFileSync(join(localesDir, f), 'utf8')))]),
 )
 
 const source = catalogs[SOURCE]
@@ -31,8 +31,8 @@ const sourceKeys = Object.keys(source)
 let failed = false
 for (const [code, keys] of Object.entries(catalogs)) {
   if (code === SOURCE) continue
-  const missing = sourceKeys.filter(k => !(k in keys))
-  const extra = Object.keys(keys).filter(k => !(k in source))
+  const missing = sourceKeys.filter((k) => !(k in keys))
+  const extra = Object.keys(keys).filter((k) => !(k in source))
   if (missing.length || extra.length) {
     failed = true
     console.error(`\n✗ ${code}.json out of sync with ${SOURCE}.json:`)
@@ -45,4 +45,6 @@ if (failed) {
   console.error('\ni18n parity check failed.')
   process.exit(1)
 }
-console.log(`✓ i18n parity OK — ${sourceKeys.length} keys × ${files.length} locales (${Object.keys(catalogs).join(', ')})`)
+console.log(
+  `✓ i18n parity OK — ${sourceKeys.length} keys × ${files.length} locales (${Object.keys(catalogs).join(', ')})`,
+)

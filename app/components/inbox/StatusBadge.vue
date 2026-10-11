@@ -2,11 +2,19 @@
 import type { InboxStatus } from '#layers/feedlog/shared/inbox/state'
 const props = defineProps<{ status: InboxStatus }>()
 const colours: Record<InboxStatus, string> = {
-  open: 'in-progress', pending: 'in-progress', snoozed: 'planned', closed: 'done', ai_handling: 'open',
+  open: 'in-progress',
+  pending: 'in-progress',
+  snoozed: 'planned',
+  closed: 'done',
+  ai_handling: 'open',
 }
 const colour = computed(() => `--status-${colours[props.status]}`)
 const icons: Record<InboxStatus, string> = {
-  open: 'lucide:inbox', pending: 'lucide:hourglass', snoozed: 'lucide:clock', closed: 'lucide:check-check', ai_handling: 'lucide:bot',
+  open: 'lucide:inbox',
+  pending: 'lucide:hourglass',
+  snoozed: 'lucide:clock',
+  closed: 'lucide:check-check',
+  ai_handling: 'lucide:bot',
 }
 </script>
 <template>

@@ -31,7 +31,9 @@ const masked = computed(() => {
 function copy() {
   navigator.clipboard?.writeText(props.secret.secret)
   copied.value = true
-  setTimeout(() => { copied.value = false }, 1500)
+  setTimeout(() => {
+    copied.value = false
+  }, 1500)
 }
 
 function formatDate(iso: string): string {

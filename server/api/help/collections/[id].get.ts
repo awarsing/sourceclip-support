@@ -15,11 +15,7 @@ export default defineEventHandler(async (event) => {
       icon: helpCollection.icon,
     })
     .from(helpCollection)
-    .where(and(
-      eq(helpCollection.id, id),
-      eq(helpCollection.orgId, orgId),
-      eq(helpCollection.visible, true),
-    ))
+    .where(and(eq(helpCollection.id, id), eq(helpCollection.orgId, orgId), eq(helpCollection.visible, true)))
     .limit(1)
 
   if (!collection) {

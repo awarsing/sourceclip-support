@@ -24,8 +24,13 @@ const mobileClip = computed(() => ({ '--fl-clip-left': clipLeft.value, '--fl-cli
 // page's single q-watch restores the board list — no double-fetch, no programmaticClear.
 watch(rawQuery, () => {
   if (searchTimer) clearTimeout(searchTimer)
-  if (!rawQuery.value.trim()) { q.value = ''; return }
-  searchTimer = setTimeout(() => { q.value = rawQuery.value.trim() }, 250)
+  if (!rawQuery.value.trim()) {
+    q.value = ''
+    return
+  }
+  searchTimer = setTimeout(() => {
+    q.value = rawQuery.value.trim()
+  }, 250)
 })
 
 function openSearch() {

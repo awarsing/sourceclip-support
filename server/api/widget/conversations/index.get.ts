@@ -36,12 +36,14 @@ export default defineEventHandler(async (event): Promise<{ data: WidgetConversat
       )`,
     })
     .from(conversation)
-    .where(and(
-      eq(conversation.orgId, orgId),
-      eq(conversation.userId, session.user.id),
-      withinRetention(orgId),
-      gt(conversation.lastSeq, 0),
-    ))
+    .where(
+      and(
+        eq(conversation.orgId, orgId),
+        eq(conversation.userId, session.user.id),
+        withinRetention(orgId),
+        gt(conversation.lastSeq, 0),
+      ),
+    )
     .orderBy(desc(conversation.lastMessageAt), desc(conversation.id))
 
   return { data: rows.map(({ status, ...row }) => ({ ...row, handling: handling(status) })) }

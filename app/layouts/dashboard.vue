@@ -14,7 +14,9 @@ const initials = computed(() => {
 
 const avatarError = ref(false)
 const avatarUrl = computed(() => resolveAttachmentUrl(user.value?.image))
-watch(user, () => { avatarError.value = false })
+watch(user, () => {
+  avatarError.value = false
+})
 
 const showChangePassword = ref(false)
 const showEditProfile = ref(false)
@@ -51,11 +53,18 @@ const { mainNav, settingsNav, developerNav } = useDashboardNav()
 // Mobile menu
 const mobileMenuOpen = ref(false)
 const route = useRoute()
-watch(() => route.path, () => { mobileMenuOpen.value = false })
+watch(
+  () => route.path,
+  () => {
+    mobileMenuOpen.value = false
+  },
+)
 
 const { t } = useI18n()
 const config = useRuntimeConfig()
-const settingsTitle = computed(() => t(config.public.rootDomain ? 'dashboard.nav.organizationSettings' : 'dashboard.nav.settings'))
+const settingsTitle = computed(() =>
+  t(config.public.rootDomain ? 'dashboard.nav.organizationSettings' : 'dashboard.nav.settings'),
+)
 const isPersonalSettings = computed(() => route.path === localePath('/dashboard/settings/personal'))
 const navTitle = computed(() => {
   if (isPersonalSettings.value) return t('settings.personal.title')
@@ -72,14 +81,19 @@ useHead({ title: () => navTitle.value })
 // Developer section: collapsed by default, but auto-expanded when the current
 // route lives inside it (so the active page stays visible).
 const { count: inboxCount, refresh: refreshInboxCount } = useInboxBadge()
-const { canModerate } = usePermission(computed(() => undefined), 'post')
+const { canModerate } = usePermission(
+  computed(() => undefined),
+  'post',
+)
 let inboxTimer: ReturnType<typeof setInterval> | undefined
 onMounted(() => {
   if (canModerate.value) void refreshInboxCount()
-  inboxTimer = setInterval(() => { if (!document.hidden && canModerate.value) void refreshInboxCount() }, 10000)
+  inboxTimer = setInterval(() => {
+    if (!document.hidden && canModerate.value) void refreshInboxCount()
+  }, 10000)
 })
 onBeforeUnmount(() => clearInterval(inboxTimer))
-const developerOpen = ref(developerNav.value.some(item => route.path.startsWith(item.to)))
+const developerOpen = ref(developerNav.value.some((item) => route.path.startsWith(item.to)))
 </script>
 
 <template>

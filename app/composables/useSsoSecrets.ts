@@ -20,11 +20,9 @@ export function useSsoSecrets() {
     error.value = null
     try {
       secrets.value = await $fetch<SsoSecret[]>('/api/developer/sso/secrets')
-    }
-    catch (e) {
+    } catch (e) {
       error.value = (e as { data?: { message?: string } })?.data?.message || 'Failed to load secrets'
-    }
-    finally {
+    } finally {
       loading.value = false
     }
   }
@@ -38,18 +36,18 @@ export function useSsoSecrets() {
     return created
   }
 
-  async function update(id: string, patch: { enabled?: boolean, label?: string }): Promise<void> {
+  async function update(id: string, patch: { enabled?: boolean; label?: string }): Promise<void> {
     const updated = await $fetch<SsoSecret>(`/api/developer/sso/secrets/${id}`, {
       method: 'PATCH',
       body: patch,
     })
-    const i = secrets.value.findIndex(s => s.id === id)
+    const i = secrets.value.findIndex((s) => s.id === id)
     if (i >= 0) secrets.value[i] = updated
   }
 
   async function remove(id: string): Promise<void> {
     await $fetch(`/api/developer/sso/secrets/${id}`, { method: 'DELETE' })
-    secrets.value = secrets.value.filter(s => s.id !== id)
+    secrets.value = secrets.value.filter((s) => s.id !== id)
   }
 
   return { secrets, loading, error, refresh, create, update, remove }

@@ -12,20 +12,23 @@ async function copy(key: string, text: string) {
     await navigator.clipboard.writeText(text)
     copiedKey.value = key
     clearTimeout(copyTimer)
-    copyTimer = setTimeout(() => { copiedKey.value = null }, 1500)
-  }
-  catch {
+    copyTimer = setTimeout(() => {
+      copiedKey.value = null
+    }, 1500)
+  } catch {
     toast.error(t('settings.widget.copyFailed'))
   }
 }
 onBeforeUnmount(() => clearTimeout(copyTimer))
 
-const basicSnippet = computed(() => `import { createWidget } from '@feedlog/widget'
+const basicSnippet = computed(
+  () => `import { createWidget } from '@feedlog/widget'
 
 createWidget({
   baseUrl: ${JSON.stringify(props.baseUrl)},
   theme: 'auto',
-})`)
+})`,
+)
 
 const serverSnippet = `import jwt from 'jsonwebtoken'
 
@@ -44,7 +47,8 @@ app.get('/api/feedlog-token', requireSignIn, (req, res) => {
   res.json({ token })
 })`
 
-const authSnippet = computed(() => `import { createWidget } from '@feedlog/widget'
+const authSnippet = computed(
+  () => `import { createWidget } from '@feedlog/widget'
 
 createWidget({
   baseUrl: ${JSON.stringify(props.baseUrl)},
@@ -59,15 +63,18 @@ createWidget({
     login: () => openYourLoginModalAndWaitUntilClosed(),
   },
   theme: 'auto',
-})`)
+})`,
+)
 
-const customEntrySnippet = computed(() => `import { createWidget, openWidget } from '@feedlog/widget'
+const customEntrySnippet = computed(
+  () => `import { createWidget, openWidget } from '@feedlog/widget'
 
 createWidget({
   baseUrl: ${JSON.stringify(props.baseUrl)},
 })
 
-document.querySelector('#help-entry')?.addEventListener('click', openWidget)`)
+document.querySelector('#help-entry')?.addEventListener('click', openWidget)`,
+)
 
 const steps = computed(() => [
   { key: 'package', title: t('settings.widget.packageLabel'), code: 'pnpm add @feedlog/widget' },

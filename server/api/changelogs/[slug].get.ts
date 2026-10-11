@@ -48,11 +48,8 @@ export default defineEventHandler(async (event): Promise<ChangelogListItem> => {
     const rows = await db
       .select({ emoji: changelogReaction.emoji })
       .from(changelogReaction)
-      .where(and(
-        eq(changelogReaction.changelogId, entry.id),
-        eq(changelogReaction.userId, session.user.id),
-      ))
-    userReactions = rows.map(r => r.emoji)
+      .where(and(eq(changelogReaction.changelogId, entry.id), eq(changelogReaction.userId, session.user.id)))
+    userReactions = rows.map((r) => r.emoji)
   }
 
   return {

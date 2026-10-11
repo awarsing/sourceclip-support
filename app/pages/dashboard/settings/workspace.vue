@@ -40,9 +40,13 @@ async function loadOrg() {
 // SEO) and the better-auth client is browser-oriented; fetching during SSR would
 // bake the loaded section into the HTML while the client hydrates from the empty
 // initial state, tripping a hydration mismatch.
-watch(() => [orgId.value, ctx.value.role] as const, ([, role]) => {
-  if (role && import.meta.client) void loadOrg()
-}, { immediate: true })
+watch(
+  () => [orgId.value, ctx.value.role] as const,
+  ([, role]) => {
+    if (role && import.meta.client) void loadOrg()
+  },
+  { immediate: true },
+)
 
 const dirty = computed(() => org.value && form.name !== org.value.name)
 const canSave = computed(() => dirty.value && form.name.trim().length > 0 && isOwner.value)

@@ -31,9 +31,10 @@ function buildNotificationEmail(input: SendNotificationInput): SendEmailOptions 
     typeKey: input.typeKey,
     postTitle: input.postTitle,
     postUrl,
-    preferencesUrl: input.typeKey === 'post.created' || input.typeKey === 'post.user_commented'
-      ? buildPostLink(input.orgSlug, '/dashboard/settings/personal', input.requestOrigin)
-      : undefined,
+    preferencesUrl:
+      input.typeKey === 'post.created' || input.typeKey === 'post.user_commented'
+        ? buildPostLink(input.orgSlug, '/dashboard/settings/personal', input.requestOrigin)
+        : undefined,
     to: input.payload.to,
     note: input.payload.note,
     snippet: input.payload.snippet,
@@ -55,12 +56,10 @@ export async function sendNotification(input: SendNotificationInput): Promise<vo
   // At-most-once: one immediate retry for transient jitter, then give up.
   try {
     await sendEmail(options)
-  }
-  catch {
+  } catch {
     try {
       await sendEmail(options)
-    }
-    catch (err) {
+    } catch (err) {
       console.error(`[notifications] send failed org=${input.orgId} type=${input.typeKey}`, err)
     }
   }

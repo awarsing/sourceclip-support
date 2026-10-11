@@ -11,7 +11,11 @@ export interface ClientOrgContext {
   role: 'owner' | 'manager' | 'contributor' | null
 }
 
-interface OrgListRow { orgId: string, slug: string, role: string }
+interface OrgListRow {
+  orgId: string
+  slug: string
+  role: string
+}
 
 function parseTenantSlug(host: string, rootDomain: string, authDomainHost: string): string | null {
   const bare = host.toLowerCase().split(':')[0] ?? ''
@@ -37,20 +41,26 @@ export function useOrgContext(): ComputedRef<ClientOrgContext> {
 
     // Open-source: rootDomain unset → single-tenant.
     if (!rootDomain) {
-      const match = list.find(o => o.orgId === DEFAULT_ORG_ID)
-      return { orgId: DEFAULT_ORG_ID, orgSlug: DEFAULT_ORG_SLUG, role: (match?.role as ClientOrgContext['role']) ?? null }
+      const match = list.find((o) => o.orgId === DEFAULT_ORG_ID)
+      return {
+        orgId: DEFAULT_ORG_ID,
+        orgSlug: DEFAULT_ORG_SLUG,
+        role: (match?.role as ClientOrgContext['role']) ?? null,
+      }
     }
 
     const host = import.meta.server
-      ? requestURL?.host ?? ''
-      : (typeof window !== 'undefined' ? window.location.host : '')
+      ? (requestURL?.host ?? '')
+      : typeof window !== 'undefined'
+        ? window.location.host
+        : ''
     const slug = parseTenantSlug(host, rootDomain, authDomainHost)
     if (!slug) {
       // Auth / root host — no tenant binding. Surface the default-org so
       // unrelated UI bits don't crash, but role is null.
       return { orgId: DEFAULT_ORG_ID, orgSlug: DEFAULT_ORG_SLUG, role: null }
     }
-    const match = list.find(o => o.slug === slug)
+    const match = list.find((o) => o.slug === slug)
     return {
       orgId: match?.orgId ?? slug,
       orgSlug: match?.slug ?? slug,

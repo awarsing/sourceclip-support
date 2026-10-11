@@ -46,7 +46,9 @@ function postgresBinDir() {
   if (process.env.PG_BIN) return process.env.PG_BIN
   const found = ['pg_config', ...homebrewKegs].find(hasPgvector)
   if (found) return pgConfig(found, '--bindir')
-  throw new Error('PostgreSQL with pgvector was not found: install pgvector, or set PG_BIN to its PostgreSQL bin directory.')
+  throw new Error(
+    'PostgreSQL with pgvector was not found: install pgvector, or set PG_BIN to its PostgreSQL bin directory.',
+  )
 }
 
 function freePort() {
@@ -81,7 +83,11 @@ async function main() {
   const quiet = { stdio: ['ignore', 'ignore', 'inherit'] }
   let started = false
   try {
-    execFileSync(tool('initdb'), ['-D', dataDir, '-U', 'postgres', '-A', 'trust', '--no-sync', '-E', 'UTF8', '--locale=C'], quiet)
+    execFileSync(
+      tool('initdb'),
+      ['-D', dataDir, '-U', 'postgres', '-A', 'trust', '--no-sync', '-E', 'UTF8', '--locale=C'],
+      quiet,
+    )
     const options = `-p ${port} -k ${dir} -c listen_addresses=127.0.0.1 -c fsync=off -c max_connections=200`
     execFileSync(tool('pg_ctl'), ['-D', dataDir, '-l', join(dir, 'server.log'), '-o', options, '-w', 'start'], quiet)
     started = true

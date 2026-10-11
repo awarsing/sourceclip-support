@@ -53,7 +53,7 @@ export default defineEventHandler(async (event) => {
 
     // Map AI output to API response format
     const validTags = new Set(['new', 'improved', 'fixed'])
-    const categories = parsed.suggested_tags.filter(t => validTags.has(t))
+    const categories = parsed.suggested_tags.filter((t) => validTags.has(t))
 
     return {
       title: parsed.title.slice(0, 70),

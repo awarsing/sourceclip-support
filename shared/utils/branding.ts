@@ -8,7 +8,10 @@ export const portalThemeSchema = z.enum(['system', 'light', 'dark'])
 export type PortalTheme = z.infer<typeof portalThemeSchema>
 
 export const brandingSchema = z.object({
-  primaryColor: z.string().regex(/^#[0-9a-fA-F]{6}$/).optional(),
+  primaryColor: z
+    .string()
+    .regex(/^#[0-9a-fA-F]{6}$/)
+    .optional(),
   defaultTheme: portalThemeSchema.optional(),
   welcomeTitle: z.string().max(160).optional(),
   welcomeDescription: z.string().max(10000).optional(),
@@ -44,35 +47,38 @@ function linearToOklch([lr, lg, lb]: [number, number, number]): Oklch {
   const l_ = Math.cbrt(0.4122214708 * lr + 0.5363325363 * lg + 0.0514459929 * lb)
   const m_ = Math.cbrt(0.2119034982 * lr + 0.6806995451 * lg + 0.1073969566 * lb)
   const s_ = Math.cbrt(0.0883024619 * lr + 0.2817188376 * lg + 0.6299787005 * lb)
-  const L = 0.2104542553 * l_ + 0.7936177850 * m_ - 0.0040720468 * s_
-  const a = 1.9779984951 * l_ - 2.4285922050 * m_ + 0.4505937099 * s_
-  const b = 0.0259040371 * l_ + 0.7827717662 * m_ - 0.8086757660 * s_
+  const L = 0.2104542553 * l_ + 0.793617785 * m_ - 0.0040720468 * s_
+  const a = 1.9779984951 * l_ - 2.428592205 * m_ + 0.4505937099 * s_
+  const b = 0.0259040371 * l_ + 0.7827717662 * m_ - 0.808675766 * s_
   const c = Math.sqrt(a * a + b * b)
-  let h = Math.atan2(b, a) * 180 / Math.PI
+  let h = (Math.atan2(b, a) * 180) / Math.PI
   if (h < 0) h += 360
   return { l: L, c, h }
 }
 
 function oklchToLinear({ l: L, c: C, h: H }: Oklch): [number, number, number] {
-  const hr = H * Math.PI / 180
+  const hr = (H * Math.PI) / 180
   const a = C * Math.cos(hr)
   const b = C * Math.sin(hr)
   const l_ = (L + 0.3963377774 * a + 0.2158037573 * b) ** 3
   const m_ = (L - 0.1055613458 * a - 0.0638541728 * b) ** 3
-  const s_ = (L - 0.0894841775 * a - 1.2914855480 * b) ** 3
+  const s_ = (L - 0.0894841775 * a - 1.291485548 * b) ** 3
   const clamp = (v: number) => Math.max(0, Math.min(1, v))
   return [
     clamp(4.0767416621 * l_ - 3.3077115913 * m_ + 0.2309699292 * s_),
     clamp(-1.2684380046 * l_ + 2.6097574011 * m_ - 0.3413193965 * s_),
-    clamp(-0.0041960863 * l_ - 0.7034186147 * m_ + 1.7076147010 * s_),
+    clamp(-0.0041960863 * l_ - 0.7034186147 * m_ + 1.707614701 * s_),
   ]
 }
 
 const gam = (v: number) => (v <= 0.0031308 ? v * 12.92 : 1.055 * v ** (1 / 2.4) - 0.055)
 
 function linearToHex(rgb: [number, number, number]): string {
-  const channel = (v: number) => Math.round(Math.max(0, Math.min(1, gam(v))) * 255)
-    .toString(16).padStart(2, '0').toUpperCase()
+  const channel = (v: number) =>
+    Math.round(Math.max(0, Math.min(1, gam(v))) * 255)
+      .toString(16)
+      .padStart(2, '0')
+      .toUpperCase()
   return `#${channel(rgb[0])}${channel(rgb[1])}${channel(rgb[2])}`
 }
 
@@ -120,16 +126,14 @@ export function deriveBrandVars(seedHex: string, isDark: boolean): Record<string
   const normalized = normalizeBrandHex(seedHex)
   const seed = linearToOklch(hexToLinear(normalized))
   const hue = round(seed.h, 1)
-  const primary: Oklch = isDark
-    ? { l: Math.min(0.85, Math.max(seed.l + 0.05, 0.62)), c: seed.c, h: seed.h }
-    : seed
+  const primary: Oklch = isDark ? { l: Math.min(0.85, Math.max(seed.l + 0.05, 0.62)), c: seed.c, h: seed.h } : seed
   // The base theme ships a distinct, brighter accent (orange) sitting next to the
   // terracotta primary. With a single tenant seed we approximate that lift so
   // accent-driven highlights (menu focus, identity chips) track the brand instead
   // of staying FeedLog orange. Foreground is contrast-picked per accent lightness.
   const accent: Oklch = isDark
     ? { l: Math.min(0.88, Math.max(primary.l + 0.06, 0.68)), c: seed.c, h: seed.h }
-    : { l: Math.min(0.80, seed.l + 0.10), c: seed.c, h: seed.h }
+    : { l: Math.min(0.8, seed.l + 0.1), c: seed.c, h: seed.h }
 
   return {
     '--primary': oklchStr(primary),
@@ -137,9 +141,7 @@ export function deriveBrandVars(seedHex: string, isDark: boolean): Record<string
     '--primary-foreground': pickForeground(primary),
     '--accent': oklchStr(accent),
     '--accent-foreground': pickForeground(accent),
-    '--secondary': isDark
-      ? `oklch(0.300 0.020 ${hue})`
-      : `oklch(0.959 0.016 ${hue})`,
+    '--secondary': isDark ? `oklch(0.300 0.020 ${hue})` : `oklch(0.959 0.016 ${hue})`,
   }
 }
 
@@ -159,13 +161,13 @@ const LIGHT_NEUTRALS: Record<string, [number, number]> = {
 }
 
 const DARK_NEUTRALS: Record<string, [number, number]> = {
-  '--background': [0.200, 0],
+  '--background': [0.2, 0],
   '--foreground': [0.985, 0],
-  '--card': [0.250, 0],
-  '--muted': [0.300, 0],
+  '--card': [0.25, 0],
+  '--muted': [0.3, 0],
   '--muted-foreground': [0.708, 0],
-  '--border': [0.320, 0],
-  '--input': [0.320, 0],
+  '--border': [0.32, 0],
+  '--input': [0.32, 0],
 }
 
 export function deriveNeutralVars(isDark: boolean): Record<string, string> {
@@ -181,7 +183,9 @@ export function derivePortalThemeVars(seedHex: string, isDark: boolean): Record<
 }
 
 export function styleObjectToCss(vars: Record<string, string>): string {
-  return Object.entries(vars).map(([key, value]) => `${key}: ${value};`).join(' ')
+  return Object.entries(vars)
+    .map(([key, value]) => `${key}: ${value};`)
+    .join(' ')
 }
 
 export type OrgMetadataInput = string | Record<string, unknown> | null | undefined
@@ -191,7 +195,7 @@ export function parseOrgMetadata(metadata: OrgMetadataInput): Record<string, unk
   if (typeof metadata === 'object' && !Array.isArray(metadata)) return metadata
   try {
     const parsed = JSON.parse(metadata)
-    return parsed && typeof parsed === 'object' && !Array.isArray(parsed) ? parsed as Record<string, unknown> : {}
+    return parsed && typeof parsed === 'object' && !Array.isArray(parsed) ? (parsed as Record<string, unknown>) : {}
   } catch {
     return {}
   }

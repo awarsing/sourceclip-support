@@ -44,10 +44,7 @@ export function resolveGuestAccess(metadata: OrgMetadataInput): ResolvedGuestAcc
   }
 }
 
-export function mergeGuestAccessMetadata(
-  metadata: OrgMetadataInput,
-  access: GuestAccess,
-): Record<string, unknown> {
+export function mergeGuestAccessMetadata(metadata: OrgMetadataInput, access: GuestAccess): Record<string, unknown> {
   return {
     ...parseOrgMetadata(metadata),
     guest: guestAccessSchema.parse(access),

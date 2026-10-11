@@ -72,8 +72,6 @@ async function handleDelete() {
   if (!ok) return
   emit('delete', props.comment.id)
 }
-
-
 </script>
 
 <template>

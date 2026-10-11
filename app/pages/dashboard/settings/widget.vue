@@ -1,8 +1,20 @@
 <script setup lang="ts">
 import { toast } from 'vue-sonner'
-import { CONVERSATION_RETENTION_DEFAULT_DAYS, CONVERSATION_RETENTION_MAX_DAYS, CONVERSATION_RETENTION_MIN_DAYS } from '#layers/feedlog/shared/constants/conversation'
+import {
+  CONVERSATION_RETENTION_DEFAULT_DAYS,
+  CONVERSATION_RETENTION_MAX_DAYS,
+  CONVERSATION_RETENTION_MIN_DAYS,
+} from '#layers/feedlog/shared/constants/conversation'
 import { WIDGET_MAX_ENABLED_RULES } from '#layers/feedlog/shared/constants/widget-rules'
-import { WIDGET_LAUNCHER_ALIGNMENT_DEFAULT, WIDGET_LAUNCHER_CLOSE_BEHAVIOR_DEFAULT, WIDGET_LAUNCHER_CLOSE_BEHAVIORS, WIDGET_LAUNCHER_OFFSET_DEFAULT, WIDGET_LAUNCHER_OFFSET_MIN, type WidgetLauncherAlignment, type WidgetLauncherCloseBehavior } from '#layers/feedlog/shared/constants/widget-launcher'
+import {
+  WIDGET_LAUNCHER_ALIGNMENT_DEFAULT,
+  WIDGET_LAUNCHER_CLOSE_BEHAVIOR_DEFAULT,
+  WIDGET_LAUNCHER_CLOSE_BEHAVIORS,
+  WIDGET_LAUNCHER_OFFSET_DEFAULT,
+  WIDGET_LAUNCHER_OFFSET_MIN,
+  type WidgetLauncherAlignment,
+  type WidgetLauncherCloseBehavior,
+} from '#layers/feedlog/shared/constants/widget-launcher'
 import { updateWidgetSettingsSchema } from '#layers/feedlog/shared/schemas/widget'
 
 definePageMeta({ layout: 'dashboard', middleware: ['admin'] })
@@ -19,7 +31,10 @@ const launcherSaved = ref(false)
 const assistantSaved = ref(false)
 
 const alignDraft = ref<WidgetLauncherAlignment>(WIDGET_LAUNCHER_ALIGNMENT_DEFAULT)
-const offsetDraft = reactive<Record<'bottom' | 'side', number | string>>({ bottom: WIDGET_LAUNCHER_OFFSET_DEFAULT, side: WIDGET_LAUNCHER_OFFSET_DEFAULT })
+const offsetDraft = reactive<Record<'bottom' | 'side', number | string>>({
+  bottom: WIDGET_LAUNCHER_OFFSET_DEFAULT,
+  side: WIDGET_LAUNCHER_OFFSET_DEFAULT,
+})
 const closeDraft = ref<WidgetLauncherCloseBehavior>(WIDGET_LAUNCHER_CLOSE_BEHAVIOR_DEFAULT)
 const emailDraft = ref('')
 const retentionDraft = ref<number | string>(CONVERSATION_RETENTION_DEFAULT_DAYS)
@@ -38,7 +53,7 @@ function hydrateAssistant() {
   if (!settings.value) return
   emailDraft.value = settings.value.supportEmail ?? ''
   retentionDraft.value = settings.value.conversationRetentionDays
-  rulesDraft.value = allRules.value.map(rule => ({ ...rule }))
+  rulesDraft.value = allRules.value.map((rule) => ({ ...rule }))
   assistantError.value = null
   assistantSaved.value = false
 }
@@ -50,19 +65,61 @@ onMounted(async () => {
 })
 
 function isValidOffset(value: number | string) {
-  return String(value).trim() !== '' && Number.isSafeInteger(Number(value)) && Number(value) >= WIDGET_LAUNCHER_OFFSET_MIN
+  return (
+    String(value).trim() !== '' && Number.isSafeInteger(Number(value)) && Number(value) >= WIDGET_LAUNCHER_OFFSET_MIN
+  )
 }
 const offsetValid = computed(() => Object.values(offsetDraft).every(isValidOffset))
-const launcherConfigDraft = computed(() => ({ alignment: alignDraft.value, bottomOffset: Number(offsetDraft.bottom), sideOffset: Number(offsetDraft.side), closeBehavior: closeDraft.value }))
-const launcherDirty = computed(() => !!settings.value && (!offsetValid.value || Object.entries(launcherConfigDraft.value).some(([key, value]) => value !== settings.value!.launcherConfig[key as keyof typeof launcherConfigDraft.value])))
-const retentionValid = computed(() => String(retentionDraft.value).trim() !== '' && Number.isInteger(Number(retentionDraft.value)) && Number(retentionDraft.value) >= CONVERSATION_RETENTION_MIN_DAYS && Number(retentionDraft.value) <= CONVERSATION_RETENTION_MAX_DAYS)
-const emailValid = computed(() => updateWidgetSettingsSchema.pick({ supportEmail: true }).safeParse({ supportEmail: emailDraft.value.trim() }).success)
-const assistantPatch = computed(() => ({ supportEmail: emailDraft.value.trim(), conversationRetentionDays: Number(retentionDraft.value), ...builtinsPatch(rulesDraft.value), ...customPatch(rulesDraft.value) }))
-const assistantDirty = computed(() => !!settings.value && (!retentionValid.value || JSON.stringify(assistantPatch.value) !== JSON.stringify({ supportEmail: settings.value.supportEmail ?? '', conversationRetentionDays: settings.value.conversationRetentionDays, ...builtinsPatch(allRules.value), ...customPatch(allRules.value) })))
-const activeCount = computed(() => rulesDraft.value.filter(rule => rule.enabled).length)
+const launcherConfigDraft = computed(() => ({
+  alignment: alignDraft.value,
+  bottomOffset: Number(offsetDraft.bottom),
+  sideOffset: Number(offsetDraft.side),
+  closeBehavior: closeDraft.value,
+}))
+const launcherDirty = computed(
+  () =>
+    !!settings.value &&
+    (!offsetValid.value ||
+      Object.entries(launcherConfigDraft.value).some(
+        ([key, value]) => value !== settings.value!.launcherConfig[key as keyof typeof launcherConfigDraft.value],
+      )),
+)
+const retentionValid = computed(
+  () =>
+    String(retentionDraft.value).trim() !== '' &&
+    Number.isInteger(Number(retentionDraft.value)) &&
+    Number(retentionDraft.value) >= CONVERSATION_RETENTION_MIN_DAYS &&
+    Number(retentionDraft.value) <= CONVERSATION_RETENTION_MAX_DAYS,
+)
+const emailValid = computed(
+  () =>
+    updateWidgetSettingsSchema.pick({ supportEmail: true }).safeParse({ supportEmail: emailDraft.value.trim() })
+      .success,
+)
+const assistantPatch = computed(() => ({
+  supportEmail: emailDraft.value.trim(),
+  conversationRetentionDays: Number(retentionDraft.value),
+  ...builtinsPatch(rulesDraft.value),
+  ...customPatch(rulesDraft.value),
+}))
+const assistantDirty = computed(
+  () =>
+    !!settings.value &&
+    (!retentionValid.value ||
+      JSON.stringify(assistantPatch.value) !==
+        JSON.stringify({
+          supportEmail: settings.value.supportEmail ?? '',
+          conversationRetentionDays: settings.value.conversationRetentionDays,
+          ...builtinsPatch(allRules.value),
+          ...customPatch(allRules.value),
+        })),
+)
+const activeCount = computed(() => rulesDraft.value.filter((rule) => rule.enabled).length)
 const atLimit = computed(() => activeCount.value >= WIDGET_MAX_ENABLED_RULES)
 const showCount = computed(() => activeCount.value >= WIDGET_MAX_ENABLED_RULES - 2)
-const assistantValid = computed(() => emailValid.value && retentionValid.value && activeCount.value <= WIDGET_MAX_ENABLED_RULES)
+const assistantValid = computed(
+  () => emailValid.value && retentionValid.value && activeCount.value <= WIDGET_MAX_ENABLED_RULES,
+)
 
 // Only the section that submitted is rehydrated. Other drafts, including invalid
 // input, must survive both successful saves and failed requests.
@@ -70,14 +127,20 @@ async function saveLauncher() {
   if (saving.value || !launcherDirty.value || !offsetValid.value) return
   savingSection.value = 'launcher'
   launcherError.value = await save({ launcherConfig: launcherConfigDraft.value })
-  if (!launcherError.value) { hydrateLauncher(); launcherSaved.value = true }
+  if (!launcherError.value) {
+    hydrateLauncher()
+    launcherSaved.value = true
+  }
   savingSection.value = null
 }
 async function saveAssistant() {
   if (saving.value || !assistantDirty.value || !assistantValid.value) return
   savingSection.value = 'assistant'
   assistantError.value = await save(assistantPatch.value)
-  if (!assistantError.value) { hydrateAssistant(); assistantSaved.value = true }
+  if (!assistantError.value) {
+    hydrateAssistant()
+    assistantSaved.value = true
+  }
   savingSection.value = null
 }
 async function toggleEnabled() {
@@ -97,29 +160,39 @@ function resetPlacement() {
 const limitOpen = ref(false)
 const dialogOpen = ref(false)
 const editingId = ref<string | null>(null)
-const editingText = computed(() => rulesDraft.value.find(rule => rule.id === editingId.value)?.scenario)
+const editingText = computed(() => rulesDraft.value.find((rule) => rule.id === editingId.value)?.scenario)
 function openAdd() {
-  if (atLimit.value) { limitOpen.value = true; return }
+  if (atLimit.value) {
+    limitOpen.value = true
+    return
+  }
   editingId.value = null
   dialogOpen.value = true
 }
-function openEdit(id: string) { editingId.value = id; dialogOpen.value = true }
+function openEdit(id: string) {
+  editingId.value = id
+  dialogOpen.value = true
+}
 function onRuleSubmit(scenario: string) {
   if (editingId.value) {
-    const target = rulesDraft.value.find(rule => rule.id === editingId.value)
+    const target = rulesDraft.value.find((rule) => rule.id === editingId.value)
     if (target) target.scenario = scenario
-  }
-  else rulesDraft.value.push({ id: `new-${crypto.randomUUID()}`, scenario, enabled: true, builtin: false })
+  } else rulesDraft.value.push({ id: `new-${crypto.randomUUID()}`, scenario, enabled: true, builtin: false })
 }
 function toggleRule(id: string) {
-  const target = rulesDraft.value.find(rule => rule.id === id)
+  const target = rulesDraft.value.find((rule) => rule.id === id)
   if (!target) return
-  if (!target.enabled && atLimit.value) { limitOpen.value = true; return }
+  if (!target.enabled && atLimit.value) {
+    limitOpen.value = true
+    return
+  }
   target.enabled = !target.enabled
 }
-function removeRule(id: string) { rulesDraft.value = rulesDraft.value.filter(rule => rule.id !== id) }
-function ruleText(rule: typeof rulesDraft.value[number]) {
-  const builtin = rule.builtin && settings.value?.rules.builtins.find(item => item.id === rule.id)
+function removeRule(id: string) {
+  rulesDraft.value = rulesDraft.value.filter((rule) => rule.id !== id)
+}
+function ruleText(rule: (typeof rulesDraft.value)[number]) {
+  const builtin = rule.builtin && settings.value?.rules.builtins.find((item) => item.id === rule.id)
   return builtin ? (locale.value.startsWith('zh') ? builtin.scenarioZh : builtin.scenario) : rule.scenario
 }
 
@@ -127,7 +200,13 @@ const dirty = computed(() => launcherDirty.value || assistantDirty.value)
 onBeforeRouteLeave(async () => {
   if (saving.value) return false
   if (!dirty.value) return true
-  return confirm({ title: t('settings.widget.leaveTitle'), description: t('settings.widget.leaveDescription'), confirmText: t('settings.widget.leaveDiscard'), cancelText: t('settings.widget.leaveKeep'), variant: 'destructive' })
+  return confirm({
+    title: t('settings.widget.leaveTitle'),
+    description: t('settings.widget.leaveDescription'),
+    confirmText: t('settings.widget.leaveDiscard'),
+    cancelText: t('settings.widget.leaveKeep'),
+    variant: 'destructive',
+  })
 })
 function beforeUnload(event: BeforeUnloadEvent) {
   if (!dirty.value && !saving.value) return

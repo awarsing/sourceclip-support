@@ -26,7 +26,7 @@ const brandCss = computed(() => {
 })
 // `light`/`dark` resolve at SSR (no flash); `system` renders light here and is
 // corrected before paint by the inline script below, then kept in sync client-side.
-const themeClass = computed(() => themed.value && mode.value === 'dark' ? 'dark' : undefined)
+const themeClass = computed(() => (themed.value && mode.value === 'dark' ? 'dark' : undefined))
 
 if (import.meta.client) {
   watchEffect(() => {
@@ -52,19 +52,24 @@ const localeHead = useLocaleHead()
 // resolve them against the request origin — same origin used for og:image.
 const seoOrigin = useRequestURL().origin
 const absoluteSeoUrl = (href?: string) => {
-  try { return new URL(href || '/', seoOrigin).href }
-  catch { return href }
+  try {
+    return new URL(href || '/', seoOrigin).href
+  } catch {
+    return href
+  }
 }
 const seoLink = computed(() =>
-  (localeHead.value.link ?? []).map(l =>
+  (localeHead.value.link ?? []).map((l) =>
     (l.rel === 'alternate' || l.rel === 'canonical') && typeof l.href === 'string'
       ? { ...l, href: absoluteSeoUrl(l.href) }
-      : l))
+      : l,
+  ),
+)
 const seoMeta = computed(() =>
-  (localeHead.value.meta ?? []).map(m =>
-    m.property === 'og:url' && typeof m.content === 'string'
-      ? { ...m, content: absoluteSeoUrl(m.content) }
-      : m))
+  (localeHead.value.meta ?? []).map((m) =>
+    m.property === 'og:url' && typeof m.content === 'string' ? { ...m, content: absoluteSeoUrl(m.content) } : m,
+  ),
+)
 
 useHead(() => ({
   htmlAttrs: {
@@ -87,15 +92,17 @@ useHead(() => ({
       : []),
   ],
   meta: seoMeta.value,
-  style: brandCss.value
-    ? [{ key: 'portal-brand-vars', innerHTML: brandCss.value }]
-    : [],
-  script: themed.value && mode.value === 'system'
-    ? [{
-        key: 'portal-system-theme',
-        innerHTML: "try{document.documentElement.classList.toggle('dark',window.matchMedia('(prefers-color-scheme: dark)').matches)}catch(e){}",
-      }]
-    : [],
+  style: brandCss.value ? [{ key: 'portal-brand-vars', innerHTML: brandCss.value }] : [],
+  script:
+    themed.value && mode.value === 'system'
+      ? [
+          {
+            key: 'portal-system-theme',
+            innerHTML:
+              "try{document.documentElement.classList.toggle('dark',window.matchMedia('(prefers-color-scheme: dark)').matches)}catch(e){}",
+          },
+        ]
+      : [],
 }))
 </script>
 

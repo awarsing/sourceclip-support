@@ -6,7 +6,10 @@
 // so nothing can be injected through the message.
 const props = defineProps<{ text: string }>()
 
-interface Segment { text: string; href?: string }
+interface Segment {
+  text: string
+  href?: string
+}
 
 const LINK = /\[([^\]]+)\]\((mailto:[^)\s]+|https?:\/\/[^)\s]+)\)/g
 

@@ -34,12 +34,12 @@ const activeBoardId = computed(() => {
   if (UUID_RE.test(raw)) return raw
   const wanted = raw.trim().toLowerCase()
   // Board names carry no uniqueness constraint — first by position wins.
-  return boards.value.find(b => b.name.toLowerCase() === wanted)?.id ?? null
+  return boards.value.find((b) => b.name.toLowerCase() === wanted)?.id ?? null
 })
 const sortBy = ref<'top' | 'recent'>('recent')
 
 // Post list
-const sort = computed(() => sortBy.value === 'top' ? 'votes' : 'createdAt')
+const sort = computed(() => (sortBy.value === 'top' ? 'votes' : 'createdAt'))
 
 const posts = ref<PostListItem[]>([])
 const nextCursor = ref<string | null>(null)
@@ -108,7 +108,10 @@ async function refreshPosts() {
 watch(searchQuery, async () => {
   const q = searchQuery.value.trim()
   if (!q) {
-    if (boardSwitchClearing) { boardSwitchClearing = false; return }
+    if (boardSwitchClearing) {
+      boardSwitchClearing = false
+      return
+    }
     await refreshPosts()
     return
   }
@@ -148,8 +151,6 @@ async function selectBoard(boardId: string | null) {
 }
 
 // Status configuration (centralized)
-
-
 
 // Post detail store
 const postDetailStore = usePostDetailStore()
@@ -204,7 +205,7 @@ function openPostDetail(item: PostListItem) {
 
 // Local update handlers
 function onPostUpdated(updated: { id: string; status?: string; boardId?: string | null; [key: string]: any }) {
-  const idx = posts.value.findIndex(p => p.id === updated.id)
+  const idx = posts.value.findIndex((p) => p.id === updated.id)
   if (idx === -1) return
 
   // Board changed → the sidebar's per-board counts (served from the board store)
@@ -224,7 +225,7 @@ function onPostUpdated(updated: { id: string; status?: string; boardId?: string 
 }
 
 function onPostDeleted(postId: string) {
-  const idx = posts.value.findIndex(p => p.id === postId)
+  const idx = posts.value.findIndex((p) => p.id === postId)
   if (idx !== -1) posts.value.splice(idx, 1)
   // A deleted post drops its board's count (and the total) → refresh the store.
   void boardStore.fetchBoards()
@@ -232,7 +233,7 @@ function onPostDeleted(postId: string) {
 
 // Vote / unvote on list items
 async function handleVote(post: PostListItem) {
-  if (!await ensureIdentity('allowVote')) return
+  if (!(await ensureIdentity('allowVote'))) return
   const wasVoted = post.hasVoted
   post.hasVoted = !wasVoted
   post.voteCount += wasVoted ? -1 : 1

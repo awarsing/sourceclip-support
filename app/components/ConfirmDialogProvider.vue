@@ -6,7 +6,9 @@ const { state, handleConfirm, handleCancel } = useConfirmDialogState()
 // if none fired (e.g. ESC key), this fallback resolves as cancel.
 function onOpenChange(val: boolean) {
   if (!val) {
-    setTimeout(() => { if (state.resolve) handleCancel() })
+    setTimeout(() => {
+      if (state.resolve) handleCancel()
+    })
   }
 }
 </script>

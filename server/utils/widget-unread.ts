@@ -6,7 +6,7 @@ import { withinRetention } from './conversation'
 // Badge = posts + conversations; `feedback` is the posts-only half. Conversations
 // past the retention window are left out: the list hides them, so that dot would
 // never be clearable.
-export async function countWidgetBadge(orgId: string, userId: string): Promise<{ count: number, feedback: number }> {
+export async function countWidgetBadge(orgId: string, userId: string): Promise<{ count: number; feedback: number }> {
   const db = useDB()
 
   const [posts] = await db
@@ -18,13 +18,15 @@ export async function countWidgetBadge(orgId: string, userId: string): Promise<{
   const [threads] = await db
     .select({ value: count() })
     .from(conversation)
-    .where(and(
-      eq(conversation.orgId, orgId),
-      eq(conversation.userId, userId),
-      eq(conversation.unread, true),
-      gt(conversation.lastSeq, 0),
-      withinRetention(orgId),
-    ))
+    .where(
+      and(
+        eq(conversation.orgId, orgId),
+        eq(conversation.userId, userId),
+        eq(conversation.unread, true),
+        gt(conversation.lastSeq, 0),
+        withinRetention(orgId),
+      ),
+    )
 
   const feedback = Number(posts?.value ?? 0)
   return { count: feedback + Number(threads?.value ?? 0), feedback }
@@ -40,16 +42,9 @@ export async function countWidgetBadge(orgId: string, userId: string): Promise<{
 // must not fail the admin's action.
 export async function markPostUnreadForAuthor(postId: string, actorId: string): Promise<void> {
   const db = useDB()
-  const [row] = await db
-    .select({ authorId: post.authorId })
-    .from(post)
-    .where(eq(post.id, postId))
-    .limit(1)
+  const [row] = await db.select({ authorId: post.authorId }).from(post).where(eq(post.id, postId)).limit(1)
   // An admin acting on their own post shouldn't flag it for themselves.
   if (!row || row.authorId === actorId) return
 
-  await db
-    .insert(postUnread)
-    .values({ postId, userId: row.authorId })
-    .onConflictDoNothing()
+  await db.insert(postUnread).values({ postId, userId: row.authorId }).onConflictDoNothing()
 }

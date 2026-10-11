@@ -23,7 +23,11 @@ export default defineEventHandler(async (event): Promise<PagePaginatedList<PostL
     await requireOrgPermission(event, { feedlog: ['moderate'] })
     const parsed = z.uuid().safeParse(query.sourceConversationId)
     if (!parsed.success) throw createError({ statusCode: 422, message: 'Invalid source conversation' })
-    const [source] = await db.select({ id: conversation.id }).from(conversation).where(and(eq(conversation.id, parsed.data), eq(conversation.orgId, orgId))).limit(1)
+    const [source] = await db
+      .select({ id: conversation.id })
+      .from(conversation)
+      .where(and(eq(conversation.id, parsed.data), eq(conversation.orgId, orgId)))
+      .limit(1)
     if (!source) throw createError({ statusCode: 404, message: 'Conversation not found' })
     filters.push(eq(post.sourceConversationId, parsed.data))
   }
@@ -33,10 +37,7 @@ export default defineEventHandler(async (event): Promise<PagePaginatedList<PostL
   // The id tiebreaker follows the same direction, or equal-value rows shift between pages.
   const orderFn = order === 'asc' ? asc : desc
 
-  const [countResult] = await db
-    .select({ total: sql<number>`cast(count(*) as int)` })
-    .from(post)
-    .where(whereClause)
+  const [countResult] = await db.select({ total: sql<number>`cast(count(*) as int)` }).from(post).where(whereClause)
 
   const rows = await db
     .select({
@@ -63,7 +64,7 @@ export default defineEventHandler(async (event): Promise<PagePaginatedList<PostL
     .offset(offset)
 
   return {
-    data: rows.map(r => ({
+    data: rows.map((r) => ({
       id: r.id,
       slug: r.slug,
       title: r.title,

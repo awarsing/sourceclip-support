@@ -18,8 +18,11 @@ export default defineEventHandler(async (event) => {
   const db = useDB()
 
   // Confirm the parent post belongs to the active org before exposing comments.
-  const [postRow] = await db.select({ id: post.id }).from(post)
-    .where(and(eq(post.id, postId), eq(post.orgId, orgId))).limit(1)
+  const [postRow] = await db
+    .select({ id: post.id })
+    .from(post)
+    .where(and(eq(post.id, postId), eq(post.orgId, orgId)))
+    .limit(1)
   if (!postRow) {
     throw createError({ statusCode: 404, message: 'Post not found' })
   }
@@ -28,10 +31,7 @@ export default defineEventHandler(async (event) => {
 
   // Loading child comments for a specific parent
   if (parentId) {
-    const conditions = [
-      eq(comment.postId, postId),
-      eq(comment.parentId, parentId),
-    ]
+    const conditions = [eq(comment.postId, postId), eq(comment.parentId, parentId)]
     if (cursor) {
       const decoded = decodeCursor(cursor)
       if (decoded) {
@@ -67,18 +67,14 @@ export default defineEventHandler(async (event) => {
     return {
       data,
       pagination: {
-        nextCursor: hasMore && lastItem
-          ? encodeCursor({ s: new Date(lastItem.createdAt).toISOString(), id: lastItem.id })
-          : null,
+        nextCursor:
+          hasMore && lastItem ? encodeCursor({ s: new Date(lastItem.createdAt).toISOString(), id: lastItem.id }) : null,
       },
     }
   }
 
   // Loading top-level comments (includes both comment and mergedPost types)
-  const conditions: any[] = [
-    eq(comment.postId, postId),
-    isNull(comment.parentId),
-  ]
+  const conditions: any[] = [eq(comment.postId, postId), isNull(comment.parentId)]
 
   if (cursor) {
     const decoded = decodeCursor(cursor)
@@ -93,11 +89,12 @@ export default defineEventHandler(async (event) => {
     }
   }
 
-  const orderBy = sort === 'newest'
-    ? [desc(comment.createdAt), desc(comment.id)]
-    : sort === 'top'
-      ? [desc(comment.likeCount), desc(comment.id)]
-      : [asc(comment.createdAt), asc(comment.id)]
+  const orderBy =
+    sort === 'newest'
+      ? [desc(comment.createdAt), desc(comment.id)]
+      : sort === 'top'
+        ? [desc(comment.likeCount), desc(comment.id)]
+        : [asc(comment.createdAt), asc(comment.id)]
 
   const topRows = await db
     .select({
@@ -128,7 +125,7 @@ export default defineEventHandler(async (event) => {
   // Eager-load children if requested
   let childrenMap = new Map<string, any[]>()
   if (withChildren && topItems.length > 0) {
-    const topIds = topItems.map(t => t.id)
+    const topIds = topItems.map((t) => t.id)
     const childRows = await db
       .select({
         id: comment.id,
@@ -145,11 +142,7 @@ export default defineEventHandler(async (event) => {
       })
       .from(comment)
       .leftJoin(user, eq(comment.authorId, user.id))
-      .where(and(
-        eq(comment.postId, postId),
-        isNotNull(comment.parentId),
-        inArray(comment.parentId, topIds),
-      ))
+      .where(and(eq(comment.postId, postId), isNotNull(comment.parentId), inArray(comment.parentId, topIds)))
       .orderBy(asc(comment.createdAt))
 
     // Group by parentId, limit per parent
@@ -170,10 +163,8 @@ export default defineEventHandler(async (event) => {
   const topData = await attachLikeStatus(db, topItems, session?.user.id, adminIds)
 
   // Enrich mergedPost entries: fetch post info + sub-post comments
-  const mergedPostItems = topItems.filter(t => t.type === 'mergedPost' && t.metadata)
-  const mergedPostIds = mergedPostItems
-    .map(t => (t.metadata as any)?.merged_post_id)
-    .filter(Boolean) as string[]
+  const mergedPostItems = topItems.filter((t) => t.type === 'mergedPost' && t.metadata)
+  const mergedPostIds = mergedPostItems.map((t) => (t.metadata as any)?.merged_post_id).filter(Boolean) as string[]
 
   let mergedPostInfoMap = new Map<string, any>()
   let mergedPostCommentsMap = new Map<string, { data: any[]; pagination: { nextCursor: string | null } }>()
@@ -216,10 +207,7 @@ export default defineEventHandler(async (event) => {
         })
         .from(comment)
         .leftJoin(user, eq(comment.authorId, user.id))
-        .where(and(
-          inArray(comment.postId, mergedPostIds),
-          isNull(comment.parentId),
-        ))
+        .where(and(inArray(comment.postId, mergedPostIds), isNull(comment.parentId)))
         .orderBy(asc(comment.createdAt), asc(comment.id))
         .limit((childrenLimit + 1) * mergedPostIds.length),
     ])
@@ -288,7 +276,7 @@ export default defineEventHandler(async (event) => {
       const subData = await attachLikeStatus(db, subItems, session?.user.id, adminIds)
 
       // Enrich second-level mergedPost sub-comments with post info
-      const enrichedSubData = subData.map(c => {
+      const enrichedSubData = subData.map((c) => {
         const raw = subItems.find((s: any) => s.id === c.id)
         if (raw?.type === 'mergedPost' && raw.metadata) {
           const l2Id = (raw.metadata as any).merged_post_id
@@ -311,17 +299,18 @@ export default defineEventHandler(async (event) => {
       mergedPostCommentsMap.set(mpId, {
         data: enrichedSubData,
         pagination: {
-          nextCursor: hasMoreSub && lastSub
-            ? encodeCursor({ s: new Date(lastSub.createdAt).toISOString(), id: lastSub.id })
-            : null,
+          nextCursor:
+            hasMoreSub && lastSub
+              ? encodeCursor({ s: new Date(lastSub.createdAt).toISOString(), id: lastSub.id })
+              : null,
         },
       })
     }
   }
 
   // Step 4: Assemble final response
-  const data = topData.map(item => {
-    const raw = topItems.find(t => t.id === item.id)!
+  const data = topData.map((item) => {
+    const raw = topItems.find((t) => t.id === item.id)!
     const result: any = {
       ...item,
       type: raw.type ?? 'comment',
@@ -344,9 +333,10 @@ export default defineEventHandler(async (event) => {
   const lastItem = topItems[topItems.length - 1]
   let nextCursor: string | null = null
   if (hasMore && lastItem) {
-    nextCursor = sort === 'top'
-      ? encodeCursor({ s: lastItem.likeCount, id: lastItem.id })
-      : encodeCursor({ s: new Date(lastItem.createdAt).toISOString(), id: lastItem.id })
+    nextCursor =
+      sort === 'top'
+        ? encodeCursor({ s: lastItem.likeCount, id: lastItem.id })
+        : encodeCursor({ s: new Date(lastItem.createdAt).toISOString(), id: lastItem.id })
   }
 
   return {
@@ -360,7 +350,7 @@ async function resolveAdminAuthorIds(orgId: string): Promise<Set<string>> {
     .select({ userId: member.userId })
     .from(member)
     .where(and(eq(member.organizationId, orgId), inArray(member.role, ['owner', 'manager'])))
-  return new Set(rows.map(r => r.userId))
+  return new Set(rows.map((r) => r.userId))
 }
 
 // Format comment row to API response
@@ -372,7 +362,13 @@ function formatComment(r: any, adminIds: Set<string>) {
     replyCount: r.replyCount ?? undefined,
     likeCount: r.likeCount,
     hasLiked: r.hasLiked ?? false,
-    author: { id: r.authorId, name: r.authorName, image: r.authorImage, isAnonymous: !!r.authorIsAnonymous, isAdmin: adminIds.has(r.authorId) },
+    author: {
+      id: r.authorId,
+      name: r.authorName,
+      image: r.authorImage,
+      isAnonymous: !!r.authorIsAnonymous,
+      isAdmin: adminIds.has(r.authorId),
+    },
     content: r.content,
     type: r.type ?? 'comment',
     editedAt: r.editedAt,
@@ -383,20 +379,17 @@ function formatComment(r: any, adminIds: Set<string>) {
 // Batch attach hasLiked status
 async function attachLikeStatus(db: any, items: any[], userId: string | undefined, adminIds: Set<string>) {
   if (!userId || items.length === 0) {
-    return items.map(r => formatComment(r, adminIds))
+    return items.map((r) => formatComment(r, adminIds))
   }
 
-  const commentIds = items.map(r => r.id)
+  const commentIds = items.map((r) => r.id)
   const likes = await db
     .select({ commentId: commentLike.commentId })
     .from(commentLike)
-    .where(and(
-      eq(commentLike.userId, userId),
-      inArray(commentLike.commentId, commentIds),
-    ))
+    .where(and(eq(commentLike.userId, userId), inArray(commentLike.commentId, commentIds)))
   const likedSet = new Set(likes.map((l: any) => l.commentId))
 
-  return items.map(r => ({
+  return items.map((r) => ({
     ...formatComment(r, adminIds),
     hasLiked: likedSet.has(r.id),
   }))

@@ -1,7 +1,10 @@
 <script setup lang="ts">
 import type { CSSProperties } from 'vue'
 import { resolveAttachmentUrl } from '#layers/feedlog/app/utils/attachment'
-import type { WidgetLauncherAlignment, WidgetLauncherCloseBehavior } from '#layers/feedlog/shared/constants/widget-launcher'
+import type {
+  WidgetLauncherAlignment,
+  WidgetLauncherCloseBehavior,
+} from '#layers/feedlog/shared/constants/widget-launcher'
 import { WIDGET_LAUNCHER_OFFSET_DEFAULT } from '#layers/feedlog/shared/constants/widget-launcher'
 
 const props = defineProps<{
@@ -18,7 +21,7 @@ const frame = ref<HTMLElement | null>(null)
 const launcher = ref<HTMLButtonElement | null>(null)
 const resetButton = ref<HTMLButtonElement | null>(null)
 const scale = ref(0.4)
-const width = computed(() => device.value === 'desktop' ? 900 : 390)
+const width = computed(() => (device.value === 'desktop' ? 900 : 390))
 const height = 720
 const mode = ref<'button' | 'tab' | 'hidden'>('button')
 const panelOpen = ref(false)
@@ -30,36 +33,58 @@ let observer: ResizeObserver | undefined
 
 // Match the existing portal preview: scale a complete viewport, never squeeze
 // the widget itself into the settings card's available width.
-function measure() { if (frame.value) scale.value = frame.value.clientWidth / width.value }
+function measure() {
+  if (frame.value) scale.value = frame.value.clientWidth / width.value
+}
 onMounted(() => {
   observer = new ResizeObserver(measure)
   if (frame.value) observer.observe(frame.value)
   measure()
 })
 onBeforeUnmount(() => observer?.disconnect())
-const brandStyle = computed(() => config.value ? { '--primary': config.value.branding.primary, '--primary-foreground': config.value.branding.primaryForeground } : {})
+const brandStyle = computed(() =>
+  config.value
+    ? { '--primary': config.value.branding.primary, '--primary-foreground': config.value.branding.primaryForeground }
+    : {},
+)
 const productName = computed(() => config.value?.org.name || t('widget.thisProduct'))
 const orgInitial = computed(() => config.value?.org.name.trim().charAt(0).toUpperCase() || 'F')
 const side = computed(() => visitorPosition.value?.side ?? props.alignment)
 const isTab = computed(() => mode.value === 'tab')
-const launcherWidth = computed(() => isTab.value ? 22 : 56)
+const launcherWidth = computed(() => (isTab.value ? 22 : 56))
 function offset(value: number | string) {
   const number = Number(value)
-  return String(value).trim() !== '' && Number.isSafeInteger(number) && number >= 0 ? number : WIDGET_LAUNCHER_OFFSET_DEFAULT
+  return String(value).trim() !== '' && Number.isSafeInteger(number) && number >= 0
+    ? number
+    : WIDGET_LAUNCHER_OFFSET_DEFAULT
 }
 const settledPosition = computed(() => {
   // Match the SDK's viewport limits while keeping the configured offsets intact.
-  const margin = isTab.value ? 0 : visitorPosition.value ? WIDGET_LAUNCHER_OFFSET_DEFAULT : Math.min(offset(props.sideOffset), width.value - 112)
+  const margin = isTab.value
+    ? 0
+    : visitorPosition.value
+      ? WIDGET_LAUNCHER_OFFSET_DEFAULT
+      : Math.min(offset(props.sideOffset), width.value - 112)
   const bottom = Math.min(offset(props.bottomOffset), height - 76)
   return {
     x: side.value === 'left' ? margin : width.value - launcherWidth.value - margin,
-    y: visitorPosition.value ? 14 + visitorPosition.value.ratio * (height - 70) : height - 56 - Math.max(isTab.value ? 12 : 0, bottom),
+    y: visitorPosition.value
+      ? 14 + visitorPosition.value.ratio * (height - 70)
+      : height - 56 - Math.max(isTab.value ? 12 : 0, bottom),
   }
 })
 const position = computed(() => dragPosition.value ?? settledPosition.value)
 const launcherStyle = computed<CSSProperties>(() => ({
-  left: `${position.value.x}px`, top: `${position.value.y}px`, width: `${launcherWidth.value}px`,
-  borderRadius: !isTab.value ? '28px' : dragPosition.value ? '8px' : side.value === 'left' ? '0 8px 8px 0' : '8px 0 0 8px',
+  left: `${position.value.x}px`,
+  top: `${position.value.y}px`,
+  width: `${launcherWidth.value}px`,
+  borderRadius: !isTab.value
+    ? '28px'
+    : dragPosition.value
+      ? '8px'
+      : side.value === 'left'
+        ? '0 8px 8px 0'
+        : '8px 0 0 8px',
 }))
 const panelStyle = computed<CSSProperties>(() => {
   if (device.value === 'mobile') return { inset: '0' }
@@ -67,18 +92,36 @@ const panelStyle = computed<CSSProperties>(() => {
   const below = height - (settledPosition.value.y + 56 + 16) - 12
   const panelHeight = Math.min(680, above >= 480 ? above : below >= 480 ? below : height - 24)
   const panelWidth = 400
-  const preferredLeft = side.value === 'left' ? settledPosition.value.x : settledPosition.value.x + launcherWidth.value - panelWidth
-  const innerLeft = side.value === 'left' ? settledPosition.value.x + launcherWidth.value + 16 : settledPosition.value.x - 16 - panelWidth
+  const preferredLeft =
+    side.value === 'left' ? settledPosition.value.x : settledPosition.value.x + launcherWidth.value - panelWidth
+  const innerLeft =
+    side.value === 'left'
+      ? settledPosition.value.x + launcherWidth.value + 16
+      : settledPosition.value.x - 16 - panelWidth
   const left = above >= 480 || below >= 480 ? preferredLeft : innerLeft
-  return { width: `${panelWidth}px`, height: `${panelHeight}px`, left: `${Math.max(12, Math.min(width.value - panelWidth - 12, left))}px`, top: `${above >= 480 ? settledPosition.value.y - 16 - panelHeight : below >= 480 ? settledPosition.value.y + 72 : 12}px` }
+  return {
+    width: `${panelWidth}px`,
+    height: `${panelHeight}px`,
+    left: `${Math.max(12, Math.min(width.value - panelWidth - 12, left))}px`,
+    top: `${above >= 480 ? settledPosition.value.y - 16 - panelHeight : below >= 480 ? settledPosition.value.y + 72 : 12}px`,
+  }
 })
-const footerHint = computed(() => !props.enabled ? t('settings.widget.previewDisabled') : mode.value === 'hidden' ? t('settings.widget.previewState_hidden') : t('settings.widget.previewHint'))
+const footerHint = computed(() =>
+  !props.enabled
+    ? t('settings.widget.previewDisabled')
+    : mode.value === 'hidden'
+      ? t('settings.widget.previewState_hidden')
+      : t('settings.widget.previewHint'),
+)
 
 function endDrag(cancel = false) {
   if (!pointer) return
   const id = pointer.id
   if (pointer.moved && dragPosition.value && !cancel) {
-    visitorPosition.value = { side: dragPosition.value.x + launcherWidth.value / 2 < width.value / 2 ? 'left' : 'right', ratio: (dragPosition.value.y - 14) / (height - 70) }
+    visitorPosition.value = {
+      side: dragPosition.value.x + launcherWidth.value / 2 < width.value / 2 ? 'left' : 'right',
+      ratio: (dragPosition.value.y - 14) / (height - 70),
+    }
   }
   pointer = null
   dragPosition.value = null
@@ -92,23 +135,40 @@ function reset() {
   suppressClick = false
 }
 watch(() => [props.alignment, props.bottomOffset, props.sideOffset, props.closeBehavior, props.enabled], reset)
-watch(device, () => { reset(); nextTick(measure) })
+watch(device, () => {
+  reset()
+  nextTick(measure)
+})
 function startDrag(event: PointerEvent) {
   if (event.button !== 0 || panelOpen.value) return
-  pointer = { id: event.pointerId, x: event.clientX, y: event.clientY, left: settledPosition.value.x, top: settledPosition.value.y, moved: false }
+  pointer = {
+    id: event.pointerId,
+    x: event.clientX,
+    y: event.clientY,
+    left: settledPosition.value.x,
+    top: settledPosition.value.y,
+    moved: false,
+  }
   suppressClick = false
   launcher.value?.setPointerCapture(event.pointerId)
 }
 function moveDrag(event: PointerEvent) {
   if (!pointer || pointer.id !== event.pointerId) return
-  const dx = event.clientX - pointer.x, dy = event.clientY - pointer.y
+  const dx = event.clientX - pointer.x,
+    dy = event.clientY - pointer.y
   if (!pointer.moved && Math.hypot(dx, dy) < 8) return
   pointer.moved = true
   suppressClick = true
-  dragPosition.value = { x: Math.max(0, Math.min(width.value - launcherWidth.value, pointer.left + dx / scale.value)), y: Math.max(14, Math.min(height - 56, pointer.top + dy / scale.value)) }
+  dragPosition.value = {
+    x: Math.max(0, Math.min(width.value - launcherWidth.value, pointer.left + dx / scale.value)),
+    y: Math.max(14, Math.min(height - 56, pointer.top + dy / scale.value)),
+  }
 }
 function openPanel() {
-  if (suppressClick) { suppressClick = false; return }
+  if (suppressClick) {
+    suppressClick = false
+    return
+  }
   mode.value = 'button'
   panelOpen.value = !panelOpen.value
 }
@@ -118,12 +178,22 @@ function closeLauncher() {
   nextTick(() => (mode.value === 'hidden' ? resetButton.value : launcher.value)?.focus())
 }
 function onKey(event: KeyboardEvent) {
-  if (event.key === 'Escape') { endDrag(true); return }
+  if (event.key === 'Escape') {
+    endDrag(true)
+    return
+  }
   if (panelOpen.value || !['ArrowLeft', 'ArrowRight', 'ArrowUp', 'ArrowDown'].includes(event.key)) return
   event.preventDefault()
   visitorPosition.value = {
     side: event.key === 'ArrowLeft' ? 'left' : event.key === 'ArrowRight' ? 'right' : side.value,
-    ratio: Math.max(0, Math.min(1, (settledPosition.value.y - 14 + (event.key === 'ArrowUp' ? -20 : event.key === 'ArrowDown' ? 20 : 0)) / (height - 70))),
+    ratio: Math.max(
+      0,
+      Math.min(
+        1,
+        (settledPosition.value.y - 14 + (event.key === 'ArrowUp' ? -20 : event.key === 'ArrowDown' ? 20 : 0)) /
+          (height - 70),
+      ),
+    ),
   }
 }
 function closePanel() {

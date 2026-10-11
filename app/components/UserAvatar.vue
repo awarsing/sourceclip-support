@@ -19,11 +19,14 @@ interface AvatarAuthor extends DisplayableAuthor {
   image?: string | null
 }
 
-const props = withDefaults(defineProps<{
-  author?: AvatarAuthor | null
-  size?: 4 | 5 | 6 | 8 | 9 | 10
-  shadow?: boolean
-}>(), { author: null, size: 8, shadow: false })
+const props = withDefaults(
+  defineProps<{
+    author?: AvatarAuthor | null
+    size?: 4 | 5 | 6 | 8 | 9 | 10
+    shadow?: boolean
+  }>(),
+  { author: null, size: 8, shadow: false },
+)
 
 // Callers pass `shadow` rather than a class: a fallthrough class gets merged with
 // the internal one in a different order on the server than in the browser, which

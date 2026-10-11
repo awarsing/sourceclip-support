@@ -40,7 +40,9 @@ const { data: article, refresh } = await useFetch<ArticleDetail>(() => `/api/adm
   immediate: !isNew.value,
 })
 
-watch(isNew, (value) => { if (!value) refresh() })
+watch(isNew, (value) => {
+  if (!value) refresh()
+})
 const { data: collectionsData } = await useFetch<{ data: CollectionOption[] }>('/api/admin/help/collections', {
   query: { flat: 1 },
 })
@@ -51,8 +53,12 @@ const draftCollectionId = ref(props.collectionId ?? '')
 const saving = ref(false)
 const pickerOpen = ref(false)
 const pickerRef = ref<HTMLElement | null>(null)
-onClickOutside(pickerRef, () => { pickerOpen.value = false })
-onKeyStroke('Escape', () => { pickerOpen.value = false })
+onClickOutside(pickerRef, () => {
+  pickerOpen.value = false
+})
+onKeyStroke('Escape', () => {
+  pickerOpen.value = false
+})
 const previewOpen = ref(false)
 const leavingAfterWrite = ref(false)
 
@@ -65,25 +71,39 @@ function syncForm() {
 syncForm()
 watch(() => article.value?.id, syncForm)
 
-const dirty = computed(() =>
-  form.title !== (article.value?.title ?? '')
-  || form.description !== (article.value?.description ?? '')
-  || form.content !== (article.value?.content ?? '')
-  || form.aiEnabled !== (article.value?.aiEnabled ?? true))
+const dirty = computed(
+  () =>
+    form.title !== (article.value?.title ?? '') ||
+    form.description !== (article.value?.description ?? '') ||
+    form.content !== (article.value?.content ?? '') ||
+    form.aiEnabled !== (article.value?.aiEnabled ?? true),
+)
 
-const collection = computed(() => isNew.value
-  ? collections.value.find(c => c.id === draftCollectionId.value)
-  : article.value?.collection)
-const hiddenWarning = computed(() => article.value?.status === 'published' && collection.value && !collection.value.visible)
-const articleUrl = computed(() => article.value ? `/help/${article.value.shortId}-${article.value.slug}` : '')
+const collection = computed(() =>
+  isNew.value ? collections.value.find((c) => c.id === draftCollectionId.value) : article.value?.collection,
+)
+const hiddenWarning = computed(
+  () => article.value?.status === 'published' && collection.value && !collection.value.visible,
+)
+const articleUrl = computed(() => (article.value ? `/help/${article.value.shortId}-${article.value.slug}` : ''))
 
-watch(collections, (list) => {
-  if (isNew.value && !draftCollectionId.value) draftCollectionId.value = list[0]?.id ?? ''
-}, { immediate: true })
+watch(
+  collections,
+  (list) => {
+    if (isNew.value && !draftCollectionId.value) draftCollectionId.value = list[0]?.id ?? ''
+  },
+  { immediate: true },
+)
 
 function formatStamp(iso: string | null | undefined) {
   if (!iso) return '—'
-  return new Intl.DateTimeFormat('en-US', { month: 'short', day: 'numeric', year: 'numeric', hour: '2-digit', minute: '2-digit' }).format(new Date(iso))
+  return new Intl.DateTimeFormat('en-US', {
+    month: 'short',
+    day: 'numeric',
+    year: 'numeric',
+    hour: '2-digit',
+    minute: '2-digit',
+  }).format(new Date(iso))
 }
 
 async function patch(body: Record<string, unknown>) {
@@ -92,12 +112,10 @@ async function patch(body: Record<string, unknown>) {
     await $fetch(`/api/admin/help/articles/${id.value}`, { method: 'PATCH', body })
     await refresh()
     return true
-  }
-  catch (e) {
+  } catch (e) {
     toast.error((e as { data?: { message?: string } }).data?.message || t('help.admin.editor.saveFailed'))
     return false
-  }
-  finally {
+  } finally {
     saving.value = false
   }
 }
@@ -124,11 +142,9 @@ async function create(publish: boolean) {
     toast.success(t('help.admin.editor.saved'))
     leavingAfterWrite.value = true
     await router.replace(localePath(`/dashboard/help/${created.id}`))
-  }
-  catch (e) {
+  } catch (e) {
     toast.error((e as { data?: { message?: string } }).data?.message || t('help.admin.editor.saveFailed'))
-  }
-  finally {
+  } finally {
     saving.value = false
   }
 }
@@ -197,11 +213,9 @@ async function removeArticle() {
     toast.success(t('help.admin.editor.deleted'))
     leavingAfterWrite.value = true
     await router.push(localePath('/dashboard/help'))
-  }
-  catch (e) {
+  } catch (e) {
     toast.error((e as { data?: { message?: string } }).data?.message || t('help.admin.editor.deleteFailed'))
-  }
-  finally {
+  } finally {
     saving.value = false
   }
 }

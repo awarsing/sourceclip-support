@@ -56,13 +56,13 @@ const styleOptions = computed(() => [
 ])
 
 function removeFeedback(id: string) {
-  selectedFeedbackIds.value = selectedFeedbackIds.value.filter(i => i !== id)
-  selectedFeedback.value = selectedFeedback.value.filter(i => i.id !== id)
+  selectedFeedbackIds.value = selectedFeedbackIds.value.filter((i) => i !== id)
+  selectedFeedback.value = selectedFeedback.value.filter((i) => i.id !== id)
 }
 
 function handlePickerConfirm(items: { id: string; title: string }[]) {
   selectedFeedback.value = items
-  selectedFeedbackIds.value = items.map(i => i.id)
+  selectedFeedbackIds.value = items.map((i) => i.id)
   showPickerModal.value = false
 }
 

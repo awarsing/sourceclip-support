@@ -6,13 +6,19 @@ const props = defineProps<{ slug: string; productName: string; initialScrollTop?
 const emit = defineEmits<{ close: []; article: [slug: string]; scroll: [top: number] }>()
 const { widgetFetch } = inject(widgetEmbedKey)!
 const article = ref<{
-  title: string; description: string | null; content: string
-  shortId: string; canonicalSlug: string; collection: { id: string; name: string }
+  title: string
+  description: string | null
+  content: string
+  shortId: string
+  canonicalSlug: string
+  collection: { id: string; name: string }
 } | null>(null)
 const loading = ref(false)
 const failed = ref(false)
 const bodyEl = ref<HTMLElement | null>(null)
-const articlePath = computed(() => `/help/${article.value ? `${article.value.shortId}-${article.value.canonicalSlug}` : props.slug}`)
+const articlePath = computed(
+  () => `/help/${article.value ? `${article.value.shortId}-${article.value.canonicalSlug}` : props.slug}`,
+)
 let request = 0
 function followLink(event: MouseEvent) {
   const link = (event.target as Element).closest<HTMLAnchorElement>('a[href]')
@@ -27,24 +33,31 @@ function followLink(event: MouseEvent) {
     link.rel = 'noopener noreferrer'
   }
 }
-watch(() => props.slug, async slug => {
-  const version = ++request
-  loading.value = true
-  failed.value = false
-  bodyEl.value?.scrollTo({ top: 0 })
-  try {
-    const result = await widgetFetch<NonNullable<typeof article.value>>(`/api/help/articles/${encodeURIComponent(slug.split('-')[0]!)}`)
-    if (version === request) article.value = result
-  } catch { if (version === request) failed.value = true }
-  finally {
-    if (version === request) {
-      loading.value = false
-      await nextTick()
-      await document.fonts.ready
-      if (version === request && bodyEl.value) bodyEl.value.scrollTop = props.initialScrollTop ?? 0
+watch(
+  () => props.slug,
+  async (slug) => {
+    const version = ++request
+    loading.value = true
+    failed.value = false
+    bodyEl.value?.scrollTo({ top: 0 })
+    try {
+      const result = await widgetFetch<NonNullable<typeof article.value>>(
+        `/api/help/articles/${encodeURIComponent(slug.split('-')[0]!)}`,
+      )
+      if (version === request) article.value = result
+    } catch {
+      if (version === request) failed.value = true
+    } finally {
+      if (version === request) {
+        loading.value = false
+        await nextTick()
+        await document.fonts.ready
+        if (version === request && bodyEl.value) bodyEl.value.scrollTop = props.initialScrollTop ?? 0
+      }
     }
-  }
-}, { immediate: true })
+  },
+  { immediate: true },
+)
 </script>
 
 <template>

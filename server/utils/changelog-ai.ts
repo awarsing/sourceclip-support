@@ -1,4 +1,3 @@
-
 interface FeedbackItem {
   title: string
   content: string
@@ -112,11 +111,7 @@ export function buildSystemPrompt(style: AiStyle): string {
   return SYSTEM_PROMPT_TEMPLATE.replace('{{STYLE_RULES}}', STYLE_RULES[style])
 }
 
-export function buildUserPrompt(
-  style: AiStyle,
-  feedback: FeedbackItem[],
-  changeContent: string,
-): string {
+export function buildUserPrompt(style: AiStyle, feedback: FeedbackItem[], changeContent: string): string {
   const parts: string[] = []
 
   parts.push(`Style: ${style}`)
@@ -157,7 +152,9 @@ export function parseAiResponse(raw: string): AiOutput {
   try {
     const obj = JSON.parse(raw) as AiOutput
     if (validateAiOutput(obj)) return obj
-  } catch { /* fall through */ }
+  } catch {
+    /* fall through */
+  }
 
   // Layer 2: strip ```json fence
   const fenceMatch = raw.match(/```(?:json)?\s*([\s\S]*?)\s*```/)
@@ -165,7 +162,9 @@ export function parseAiResponse(raw: string): AiOutput {
     try {
       const obj = JSON.parse(fenceMatch[1]) as AiOutput
       if (validateAiOutput(obj)) return obj
-    } catch { /* fall through */ }
+    } catch {
+      /* fall through */
+    }
   }
 
   // Layer 3: first '{' to last '}'
@@ -176,7 +175,9 @@ export function parseAiResponse(raw: string): AiOutput {
     try {
       const obj = JSON.parse(sub) as AiOutput
       if (validateAiOutput(obj)) return obj
-    } catch { /* fall through */ }
+    } catch {
+      /* fall through */
+    }
   }
 
   throw createError({ statusCode: 502, message: 'AI returned invalid response format' })

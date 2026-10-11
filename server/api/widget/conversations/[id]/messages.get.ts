@@ -8,7 +8,7 @@ export interface WidgetConversationMessage {
   kind: string | null
   text: string
   images: string[]
-  post: { id: string, slug: string, title: string, board: string | null, status: string } | null
+  post: { id: string; slug: string; title: string; board: string | null; status: string } | null
   createdAt: Date
 }
 
@@ -53,7 +53,7 @@ export default defineEventHandler(async (event): Promise<{ data: WidgetConversat
     .orderBy(asc(message.createdAt), asc(message.id))
 
   return {
-    data: rows.map(r => ({
+    data: rows.map((r) => ({
       id: r.id,
       role: r.role,
       kind: r.kind,

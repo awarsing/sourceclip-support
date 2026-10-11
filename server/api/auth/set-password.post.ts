@@ -18,9 +18,7 @@ export default defineEventHandler(async (event) => {
   }
 
   const accounts = await auth.api.listUserAccounts({ headers: getHeaders(event) })
-  const hasCredential = accounts?.some(
-    (acc: { providerId: string }) => acc.providerId === 'credential',
-  )
+  const hasCredential = accounts?.some((acc: { providerId: string }) => acc.providerId === 'credential')
   if (hasCredential) {
     throw createError({ statusCode: 400, message: 'Password already set. Use change-password instead.' })
   }

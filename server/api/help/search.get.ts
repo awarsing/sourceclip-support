@@ -12,7 +12,7 @@ export default defineEventHandler(async (event) => {
   if (!tsQuery) return { total: 0, data: [] }
 
   const ip = getRequestIP(event, { xForwardedFor: true }) || 'unknown'
-  if (!await checkRateLimit(`help-search:${ip}`, RATE_LIMIT)) {
+  if (!(await checkRateLimit(`help-search:${ip}`, RATE_LIMIT))) {
     throw createError({ statusCode: 429, message: 'Too many requests' })
   }
 
@@ -31,12 +31,14 @@ export default defineEventHandler(async (event) => {
     })
     .from(helpArticle)
     .innerJoin(helpCollection, eq(helpArticle.collectionId, helpCollection.id))
-    .where(and(
-      eq(helpArticle.orgId, orgId),
-      eq(helpArticle.status, 'published'),
-      eq(helpCollection.visible, true),
-      sql`${helpArticle.tsv} @@ (${tsQuery})`,
-    ))
+    .where(
+      and(
+        eq(helpArticle.orgId, orgId),
+        eq(helpArticle.status, 'published'),
+        eq(helpCollection.visible, true),
+        sql`${helpArticle.tsv} @@ (${tsQuery})`,
+      ),
+    )
     // ts_rank_cd's weight array is ordered {D,C,B,A}, so {0,0,0,1} isolates A (title) and {0,0,1,0} isolates B (description).
     .orderBy(
       sql`(case when ts_rank_cd('{0,0,0,1}', ${helpArticle.tsv}, (${tsQuery})) > 0 then 2

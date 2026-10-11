@@ -29,14 +29,19 @@ function getDb(): DB {
 
   // Node.js (Docker/Vercel): singleton — persistent process, connection pool is long-lived
   if (!_db) {
-    _db = drizzle(postgres(process.env.DATABASE_URL!, {
-      transform,
-      onnotice: notice => logger.info(`[DB Notice] ${notice.message}`),
-    }), { schema })
+    _db = drizzle(
+      postgres(process.env.DATABASE_URL!, {
+        transform,
+        onnotice: (notice) => logger.info(`[DB Notice] ${notice.message}`),
+      }),
+      { schema },
+    )
   }
   return _db
 }
 
 export const db = new Proxy({} as DB, {
-  get(_, prop) { return getDb()[prop as keyof DB] },
+  get(_, prop) {
+    return getDb()[prop as keyof DB]
+  },
 })

@@ -21,7 +21,7 @@ export function useApiFetch<T>(url: string, opts?: Parameters<typeof $fetch>[1])
   }
 
   // ofetch types this hook as MaybeArray; normalise before chaining.
-  const callerHooks = [opts?.onResponseError].flat().filter(h => typeof h === 'function')
+  const callerHooks = [opts?.onResponseError].flat().filter((h) => typeof h === 'function')
 
   return $fetch<T>(url, {
     ...opts,

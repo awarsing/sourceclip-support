@@ -32,8 +32,7 @@ export default defineEventHandler(async (event) => {
       filter: { orgId, merged: 'canonical_only' },
       limit: PUBLIC_SEARCH_LIMIT,
     })
-  }
-  else {
+  } else {
     // Fallback (embeddings unavailable): pg_trgm nearest-N over post_search, matching
     // searchSimilarByTrgm — whole-string `<->` distance, no threshold,
     // global across boards. post_search is sync-written on post create/update.
@@ -65,15 +64,15 @@ export default defineEventHandler(async (event) => {
   // Batch hasVoted when authenticated (same pattern as GET /api/posts).
   let votedPostIds = new Set<string>()
   if (session && rows.length > 0) {
-    const ids = rows.map(r => r.id)
+    const ids = rows.map((r) => r.id)
     const votes = await db
       .select({ postId: vote.postId })
       .from(vote)
       .where(and(eq(vote.userId, session.user.id), inArray(vote.postId, ids)))
-    votedPostIds = new Set(votes.map(v => v.postId))
+    votedPostIds = new Set(votes.map((v) => v.postId))
   }
 
-  const data: PostListItem[] = rows.map(r => ({
+  const data: PostListItem[] = rows.map((r) => ({
     id: r.id,
     slug: r.slug,
     title: r.title,

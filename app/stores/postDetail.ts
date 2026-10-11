@@ -6,8 +6,8 @@ export const usePostDetailStore = defineStore('postDetail', () => {
   const commentsMap = ref<Record<string, CommentItem[]>>({})
   const commentCursors = ref<Record<string, string | null>>({})
 
-  const postLoadingMap = ref<Record<string, boolean>>({})        // key: slug
-  const commentLoadingMap = ref<Record<string, boolean>>({})     // key: postId
+  const postLoadingMap = ref<Record<string, boolean>>({}) // key: slug
+  const commentLoadingMap = ref<Record<string, boolean>>({}) // key: postId
   const moreCommentLoadingMap = ref<Record<string, boolean>>({}) // key: postId
 
   // In-flight fetchPost promises for dedup (private, not serialized)
@@ -171,14 +171,19 @@ export const usePostDetailStore = defineStore('postDetail', () => {
     if (!p) return
     const list = commentsMap.value[p.id]
     if (!list) return
-    const parent = list.find(c => c.id === parentId)
+    const parent = list.find((c) => c.id === parentId)
     if (!parent?.children?.length) return
 
     const lastChild = parent.children[parent.children.length - 1]
-    const cursor = btoa(JSON.stringify({
-      s: new Date(lastChild.createdAt).toISOString(),
-      id: lastChild.id,
-    })).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '')
+    const cursor = btoa(
+      JSON.stringify({
+        s: new Date(lastChild.createdAt).toISOString(),
+        id: lastChild.id,
+      }),
+    )
+      .replace(/\+/g, '-')
+      .replace(/\//g, '_')
+      .replace(/=+$/, '')
 
     const data = await useApiFetch<{ data: CommentItem[]; pagination: { nextCursor: string | null } }>(
       `/api/posts/${p.id}/comments`,
@@ -195,10 +200,9 @@ export const usePostDetailStore = defineStore('postDetail', () => {
     p.voteCount++
 
     try {
-      const res = await useApiFetch<{ voted: boolean; voteCount: number }>(
-        `/api/posts/${p.id}/vote`,
-        { method: 'POST' },
-      )
+      const res = await useApiFetch<{ voted: boolean; voteCount: number }>(`/api/posts/${p.id}/vote`, {
+        method: 'POST',
+      })
       p.voteCount = res.voteCount
       p.hasVoted = res.voted
       p.subscribed = true // voting auto-subscribes on the backend
@@ -216,10 +220,9 @@ export const usePostDetailStore = defineStore('postDetail', () => {
     p.voteCount--
 
     try {
-      const res = await useApiFetch<{ voted: boolean; voteCount: number }>(
-        `/api/posts/${p.id}/vote`,
-        { method: 'DELETE' },
-      )
+      const res = await useApiFetch<{ voted: boolean; voteCount: number }>(`/api/posts/${p.id}/vote`, {
+        method: 'DELETE',
+      })
       p.voteCount = res.voteCount
       p.hasVoted = res.voted
     } catch {
@@ -237,15 +240,15 @@ export const usePostDetailStore = defineStore('postDetail', () => {
     const p = posts.value[slug]
     if (!p) return
 
-    const res = await useApiFetch<CommentItem>(
-      `/api/posts/${p.id}/comments`,
-      { method: 'POST', body: { content, parentId, replyToId, notifyVoters: notify } },
-    )
+    const res = await useApiFetch<CommentItem>(`/api/posts/${p.id}/comments`, {
+      method: 'POST',
+      body: { content, parentId, replyToId, notifyVoters: notify },
+    })
 
     const list = commentsMap.value[p.id]
     if (list) {
       if (parentId) {
-        const parent = list.find(c => c.id === parentId)
+        const parent = list.find((c) => c.id === parentId)
         if (parent) {
           if (!parent.children) parent.children = []
           parent.children.push(res)
@@ -261,10 +264,10 @@ export const usePostDetailStore = defineStore('postDetail', () => {
   }
 
   async function updateComment(slug: string, commentId: string, content: string) {
-    const res = await useApiFetch<Partial<CommentItem>>(
-      `/api/comments/${commentId}`,
-      { method: 'PATCH', body: { content } },
-    )
+    const res = await useApiFetch<Partial<CommentItem>>(`/api/comments/${commentId}`, {
+      method: 'PATCH',
+      body: { content },
+    })
     updateCommentInList(slug, commentId, res)
     return res
   }
@@ -277,7 +280,7 @@ export const usePostDetailStore = defineStore('postDetail', () => {
     const list = commentsMap.value[p.id]
     if (!list) return
 
-    const topIdx = list.findIndex(c => c.id === commentId)
+    const topIdx = list.findIndex((c) => c.id === commentId)
     if (topIdx !== -1) {
       const removed = list[topIdx]
       const removedCount = 1 + (removed.replyCount ?? 0)
@@ -286,7 +289,7 @@ export const usePostDetailStore = defineStore('postDetail', () => {
     } else {
       for (const parent of list) {
         if (!parent.children) continue
-        const childIdx = parent.children.findIndex(c => c.id === commentId)
+        const childIdx = parent.children.findIndex((c) => c.id === commentId)
         if (childIdx !== -1) {
           parent.children.splice(childIdx, 1)
           parent.replyCount = Math.max((parent.replyCount ?? 0) - 1, 0)
@@ -304,10 +307,9 @@ export const usePostDetailStore = defineStore('postDetail', () => {
     target.likeCount++
 
     try {
-      const res = await useApiFetch<{ liked: boolean; likeCount: number }>(
-        `/api/comments/${commentId}/like`,
-        { method: 'POST' },
-      )
+      const res = await useApiFetch<{ liked: boolean; likeCount: number }>(`/api/comments/${commentId}/like`, {
+        method: 'POST',
+      })
       target.likeCount = res.likeCount
       target.hasLiked = res.liked
     } catch {
@@ -323,10 +325,9 @@ export const usePostDetailStore = defineStore('postDetail', () => {
     target.likeCount--
 
     try {
-      const res = await useApiFetch<{ liked: boolean; likeCount: number }>(
-        `/api/comments/${commentId}/like`,
-        { method: 'DELETE' },
-      )
+      const res = await useApiFetch<{ liked: boolean; likeCount: number }>(`/api/comments/${commentId}/like`, {
+        method: 'DELETE',
+      })
       target.likeCount = res.likeCount
       target.hasLiked = res.liked
     } catch {
@@ -369,7 +370,7 @@ export const usePostDetailStore = defineStore('postDetail', () => {
     for (const c of list) {
       if (c.id === commentId) return c
       if (c.children) {
-        const child = c.children.find(ch => ch.id === commentId)
+        const child = c.children.find((ch) => ch.id === commentId)
         if (child) return child
       }
     }

@@ -30,10 +30,7 @@ export default defineEventHandler(async (event) => {
 
   await db.transaction(async (tx) => {
     // 1. Clear merged_to
-    await tx
-      .update(post)
-      .set({ mergedTo: null })
-      .where(eq(post.id, body.postId))
+    await tx.update(post).set({ mergedTo: null }).where(eq(post.id, body.postId))
 
     // 2. Recalculate canonical vote_count
     await tx.execute(sql`
@@ -64,11 +61,13 @@ export default defineEventHandler(async (event) => {
     // 5. Delete the merge comment record + decrement commentCount
     const deleted = await tx
       .delete(comment)
-      .where(and(
-        eq(comment.postId, canonicalPostId),
-        eq(comment.type, 'mergedPost'),
-        sql`${comment.metadata}->>'merged_post_id' = ${body.postId}`,
-      ))
+      .where(
+        and(
+          eq(comment.postId, canonicalPostId),
+          eq(comment.type, 'mergedPost'),
+          sql`${comment.metadata}->>'merged_post_id' = ${body.postId}`,
+        ),
+      )
       .returning({ id: comment.id })
 
     if (deleted.length > 0) {

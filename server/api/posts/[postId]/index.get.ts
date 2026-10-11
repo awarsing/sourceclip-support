@@ -96,8 +96,11 @@ export default defineEventHandler(async (event): Promise<PostDetail> => {
   // Fetch the display title only after the same permission check as the source ID.
   let sourceConversationTitle: string | null = null
   if (canReadInbox && row.sourceConversationId) {
-    const [source] = await db.select({ title: conversation.title }).from(conversation)
-      .where(and(eq(conversation.id, row.sourceConversationId), eq(conversation.orgId, orgId))).limit(1)
+    const [source] = await db
+      .select({ title: conversation.title })
+      .from(conversation)
+      .where(and(eq(conversation.id, row.sourceConversationId), eq(conversation.orgId, orgId)))
+      .limit(1)
     sourceConversationTitle = source?.title ?? null
   }
 

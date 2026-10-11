@@ -6,8 +6,7 @@ export async function embedQueryOrNull(text: string): Promise<number[] | null> {
   if (!isEmbeddingEnabled()) return null
   try {
     return await generateEmbedding(text)
-  }
-  catch {
+  } catch {
     return null
   }
 }

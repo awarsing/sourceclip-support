@@ -10,7 +10,7 @@ interface RoadmapColumn {
   nextCursor: string | null
 }
 
-type RoadmapResponse = Record<typeof ROADMAP_STATUSES[number], RoadmapColumn>
+type RoadmapResponse = Record<(typeof ROADMAP_STATUSES)[number], RoadmapColumn>
 
 // GET /api/roadmap — Roadmap view: posts grouped by status
 export default defineEventHandler(async (event): Promise<RoadmapResponse> => {
@@ -25,7 +25,7 @@ export default defineEventHandler(async (event): Promise<RoadmapResponse> => {
   const boardCondition = boardId ? eq(post.boardId, boardId) : undefined
 
   // Query 1: UNION ALL — top 20 per status by votes
-  const statusQueries = ROADMAP_STATUSES.map(status => {
+  const statusQueries = ROADMAP_STATUSES.map((status) => {
     const conditions: any[] = [eq(post.orgId, orgId), eq(post.status, status), isNull(post.mergedTo)]
     if (boardCondition) conditions.push(boardCondition)
 
@@ -54,7 +54,11 @@ export default defineEventHandler(async (event): Promise<RoadmapResponse> => {
   })
 
   // Query 2: counts per status
-  const countConditions: any[] = [eq(post.orgId, orgId), inArray(post.status, [...ROADMAP_STATUSES]), isNull(post.mergedTo)]
+  const countConditions: any[] = [
+    eq(post.orgId, orgId),
+    inArray(post.status, [...ROADMAP_STATUSES]),
+    isNull(post.mergedTo),
+  ]
   if (boardCondition) countConditions.push(boardCondition)
 
   const [results, counts] = await Promise.all([
@@ -70,21 +74,18 @@ export default defineEventHandler(async (event): Promise<RoadmapResponse> => {
   ])
 
   // Build count map
-  const countMap = new Map(counts.map(c => [c.status, c.count]))
+  const countMap = new Map(counts.map((c) => [c.status, c.count]))
 
   // Batch query hasVoted
   const allRows = results.flat()
   let votedPostIds = new Set<string>()
   if (session && allRows.length > 0) {
-    const postIds = allRows.map(r => r.id)
+    const postIds = allRows.map((r) => r.id)
     const votes = await db
       .select({ postId: vote.postId })
       .from(vote)
-      .where(and(
-        eq(vote.userId, session.user.id),
-        inArray(vote.postId, postIds),
-      ))
-    votedPostIds = new Set(votes.map(v => v.postId))
+      .where(and(eq(vote.userId, session.user.id), inArray(vote.postId, postIds)))
+    votedPostIds = new Set(votes.map((v) => v.postId))
   }
 
   // Build response
@@ -95,7 +96,7 @@ export default defineEventHandler(async (event): Promise<RoadmapResponse> => {
     const hasMore = rows.length > PAGE_SIZE
     const items = hasMore ? rows.slice(0, PAGE_SIZE) : rows
 
-    const data: PostListItem[] = items.map(r => ({
+    const data: PostListItem[] = items.map((r) => ({
       id: r.id,
       slug: r.slug,
       title: r.title,
@@ -111,9 +112,7 @@ export default defineEventHandler(async (event): Promise<RoadmapResponse> => {
     }))
 
     const lastItem = data[data.length - 1]
-    const nextCursor = hasMore && lastItem
-      ? encodeCursor({ s: lastItem.createdAt, id: lastItem.id })
-      : null
+    const nextCursor = hasMore && lastItem ? encodeCursor({ s: lastItem.createdAt, id: lastItem.id }) : null
 
     response[status] = {
       data,

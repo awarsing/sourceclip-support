@@ -71,20 +71,17 @@ export default defineEventHandler(async (event): Promise<CursorPaginatedList<Pos
   // Batch query hasVoted when authenticated
   let votedPostIds = new Set<string>()
   if (session && result.length > 0) {
-    const postIds = result.map(r => r.id)
+    const postIds = result.map((r) => r.id)
     const votes = await db
       .select({ postId: vote.postId })
       .from(vote)
-      .where(and(
-        eq(vote.userId, session.user.id),
-        inArray(vote.postId, postIds),
-      ))
-    votedPostIds = new Set(votes.map(v => v.postId))
+      .where(and(eq(vote.userId, session.user.id), inArray(vote.postId, postIds)))
+    votedPostIds = new Set(votes.map((v) => v.postId))
   }
 
   const hasMore = result.length > pageSize
   const items = hasMore ? result.slice(0, pageSize) : result
-  const data: PostListItem[] = items.map(r => ({
+  const data: PostListItem[] = items.map((r) => ({
     id: r.id,
     slug: r.slug,
     title: r.title,
@@ -100,9 +97,10 @@ export default defineEventHandler(async (event): Promise<CursorPaginatedList<Pos
   }))
 
   const lastItem = data[data.length - 1]
-  const nextCursor = hasMore && lastItem
-    ? encodeCursor({ s: sort === 'votes' ? lastItem.voteCount : lastItem.createdAt, id: lastItem.id })
-    : null
+  const nextCursor =
+    hasMore && lastItem
+      ? encodeCursor({ s: sort === 'votes' ? lastItem.voteCount : lastItem.createdAt, id: lastItem.id })
+      : null
 
   return { data, pagination: { nextCursor } }
 })

@@ -35,7 +35,10 @@ if (import.meta.server && error.value) {
 const article = computed(() => data.value)
 
 if (article.value && segment !== `${article.value.shortId}-${article.value.canonicalSlug}`) {
-  await navigateTo(localePath(`/help/${article.value.shortId}-${article.value.canonicalSlug}`), { redirectCode: 301, replace: true })
+  await navigateTo(localePath(`/help/${article.value.shortId}-${article.value.canonicalSlug}`), {
+    redirectCode: 301,
+    replace: true,
+  })
 }
 
 const editorId = 'help-article-preview'
@@ -48,10 +51,11 @@ const anchorId = (heading: { text?: string; index?: number }) => {
   if (index <= anchorLastIndex) anchorSeen.clear()
   anchorLastIndex = index
 
-  const base = String(heading?.text ?? '').toLowerCase()
-    .replace(new RegExp(`[^a-z0-9${CJK_RANGE}]+`, 'g'), '-')
-    .replace(/^-|-$/g, '')
-    || `section-${index}`
+  const base =
+    String(heading?.text ?? '')
+      .toLowerCase()
+      .replace(new RegExp(`[^a-z0-9${CJK_RANGE}]+`, 'g'), '-')
+      .replace(/^-|-$/g, '') || `section-${index}`
   const seen = anchorSeen.get(base) ?? 0
   anchorSeen.set(base, seen + 1)
   return seen ? `${base}-${seen + 1}` : base
@@ -75,7 +79,7 @@ function scrollOffset() {
 
 function readHeadings() {
   headingEls = [...(bodyRoot.value?.querySelectorAll<HTMLElement>('h2[id], h3[id]') ?? [])]
-  toc.value = headingEls.map(node => ({
+  toc.value = headingEls.map((node) => ({
     id: node.id,
     text: node.textContent?.replace(/#$/, '').trim() ?? '',
     level: Number(node.tagName[1]),
@@ -152,7 +156,10 @@ onBeforeUnmount(() => {
   window.removeEventListener('scrollend', releaseNavLock)
   clearTimeout(navLockTimer)
 })
-watch(() => article.value?.content, () => nextTick(mountAnchors))
+watch(
+  () => article.value?.content,
+  () => nextTick(mountAnchors),
+)
 
 usePageOg({
   kind: 'helpArticle',
@@ -162,7 +169,6 @@ usePageOg({
   publishedAt: () => article.value?.publishedAt ?? undefined,
 })
 useRobotsRule(computed(() => (article.value ? 'index, follow' : 'noindex')))
-
 </script>
 
 <template>

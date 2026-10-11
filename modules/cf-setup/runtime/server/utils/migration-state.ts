@@ -39,12 +39,15 @@ function readJournalEntries(): number {
   }
 }
 
-export async function probeDatabaseState(
-  connectionString: string | undefined,
-): Promise<StateSnapshot> {
+export async function probeDatabaseState(connectionString: string | undefined): Promise<StateSnapshot> {
   const expected = readJournalEntries()
   if (!connectionString) {
-    return { state: 'unreachable', expected, applied: 0, error: 'Database connection not configured — Hyperdrive binding missing' }
+    return {
+      state: 'unreachable',
+      expected,
+      applied: 0,
+      error: 'Database connection not configured — Hyperdrive binding missing',
+    }
   }
   const client = postgres(connectionString, { max: 1, prepare: false })
   const db = drizzle(client)

@@ -73,10 +73,7 @@ export async function searchSimilarByEmbedding(
 }
 
 // Search similar posts using pg_trgm text distance
-export async function searchSimilarByTrgm(
-  text: string,
-  options: SimilarSearchOptions,
-): Promise<SimilarPost[]> {
+export async function searchSimilarByTrgm(text: string, options: SimilarSearchOptions): Promise<SimilarPost[]> {
   const { orgId, excludePostId, limit = 3, userId } = options
   const db = useDB()
 
@@ -145,15 +142,22 @@ export async function searchSimilarByPostId(
 async function attachHasVoted(
   db: ReturnType<typeof useDB>,
   rows: {
-    id: string; slug: string; title: string; excerpt: string | null
-    status: string; voteCount: number; commentCount: number
-    authorId: string; authorName: string | null; authorImage: string | null
+    id: string
+    slug: string
+    title: string
+    excerpt: string | null
+    status: string
+    voteCount: number
+    commentCount: number
+    authorId: string
+    authorName: string | null
+    authorImage: string | null
     authorIsAnonymous: boolean | null
   }[],
   userId?: string,
 ): Promise<SimilarPost[]> {
   if (!userId || rows.length === 0) {
-    return rows.map(r => ({
+    return rows.map((r) => ({
       id: r.id,
       slug: r.slug,
       title: r.title,
@@ -166,18 +170,15 @@ async function attachHasVoted(
     }))
   }
 
-  const postIds = rows.map(r => r.id)
+  const postIds = rows.map((r) => r.id)
   const votes = await db
     .select({ postId: vote.postId })
     .from(vote)
-    .where(and(
-      eq(vote.userId, userId),
-      sql`${vote.postId} IN ${postIds}`,
-    ))
+    .where(and(eq(vote.userId, userId), sql`${vote.postId} IN ${postIds}`))
 
-  const votedSet = new Set(votes.map(v => v.postId))
+  const votedSet = new Set(votes.map((v) => v.postId))
 
-  return rows.map(r => ({
+  return rows.map((r) => ({
     id: r.id,
     slug: r.slug,
     title: r.title,

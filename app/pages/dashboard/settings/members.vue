@@ -46,8 +46,7 @@ async function refresh() {
       authClient.organization.listInvitations({ query: { organizationId: orgId.value } }),
     ])
     members.value = ((memRes as { data?: { members?: MemberView[] } }).data?.members ?? []) as MemberView[]
-    invitations.value = (((invRes as { data?: InvitationView[] }).data) ?? [])
-      .filter(i => i.status === 'pending')
+    invitations.value = ((invRes as { data?: InvitationView[] }).data ?? []).filter((i) => i.status === 'pending')
   } finally {
     loading.value = false
   }
@@ -56,19 +55,38 @@ async function refresh() {
 // relative URL via better-fetch, which Node's fetch can't parse during
 // SSR. Loading is fine as a post-mount fetch — the table renders in
 // `loading` state briefly then populates.
-onMounted(() => { void refresh() })
+onMounted(() => {
+  void refresh()
+})
 
-const ownerCount = computed(() => members.value.filter(m => m.role === 'owner').length)
+const ownerCount = computed(() => members.value.filter((m) => m.role === 'owner').length)
 
 const roleOptions = computed<{ key: Role; label: string; icon: string; desc: string }[]>(() => [
-  { key: 'contributor', label: t('settings.members.roles.contributor.label'), icon: 'lucide:user', desc: t('settings.members.roles.contributor.desc') },
-  { key: 'manager', label: t('settings.members.roles.manager.label'), icon: 'lucide:shield', desc: t('settings.members.roles.manager.desc') },
-  { key: 'owner', label: t('settings.members.roles.owner.label'), icon: 'lucide:crown', desc: t('settings.members.roles.owner.desc') },
+  {
+    key: 'contributor',
+    label: t('settings.members.roles.contributor.label'),
+    icon: 'lucide:user',
+    desc: t('settings.members.roles.contributor.desc'),
+  },
+  {
+    key: 'manager',
+    label: t('settings.members.roles.manager.label'),
+    icon: 'lucide:shield',
+    desc: t('settings.members.roles.manager.desc'),
+  },
+  {
+    key: 'owner',
+    label: t('settings.members.roles.owner.label'),
+    icon: 'lucide:crown',
+    desc: t('settings.members.roles.owner.desc'),
+  },
 ])
-const roleIcon = (role: string) => roleOptions.value.find(r => r.key === role)?.icon ?? 'lucide:user'
-const roleLabel = (role: string) => roleOptions.value.find(r => r.key === role)?.label ?? role
+const roleIcon = (role: string) => roleOptions.value.find((r) => r.key === role)?.icon ?? 'lucide:user'
+const roleLabel = (role: string) => roleOptions.value.find((r) => r.key === role)?.label ?? role
 // Hide 'owner' from non-owners — promoting to owner is owner-only.
-const availableRoles = computed(() => canPromoteToOwner.value ? roleOptions.value : roleOptions.value.filter(r => r.key !== 'owner'))
+const availableRoles = computed(() =>
+  canPromoteToOwner.value ? roleOptions.value : roleOptions.value.filter((r) => r.key !== 'owner'),
+)
 
 // Invite modal
 const showInvite = ref(false)
@@ -84,10 +102,13 @@ const { data: authCfg } = await useFetch<{ emailProvider?: boolean }>('/api/auth
   default: () => ({ emailProvider: false }),
 })
 const emailConfigured = computed(() => !!authCfg.value?.emailProvider)
-const currentInviteRole = computed(() => roleOptions.value.find(r => r.key === inviteRole.value)!)
+const currentInviteRole = computed(() => roleOptions.value.find((r) => r.key === inviteRole.value)!)
 
 async function sendInvite() {
-  const emails = inviteEmails.value.split(/[,;\n\s]+/).map(s => s.trim()).filter(Boolean)
+  const emails = inviteEmails.value
+    .split(/[,;\n\s]+/)
+    .map((s) => s.trim())
+    .filter(Boolean)
   if (emails.length === 0) return
   inviting.value = true
   try {
@@ -102,11 +123,16 @@ async function sendInvite() {
     inviteEmails.value = ''
     inviteRole.value = 'contributor'
     await refresh()
-    toast.success(emails.length > 1 ? t('settings.members.invitationsCreated', { count: emails.length }) : t('settings.members.invitationCreated'), {
-      description: emailConfigured.value
-        ? t('settings.members.inviteToastEmailOn')
-        : t('settings.members.inviteToastEmailOff'),
-    })
+    toast.success(
+      emails.length > 1
+        ? t('settings.members.invitationsCreated', { count: emails.length })
+        : t('settings.members.invitationCreated'),
+      {
+        description: emailConfigured.value
+          ? t('settings.members.inviteToastEmailOn')
+          : t('settings.members.inviteToastEmailOff'),
+      },
+    )
   } finally {
     inviting.value = false
   }
@@ -153,7 +179,6 @@ function formatExpiresIn(iso: string | null): string {
   const mins = Math.max(1, Math.floor(diff / (60 * 1000)))
   return `${mins}m`
 }
-
 </script>
 
 <template>

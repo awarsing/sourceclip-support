@@ -68,9 +68,12 @@ watch(() => props.org, hydrate, { immediate: true })
 // mode rendered. Deliberately one-way: toggling the preview is a transient
 // look-around and must never write back to the saved default theme. System has
 // no single rendering, so it previews as light (the conventional baseline).
-watch(() => form.defaultTheme, (theme) => {
-  previewMode.value = theme === 'dark' ? 'dark' : 'light'
-})
+watch(
+  () => form.defaultTheme,
+  (theme) => {
+    previewMode.value = theme === 'dark' ? 'dark' : 'light'
+  },
+)
 
 const logoUrl = computed(() => resolveAttachmentUrl(form.logo))
 // Domain shown in the preview's mock browser address bar: the host this dashboard
@@ -79,9 +82,11 @@ const logoUrl = computed(() => resolveAttachmentUrl(form.logo))
 const previewDomain = computed(() => useRequestURL().host)
 const currentBranding = computed(() => parseBranding(props.org.metadata))
 const dirty = computed(() => {
-  return form.logo !== props.org.logo
-    || normalizeBrandHex(form.primaryColor) !== normalizeBrandHex(currentBranding.value.primaryColor)
-    || form.defaultTheme !== (currentBranding.value.defaultTheme ?? 'system')
+  return (
+    form.logo !== props.org.logo ||
+    normalizeBrandHex(form.primaryColor) !== normalizeBrandHex(currentBranding.value.primaryColor) ||
+    form.defaultTheme !== (currentBranding.value.defaultTheme ?? 'system')
+  )
 })
 const canSave = computed(() => props.isOwner && dirty.value && !saving.value && !uploading.value)
 

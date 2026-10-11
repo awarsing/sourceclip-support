@@ -11,18 +11,14 @@ export default defineEventHandler(async (event) => {
   const db = useDB()
   const scope = and(eq(helpCollection.id, id), eq(helpCollection.orgId, orgId))
 
-  const [updated] = await db
-    .update(helpCollection)
-    .set(body)
-    .where(scope)
-    .returning({
-      id: helpCollection.id,
-      name: helpCollection.name,
-      description: helpCollection.description,
-      icon: helpCollection.icon,
-      visible: helpCollection.visible,
-      position: helpCollection.position,
-    })
+  const [updated] = await db.update(helpCollection).set(body).where(scope).returning({
+    id: helpCollection.id,
+    name: helpCollection.name,
+    description: helpCollection.description,
+    icon: helpCollection.icon,
+    visible: helpCollection.visible,
+    position: helpCollection.position,
+  })
 
   if (!updated) {
     throw createError({ statusCode: 404, message: 'Collection not found' })

@@ -3,7 +3,7 @@ import { post, postUnread } from '#layers/feedlog/server/db/schemas'
 import { countWidgetBadge } from '#layers/feedlog/server/utils/widget-unread'
 
 // Clears the red dot on one feedback item when the visitor opens it.
-export default defineEventHandler(async (event): Promise<{ ok: true, count: number, feedback: number }> => {
+export default defineEventHandler(async (event): Promise<{ ok: true; count: number; feedback: number }> => {
   const { session, orgId } = await requireAuthInOrg(event)
   const userId = session.user.id
   const postId = getRouterParam(event, 'postId')
@@ -24,11 +24,9 @@ export default defineEventHandler(async (event): Promise<{ ok: true, count: numb
     throw createError({ statusCode: 404, message: 'Feedback not found' })
   }
 
-  await db
-    .delete(postUnread)
-    .where(and(eq(postUnread.postId, postId), eq(postUnread.userId, userId)))
+  await db.delete(postUnread).where(and(eq(postUnread.postId, postId), eq(postUnread.userId, userId)))
 
   // Remaining count, so the iframe can push the new badge value to the SDK
   // without a follow-up request to /api/widget/unread.
-  return { ok: true, ...await countWidgetBadge(orgId, userId) }
+  return { ok: true, ...(await countWidgetBadge(orgId, userId)) }
 })

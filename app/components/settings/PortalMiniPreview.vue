@@ -41,9 +41,11 @@ const previewStyle = computed(() => derivePortalThemeVars(props.primaryColor, !!
 // fixed neutral grays (never the portal's brand tokens). Bound to the preview's
 // own `dark` prop — not a `dark:` variant — so it tracks the preview toggle and
 // stays isolated from the surrounding dashboard theme.
-const chromeBorderClass = computed(() => props.dark ? 'border-zinc-700' : 'border-zinc-300')
-const chromeBarClass = computed(() => props.dark ? 'bg-zinc-800 border-zinc-700' : 'bg-zinc-100 border-zinc-300')
-const chromePillClass = computed(() => props.dark ? 'bg-zinc-900 border-zinc-700 text-zinc-400' : 'bg-white border-zinc-300 text-zinc-500')
+const chromeBorderClass = computed(() => (props.dark ? 'border-zinc-700' : 'border-zinc-300'))
+const chromeBarClass = computed(() => (props.dark ? 'bg-zinc-800 border-zinc-700' : 'bg-zinc-100 border-zinc-300'))
+const chromePillClass = computed(() =>
+  props.dark ? 'bg-zinc-900 border-zinc-700 text-zinc-400' : 'bg-white border-zinc-300 text-zinc-500',
+)
 
 const boards = [
   { name: 'All Feedback', count: 128, active: true, icon: 'lucide:layout-grid' },
@@ -52,8 +54,28 @@ const boards = [
   { name: 'Integrations', count: 11, active: false, icon: 'lucide:folder' },
 ]
 const posts = [
-  { title: 'Dark mode for the dashboard', excerpt: 'Please add a dark theme - staring at the bright dashboard at night is rough.', votes: 128, voted: true, comments: 12, status: 'Planned', board: 'Feature Requests', author: 'AM', time: 'about 22 hours ago' },
-  { title: 'Slack notifications on new posts', excerpt: 'We want a Slack alert whenever someone submits feedback so the team can react fast.', votes: 94, voted: false, comments: 7, status: 'Under review', board: 'Integrations', author: 'DI', time: '2 days ago' },
+  {
+    title: 'Dark mode for the dashboard',
+    excerpt: 'Please add a dark theme - staring at the bright dashboard at night is rough.',
+    votes: 128,
+    voted: true,
+    comments: 12,
+    status: 'Planned',
+    board: 'Feature Requests',
+    author: 'AM',
+    time: 'about 22 hours ago',
+  },
+  {
+    title: 'Slack notifications on new posts',
+    excerpt: 'We want a Slack alert whenever someone submits feedback so the team can react fast.',
+    votes: 94,
+    voted: false,
+    comments: 7,
+    status: 'Under review',
+    board: 'Integrations',
+    author: 'DI',
+    time: '2 days ago',
+  },
 ]
 </script>
 

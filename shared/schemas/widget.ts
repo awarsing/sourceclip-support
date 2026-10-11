@@ -12,7 +12,9 @@ import {
 const customRuleSchema = z.object({
   // Absent on a rule the admin just added; the endpoint assigns one.
   id: z.string().optional(),
-  scenario: z.string().trim()
+  scenario: z
+    .string()
+    .trim()
     .min(1, 'Rule cannot be empty')
     .max(WIDGET_MAX_RULE_LENGTH, `Rule must be ${WIDGET_MAX_RULE_LENGTH} characters or less`),
   enabled: z.boolean(),
@@ -20,9 +22,11 @@ const customRuleSchema = z.object({
 
 export const widgetLauncherConfigSchema = z.object({
   alignment: z.enum(WIDGET_LAUNCHER_ALIGNMENTS),
-  bottomOffset: z.int('Offset must be a whole number of pixels')
+  bottomOffset: z
+    .int('Offset must be a whole number of pixels')
     .min(WIDGET_LAUNCHER_OFFSET_MIN, `Offset must be at least ${WIDGET_LAUNCHER_OFFSET_MIN}px`),
-  sideOffset: z.int('Offset must be a whole number of pixels')
+  sideOffset: z
+    .int('Offset must be a whole number of pixels')
     .min(WIDGET_LAUNCHER_OFFSET_MIN, `Offset must be at least ${WIDGET_LAUNCHER_OFFSET_MIN}px`),
   closeBehavior: z.enum(WIDGET_LAUNCHER_CLOSE_BEHAVIORS),
 })
@@ -34,7 +38,8 @@ export const updateWidgetSettingsSchema = z.object({
   disabledBuiltins: z.array(z.enum(WIDGET_BUILTIN_RULE_IDS as [string, ...string[]])).optional(),
   // Sent whole: the client posts the current list, not a diff.
   customRules: z.array(customRuleSchema).optional(),
-  conversationRetentionDays: z.int('Retention must be a whole number of days')
+  conversationRetentionDays: z
+    .int('Retention must be a whole number of days')
     .min(CONVERSATION_RETENTION_MIN_DAYS, `Retention must be at least ${CONVERSATION_RETENTION_MIN_DAYS} days`)
     .max(CONVERSATION_RETENTION_MAX_DAYS, `Retention must be ${CONVERSATION_RETENTION_MAX_DAYS} days or less`)
     .optional(),
@@ -47,13 +52,9 @@ export type UpdateWidgetSettingsInput = z.infer<typeof updateWidgetSettingsSchem
 // rules, and either half may be absent from a partial update, so the caller
 // merges with the stored row first. Returns a message instead of throwing —
 // shared/ is imported by the browser too, where h3's createError doesn't exist.
-export function checkEnabledRuleCap(
-  disabledBuiltins: string[],
-  customRules: { enabled: boolean }[],
-): string | null {
-  const enabled = WIDGET_BUILTIN_RULE_IDS.filter(id => !disabledBuiltins.includes(id)).length
-    + customRules.filter(r => r.enabled).length
-  return enabled > WIDGET_MAX_ENABLED_RULES
-    ? `At most ${WIDGET_MAX_ENABLED_RULES} rules can be enabled`
-    : null
+export function checkEnabledRuleCap(disabledBuiltins: string[], customRules: { enabled: boolean }[]): string | null {
+  const enabled =
+    WIDGET_BUILTIN_RULE_IDS.filter((id) => !disabledBuiltins.includes(id)).length +
+    customRules.filter((r) => r.enabled).length
+  return enabled > WIDGET_MAX_ENABLED_RULES ? `At most ${WIDGET_MAX_ENABLED_RULES} rules can be enabled` : null
 }

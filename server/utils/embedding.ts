@@ -16,7 +16,7 @@ export async function generateEmbedding(text: string): Promise<number[]> {
   const response = await fetch(`${baseUrl}/embeddings`, {
     method: 'POST',
     headers: {
-      'Authorization': `Bearer ${apiKey}`,
+      Authorization: `Bearer ${apiKey}`,
       'Content-Type': 'application/json',
     },
     body: JSON.stringify({
@@ -31,7 +31,7 @@ export async function generateEmbedding(text: string): Promise<number[]> {
     throw new Error(`OpenAI API error: ${response.status} ${error}`)
   }
 
-  const data = await response.json() as { data: { embedding: number[] }[] }
+  const data = (await response.json()) as { data: { embedding: number[] }[] }
   return data.data[0].embedding
 }
 
@@ -68,10 +68,7 @@ export async function generatePostEmbedding(
           contentHash,
           createdAt: new Date(),
         })
-        .where(and(
-          eq(postEmbedding.postId, postId),
-          eq(postEmbedding.contentHash, existing.contentHash),
-        ))
+        .where(and(eq(postEmbedding.postId, postId), eq(postEmbedding.contentHash, existing.contentHash)))
     } else {
       // Insert new embedding
       await db

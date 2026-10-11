@@ -19,11 +19,9 @@ export function useWidgetSettings() {
     error.value = null
     try {
       settings.value = await $fetch<WidgetSettingsResponse>('/api/admin/widget')
-    }
-    catch (e) {
+    } catch (e) {
       error.value = (e as { data?: { message?: string } })?.data?.message || 'Failed to load widget settings'
-    }
-    finally {
+    } finally {
       loading.value = false
     }
   }
@@ -38,11 +36,9 @@ export function useWidgetSettings() {
         body: patch,
       })
       return null
-    }
-    catch (e) {
+    } catch (e) {
       return (e as { data?: { message?: string } })?.data?.message || 'Failed to save'
-    }
-    finally {
+    } finally {
       saving.value = false
     }
   }
@@ -58,13 +54,13 @@ export function useWidgetSettings() {
     // typed it, in either locale — their own prompt text is never translated.
     const zh = locale.value.startsWith('zh')
     return [
-      ...s.rules.builtins.map(b => ({
+      ...s.rules.builtins.map((b) => ({
         id: b.id,
         scenario: zh ? b.scenarioZh : b.scenario,
         enabled: b.enabled,
         builtin: true,
       })),
-      ...s.rules.custom.map(c => ({ id: c.id, scenario: c.scenario, enabled: c.enabled, builtin: false })),
+      ...s.rules.custom.map((c) => ({ id: c.id, scenario: c.scenario, enabled: c.enabled, builtin: false })),
     ]
   })
 
@@ -73,18 +69,20 @@ export function useWidgetSettings() {
   type FlatRule = { id: string; scenario: string; enabled: boolean; builtin: boolean }
 
   function builtinsPatch(rules: FlatRule[]): WidgetSettingsPatch {
-    return { disabledBuiltins: rules.filter(r => r.builtin && !r.enabled).map(r => r.id) }
+    return { disabledBuiltins: rules.filter((r) => r.builtin && !r.enabled).map((r) => r.id) }
   }
 
   function customPatch(rules: FlatRule[]): WidgetSettingsPatch {
     return {
-      customRules: rules.filter(r => !r.builtin).map(r => ({
-        // A rule the admin just added has a temporary client id; the server
-        // assigns the real one.
-        id: r.id.startsWith('new-') ? undefined : r.id,
-        scenario: r.scenario,
-        enabled: r.enabled,
-      })) as WidgetCustomRule[],
+      customRules: rules
+        .filter((r) => !r.builtin)
+        .map((r) => ({
+          // A rule the admin just added has a temporary client id; the server
+          // assigns the real one.
+          id: r.id.startsWith('new-') ? undefined : r.id,
+          scenario: r.scenario,
+          enabled: r.enabled,
+        })) as WidgetCustomRule[],
     }
   }
 

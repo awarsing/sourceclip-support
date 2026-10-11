@@ -45,11 +45,7 @@ function localAuthRequired(): Error {
   })
 }
 
-async function assertTargetOrgIsSessionOrg(
-  event: H3Event,
-  request: Request,
-  ssoOrgId: string,
-) {
+async function assertTargetOrgIsSessionOrg(event: H3Event, request: Request, ssoOrgId: string) {
   // Most endpoints name an org by id, a few (get-full-organization) by slug.
   const allowedSlug = event.context.orgSlug as string | undefined
 
@@ -74,9 +70,8 @@ async function assertTargetOrgIsSessionOrg(
   // only copy better-auth gets on the Workers adapter.
   let body: Record<string, unknown> | null = null
   try {
-    body = await request.clone().json() as Record<string, unknown>
-  }
-  catch {
+    body = (await request.clone().json()) as Record<string, unknown>
+  } catch {
     return
   }
   if (!body || typeof body !== 'object') return

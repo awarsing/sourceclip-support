@@ -17,7 +17,7 @@ interface Hint {
 const ROUTE = 'widget/embed'
 
 const links = (hints as Hint[])
-  .map(hint => `<link rel="${hint.rel}" as="${hint.as}" crossorigin href="${buildAssetsURL(hint.file)}">`)
+  .map((hint) => `<link rel="${hint.rel}" as="${hint.as}" crossorigin href="${buildAssetsURL(hint.file)}">`)
   .join('')
 
 function embedLocale(path: string, locales: string[], defaultLocale: string): string | undefined {
@@ -31,14 +31,16 @@ export default defineNitroPlugin((nitroApp) => {
   if (!links) return
 
   nitroApp.hooks.hook('render:html', (html, { event }) => {
-    const i18n = useRuntimeConfig(event).public?.i18n as {
-      locales?: Array<string | { code: string }>
-      defaultLocale?: string
-    } | undefined
+    const i18n = useRuntimeConfig(event).public?.i18n as
+      | {
+          locales?: Array<string | { code: string }>
+          defaultLocale?: string
+        }
+      | undefined
 
     const locale = embedLocale(
       event.path,
-      (i18n?.locales ?? []).map(entry => typeof entry === 'string' ? entry : entry.code),
+      (i18n?.locales ?? []).map((entry) => (typeof entry === 'string' ? entry : entry.code)),
       i18n?.defaultLocale ?? '',
     )
     if (!locale) return
@@ -46,6 +48,8 @@ export default defineNitroPlugin((nitroApp) => {
     // `as="fetch"` is matched only against a CORS-mode request, which is what
     // the `crossorigin` attribute asks for; without it Chrome fetches the
     // messages, then discards the result over a credentials-mode mismatch.
-    html.head.push(`${links}<link rel="preload" as="fetch" crossorigin href="${__I18N_SERVER_ROUTE__}/${locale}/messages.json">`)
+    html.head.push(
+      `${links}<link rel="preload" as="fetch" crossorigin href="${__I18N_SERVER_ROUTE__}/${locale}/messages.json">`,
+    )
   })
 })

@@ -13,11 +13,14 @@ const formDesc = ref('')
 const submitting = ref(false)
 const error = ref('')
 
-watch(() => props.board, (b) => {
-  formName.value = b?.name ?? ''
-  formDesc.value = b?.description ?? ''
-  error.value = ''
-})
+watch(
+  () => props.board,
+  (b) => {
+    formName.value = b?.name ?? ''
+    formDesc.value = b?.description ?? ''
+    error.value = ''
+  },
+)
 
 watch(open, (v) => {
   if (!v) {

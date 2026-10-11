@@ -31,7 +31,8 @@ export default defineEventHandler(async (event) => {
   const title = body.title ?? existing.title
   const description = body.description === undefined ? existing.description : body.description
   const content = body.content ?? existing.content
-  const contentChanged = title !== existing.title || description !== existing.description || content !== existing.content
+  const contentChanged =
+    title !== existing.title || description !== existing.description || content !== existing.content
 
   const updates: Record<string, unknown> = {}
   if (body.aiEnabled !== undefined) updates.aiEnabled = body.aiEnabled
@@ -71,14 +72,12 @@ export default defineEventHandler(async (event) => {
     }
     updates.status = 'published'
     if (!existing.publishedAt) updates.publishedAt = new Date()
-  }
-  else if (status === 'archived') {
+  } else if (status === 'archived') {
     if (existing.status !== 'published') {
       throw createError({ statusCode: 409, message: 'Only a published article can be unpublished' })
     }
     updates.status = 'archived'
-  }
-  else if (status) {
+  } else if (status) {
     updates.status = status
   }
 

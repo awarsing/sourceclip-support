@@ -46,15 +46,15 @@ const { reason } = useLoginModal()
 const { data: reasonSession } = useAuthSession()
 const orgCtx = useOrgContext()
 const vouchingOrg = computed(() => {
-  const list = (reasonSession.value as { orgList?: { orgId: string, name: string }[] } | null)?.orgList ?? []
-  return list.find(o => o.orgId === orgCtx.value.orgId)?.name ?? orgCtx.value.orgSlug
+  const list = (reasonSession.value as { orgList?: { orgId: string; name: string }[] } | null)?.orgList ?? []
+  return list.find((o) => o.orgId === orgCtx.value.orgId)?.name ?? orgCtx.value.orgSlug
 })
 
 // Retitle both sign-in states: "Sign in", right after being told they already
 // are, reads as a contradiction — and the title is read first.
-const signInTitle = computed(() => reason.value ? t('auth.localAuthTitle') : t('auth.signIn.title'))
-const signInEmailTitle = computed(() => reason.value ? t('auth.localAuthTitle') : t('auth.signInEmail.title'))
-const reasonText = computed(() => reason.value ? t(reason.value, { org: vouchingOrg.value }) : '')
+const signInTitle = computed(() => (reason.value ? t('auth.localAuthTitle') : t('auth.signIn.title')))
+const signInEmailTitle = computed(() => (reason.value ? t('auth.localAuthTitle') : t('auth.signInEmail.title')))
+const reasonText = computed(() => (reason.value ? t(reason.value, { org: vouchingOrg.value }) : ''))
 const signInSubtitle = computed(() => reasonText.value || t('auth.signIn.subtitle'))
 
 // Reset state when modal opens/closes
@@ -65,11 +65,10 @@ watch(open, (val) => {
     // Offer the address already on screen rather than make them recall it; still
     // editable. Guests are excluded — their email is a generated placeholder.
     if (reason.value) {
-      const current = reasonSession.value?.user as { email?: string, isAnonymous?: boolean } | undefined
+      const current = reasonSession.value?.user as { email?: string; isAnonymous?: boolean } | undefined
       if (current?.email && !current.isAnonymous) form.email = current.email
     }
-  }
-  else {
+  } else {
     reason.value = null
   }
 })

@@ -10,16 +10,18 @@ const { boards } = storeToRefs(boardStore)
 const selectedBoard = ref('all')
 const boardOptions = computed(() => [
   { value: 'all', label: t('dashboard.allBoards') },
-  ...boards.value.map(b => ({ value: b.id, label: b.name })),
+  ...boards.value.map((b) => ({ value: b.id, label: b.name })),
 ])
 
-const activeBoardId = computed(() =>
-  selectedBoard.value !== 'all' ? selectedBoard.value : null,
-)
+const activeBoardId = computed(() => (selectedBoard.value !== 'all' ? selectedBoard.value : null))
 
 const showSubmit = ref(false)
 const addStatus = ref<string | null>(null)
-const kanbanRef = ref<{ refresh: () => Promise<void>; updateItem: (post: any) => void; removeItem: (id: string) => void } | null>(null)
+const kanbanRef = ref<{
+  refresh: () => Promise<void>
+  updateItem: (post: any) => void
+  removeItem: (id: string) => void
+} | null>(null)
 
 function handleAdd(status: string) {
   addStatus.value = status

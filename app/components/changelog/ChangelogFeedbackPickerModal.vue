@@ -1,5 +1,4 @@
 <script setup lang="ts">
-
 interface FeedbackItem {
   id: string
   title: string
@@ -73,8 +72,8 @@ function toggleSelection(id: string) {
 
 function handleConfirm() {
   const items = localSelectedIds.value
-    .map(id => {
-      const src = sources.value.find(s => s.id === id)
+    .map((id) => {
+      const src = sources.value.find((s) => s.id === id)
       return src ? { id: src.id, title: src.title } : null
     })
     .filter(Boolean) as { id: string; title: string }[]

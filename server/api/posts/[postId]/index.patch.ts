@@ -5,7 +5,12 @@ import { post, postSearch } from '#layers/feedlog/server/db/schemas'
 // Author update schema (title/content only)
 const authorUpdateSchema = z.object({
   title: z.string().trim().min(1, 'Title is required').max(200, 'Title must be 200 characters or less').optional(),
-  content: z.string().trim().min(1, 'Content is required').max(10000, 'Content must be 10000 characters or less').optional(),
+  content: z
+    .string()
+    .trim()
+    .min(1, 'Content is required')
+    .max(10000, 'Content must be 10000 characters or less')
+    .optional(),
 })
 
 // PATCH /api/posts/:id — Edit a post's title/content. Any author can edit
@@ -52,26 +57,17 @@ export default defineEventHandler(async (event) => {
     updates.contentHash = computeContentHash(newTitle, newContent)
   }
 
-  const [updated] = await db
-    .update(post)
-    .set(updates)
-    .where(eq(post.id, id))
-    .returning()
+  const [updated] = await db.update(post).set(updates).where(eq(post.id, id)).returning()
 
   // Update search text and trigger embedding if content changed
   if (contentChanged) {
     const searchText = stripMarkdown(newTitle + '\n' + newContent)
-    await db
-      .insert(postSearch)
-      .values({ postId: id, orgId, searchText })
-      .onConflictDoUpdate({
-        target: postSearch.postId,
-        set: { searchText },
-      })
+    await db.insert(postSearch).values({ postId: id, orgId, searchText }).onConflictDoUpdate({
+      target: postSearch.postId,
+      set: { searchText },
+    })
 
-    event.waitUntil(
-      generatePostEmbedding(id, orgId, newTitle, newContent, updates.contentHash as string),
-    )
+    event.waitUntil(generatePostEmbedding(id, orgId, newTitle, newContent, updates.contentHash as string))
   }
 
   return updated

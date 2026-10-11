@@ -4,29 +4,32 @@
 
 import type { FilterValueOption } from './FilterValuePanel.vue'
 
-const props = withDefaults(defineProps<{
-  label: string
-  icon: string
-  kind: 'enum' | 'date' | 'single'
-  op: string
-  values?: string[]
-  from?: string
-  to?: string
-  options?: FilterValueOption[]
-  searchable?: boolean
-}>(), {
-  values: () => [],
-  options: () => [],
-  from: undefined,
-  to: undefined,
-  searchable: false,
-})
+const props = withDefaults(
+  defineProps<{
+    label: string
+    icon: string
+    kind: 'enum' | 'date' | 'single'
+    op: string
+    values?: string[]
+    from?: string
+    to?: string
+    options?: FilterValueOption[]
+    searchable?: boolean
+  }>(),
+  {
+    values: () => [],
+    options: () => [],
+    from: undefined,
+    to: undefined,
+    searchable: false,
+  },
+)
 
 const emit = defineEmits<{
   'update:op': [op: string]
   'update:values': [values: string[]]
-  'update:range': [range: { from?: string, to?: string }]
-  'remove': []
+  'update:range': [range: { from?: string; to?: string }]
+  remove: []
 }>()
 
 const { t } = useI18n()
@@ -39,13 +42,12 @@ const OPS: Record<string, string[]> = {
 
 const opLabel = (op: string) => t(`dashboard.filter.op.${op}`)
 
-const firstKnown = computed(() => props.values.map(v => props.options.find(o => o.value === v)).find(Boolean))
+const firstKnown = computed(() => props.values.map((v) => props.options.find((o) => o.value === v)).find(Boolean))
 
 // The option-list guard matters: candidates load async, and nothing resolves until they do.
-const isStale = computed(() => props.kind !== 'date'
-  && props.values.length > 0
-  && props.options.length > 0
-  && !firstKnown.value)
+const isStale = computed(
+  () => props.kind !== 'date' && props.values.length > 0 && props.options.length > 0 && !firstKnown.value,
+)
 
 const valueLabel = computed(() => {
   if (props.kind === 'date') {

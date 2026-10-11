@@ -22,8 +22,11 @@ export default defineEventHandler(async (event) => {
   const db = useDB()
 
   // Verify post exists, belongs to org, and is not merged.
-  const [p] = await db.select({ id: post.id, authorId: post.authorId, mergedTo: post.mergedTo, slug: post.slug, title: post.title }).from(post)
-    .where(and(eq(post.id, postId), eq(post.orgId, orgId))).limit(1)
+  const [p] = await db
+    .select({ id: post.id, authorId: post.authorId, mergedTo: post.mergedTo, slug: post.slug, title: post.title })
+    .from(post)
+    .where(and(eq(post.id, postId), eq(post.orgId, orgId)))
+    .limit(1)
   if (!p) {
     throw createError({ statusCode: 404, message: 'Post not found' })
   }
@@ -76,9 +79,15 @@ export default defineEventHandler(async (event) => {
   // Update counts
   if (parentId) {
     // Reply: increment parent's replyCount + post's commentCount
-    await db.update(comment).set({ replyCount: sql`${comment.replyCount} + 1` }).where(eq(comment.id, parentId))
+    await db
+      .update(comment)
+      .set({ replyCount: sql`${comment.replyCount} + 1` })
+      .where(eq(comment.id, parentId))
   }
-  await db.update(post).set({ commentCount: sql`${post.commentCount} + 1` }).where(eq(post.id, postId))
+  await db
+    .update(post)
+    .set({ commentCount: sql`${post.commentCount} + 1` })
+    .where(eq(post.id, postId))
 
   // Best-effort, after the write. Subscribers only hear from an admin's top-level
   // comment (resolveCommentEvents no-ops for replies / non-admins). Author +

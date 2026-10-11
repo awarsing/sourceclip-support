@@ -14,8 +14,7 @@ export async function checkRateLimit(
     // ttl lets KV-style drivers GC old buckets; memory driver ignores it (fine in dev).
     await storage.setItem(storeKey, count, { ttl: opts.windowSeconds + 5 })
     return count <= opts.limit
-  }
-  catch {
+  } catch {
     // Search stays available when the counter store errors. Callers that must
     // not run without a counter pass failClosed.
     return !opts.failClosed

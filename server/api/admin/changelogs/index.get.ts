@@ -56,14 +56,16 @@ export default defineEventHandler(async (event) => {
     .where(whereClause)
     .orderBy(
       ...(search
-        ? [sql`LEAST(${search} <<-> ${changelog.title}, ${search} <<-> ${changelog.content}, ${search} <<-> ${changelog.publishedTitle}, ${search} <<-> ${changelog.publishedContent})`]
+        ? [
+            sql`LEAST(${search} <<-> ${changelog.title}, ${search} <<-> ${changelog.content}, ${search} <<-> ${changelog.publishedTitle}, ${search} <<-> ${changelog.publishedContent})`,
+          ]
         : [desc(changelog.updatedAt), desc(changelog.id)]),
     )
     .limit(pageSize)
     .offset(offset)
 
   return {
-    data: rows.map(r => ({
+    data: rows.map((r) => ({
       id: r.id,
       slug: r.slug,
       title: r.title,

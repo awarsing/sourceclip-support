@@ -31,7 +31,7 @@ const { data: helpStats } = await useFetch<{ collectionCount: number; articleCou
 const helpCenterAvailable = computed(() => (helpStats.value?.collectionCount ?? 0) > 0)
 const helpCenterOn = computed({
   get: () => resolvePortalModules(org.value?.metadata).helpCenter,
-  set: value => void toggleHelpCenter(value),
+  set: (value) => void toggleHelpCenter(value),
 })
 
 async function toggleHelpCenter(value: boolean) {
@@ -40,13 +40,24 @@ async function toggleHelpCenter(value: boolean) {
   try {
     await authClient.organization.update({ organizationId: org.value.id, data: { metadata } })
     await loadOrg()
-  }
-  catch {
+  } catch {
     error.value = t('settings.portal.saveFailed')
   }
 }
 
-const toolbars = ['bold', 'italic', 'strikeThrough', '-', 'title', 'unorderedList', 'orderedList', '-', 'link', 'code', 'codeRow']
+const toolbars = [
+  'bold',
+  'italic',
+  'strikeThrough',
+  '-',
+  'title',
+  'unorderedList',
+  'orderedList',
+  '-',
+  'link',
+  'code',
+  'codeRow',
+]
 
 async function loadOrg() {
   if (!ctx.value.role) return
@@ -68,14 +79,20 @@ async function loadOrg() {
 // SEO) and the better-auth client is browser-oriented; fetching during SSR would
 // bake the loaded section into the HTML while the client hydrates from the empty
 // initial state, tripping a hydration mismatch.
-watch(() => [orgId.value, ctx.value.role] as const, ([, role]) => {
-  if (role && import.meta.client) void loadOrg()
-}, { immediate: true })
+watch(
+  () => [orgId.value, ctx.value.role] as const,
+  ([, role]) => {
+    if (role && import.meta.client) void loadOrg()
+  },
+  { immediate: true },
+)
 
 const currentBranding = computed(() => parseBranding(org.value?.metadata))
 const dirty = computed(() => {
-  return form.welcomeTitle !== (currentBranding.value.welcomeTitle ?? '')
-    || form.welcomeDescription !== (currentBranding.value.welcomeDescription ?? '')
+  return (
+    form.welcomeTitle !== (currentBranding.value.welcomeTitle ?? '') ||
+    form.welcomeDescription !== (currentBranding.value.welcomeDescription ?? '')
+  )
 })
 const canSave = computed(() => !!org.value && isOwner.value && dirty.value && !saving.value)
 

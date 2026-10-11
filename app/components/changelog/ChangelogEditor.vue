@@ -54,11 +54,12 @@ function takeSnapshot() {
   }
 }
 
-const isDirty = computed(() =>
-  localTitle.value !== snapshot.value.title
-  || localContent.value !== snapshot.value.content
-  || JSON.stringify(localCategories.value) !== snapshot.value.categories
-  || localCoverUrl.value !== snapshot.value.cover,
+const isDirty = computed(
+  () =>
+    localTitle.value !== snapshot.value.title ||
+    localContent.value !== snapshot.value.content ||
+    JSON.stringify(localCategories.value) !== snapshot.value.categories ||
+    localCoverUrl.value !== snapshot.value.cover,
 )
 
 // Load existing changelog in edit mode
@@ -132,7 +133,7 @@ function triggerUpload() {
 
 function toggleType(type: ChangelogCategory) {
   if (localCategories.value.includes(type)) {
-    localCategories.value = localCategories.value.filter(t => t !== type)
+    localCategories.value = localCategories.value.filter((t) => t !== type)
   } else {
     localCategories.value.push(type)
   }

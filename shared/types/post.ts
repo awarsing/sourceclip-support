@@ -1,10 +1,10 @@
 // Post status enum
 export const POST_STATUSES = ['open', 'planned', 'in_progress', 'done'] as const
-export type PostStatus = typeof POST_STATUSES[number]
+export type PostStatus = (typeof POST_STATUSES)[number]
 
 // Roadmap only shows these three statuses (excludes 'open')
 export const ROADMAP_STATUSES = ['planned', 'in_progress', 'done'] as const
-export type RoadmapStatus = typeof ROADMAP_STATUSES[number]
+export type RoadmapStatus = (typeof ROADMAP_STATUSES)[number]
 
 // Centralized status configuration
 // Each status has a label and a single base color (hex).
@@ -23,7 +23,7 @@ export const STATUS_CONFIG: Record<PostStatus, StatusConfig> = {
 }
 
 /** Status options as array (useful for dropdowns / selectors) */
-export const STATUS_OPTIONS = POST_STATUSES.map(s => ({
+export const STATUS_OPTIONS = POST_STATUSES.map((s) => ({
   value: s,
   ...STATUS_CONFIG[s],
 }))

@@ -88,10 +88,14 @@ export async function handoffLocked(
   )
   if (!rowCount) return null
   // Successful business actions survive cancellation, including their visible receipts.
-  if (feedbackResults.length) await appendItem(client, {
-    id: `handoff-results:${runId}`, conversationId: row.id, author: 'agent',
-    content: { parts: feedbackResults }, runId,
-  })
+  if (feedbackResults.length)
+    await appendItem(client, {
+      id: `handoff-results:${runId}`,
+      conversationId: row.id,
+      author: 'agent',
+      content: { parts: feedbackResults },
+      runId,
+    })
   const cancelled = await cancelRun(client, row.id, false)
   await client.query("UPDATE conversation SET status='open',priority=$2,state_due_at=NULL WHERE id=$1", [
     row.id,
@@ -113,7 +117,18 @@ export async function handoffLocked(
     userId: null,
     data: { conversationId: row.id, reason },
   })
-  return eventItem(client, row.id, { kind: 'handoff', reason, ...(reason === 'support_rule' && rule ? { rule } : {}), fromStatus: row.status, toStatus: 'open' }, { id })
+  return eventItem(
+    client,
+    row.id,
+    {
+      kind: 'handoff',
+      reason,
+      ...(reason === 'support_rule' && rule ? { rule } : {}),
+      fromStatus: row.status,
+      toStatus: 'open',
+    },
+    { id },
+  )
 }
 export async function handoff(
   runtime: InboxRuntime,
@@ -125,11 +140,13 @@ export async function handoff(
   rule?: HandoffRule,
   feedbackResults: FeedbackPart[] = [],
 ) {
-  const save = (expired: boolean) => transaction(runtime, async (client) =>
-    handoffLocked(client, await lockInbox(client, id, orgId), runId, reason, expired, rule, feedbackResults),
-  )
-  try { return await save(allowExpired) }
-  catch {
+  const save = (expired: boolean) =>
+    transaction(runtime, async (client) =>
+      handoffLocked(client, await lockInbox(client, id, orgId), runId, reason, expired, rule, feedbackResults),
+    )
+  try {
+    return await save(allowExpired)
+  } catch {
     // A fresh transaction recovers transient write failures without involving the customer.
     // The conversation/run locks still fence closed conversations and later AI rounds.
     console.warn('[inbox] Retrying handoff with human handling fallback', { conversationId: id, runId })
@@ -167,7 +184,9 @@ export async function staffCommand(
 ) {
   const itemId = `cmd:${hash([id, userId, input.requestId])}`
   const { expectedLastSeq, requestId, ...payload } = input
-  const fingerprint = hash(input.action === 'reply' ? { ...payload, notifyByEmail: input.notifyByEmail ?? false } : payload)
+  const fingerprint = hash(
+    input.action === 'reply' ? { ...payload, notifyByEmail: input.notifyByEmail ?? false } : payload,
+  )
   return transaction(runtime, async (client) => {
     const row = await lockInbox(client, id, orgId)
     const {

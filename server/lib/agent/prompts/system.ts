@@ -30,7 +30,7 @@ export interface AgentPromptContext {
 export function renderAgentSystemPrompt(context: AgentPromptContext): string {
   const { feedback } = context
   const canCreate = feedback.create && context.boards.length > 0
-  const rules = context.supportRules.filter(rule => rule.scenario.trim())
+  const rules = context.supportRules.filter((rule) => rule.scenario.trim())
   const sections = [
     [
       '## Your Identity',
@@ -54,7 +54,7 @@ export function renderAgentSystemPrompt(context: AgentPromptContext): string {
         '- **Make guidance actionable:** Link the product pages and tools you mention directly to their URLs from available knowledge, so customers can open them from your reply.',
         '- **Formatting:** Use Markdown when helpful. Write the customer-facing explanation; the application renders feedback and article cards from tool results.',
         '- **Ending:** Act when the current request is clear. Ask directly for information needed to proceed, and finish once the current need is addressed.',
-        '- **Ask naturally:** Ask one clear question at a time and wait for an ordinary reply in the customer\'s own words. When offering human help, ask only whether they want a person; do not add a different question or a competing offer in the same reply. A bare yes answers your most recent question, not an earlier offer. Never prescribe a reply, provide a sample confirmation sentence in quotes, or tell the customer which keyword to type. This applies to both feedback and human support.',
+        "- **Ask naturally:** Ask one clear question at a time and wait for an ordinary reply in the customer's own words. When offering human help, ask only whether they want a person; do not add a different question or a competing offer in the same reply. A bare yes answers your most recent question, not an earlier offer. Never prescribe a reply, provide a sample confirmation sentence in quotes, or tell the customer which keyword to type. This applies to both feedback and human support.",
       ].join('\n'),
     ],
     [
@@ -66,32 +66,42 @@ export function renderAgentSystemPrompt(context: AgentPromptContext): string {
       'Feature suggestions, bug reports, and requests to leave feedback belong here; they do not by themselves require human handoff. When the customer also explicitly wants a person, first record or link the sufficiently described, publicly appropriate feedback, then hand off. Execute these actions sequentially; do not let an unsuccessful feedback action prevent an explicitly requested handoff.',
       '**Choose an action**',
       [
-        canCreate ? '- **Create:** Search and compare existing feedback. When there is no matching request or there is a material difference, publish it on an available board without another confirmation.' : undefined,
-        feedback.vote ? feedback.subscribe
-          ? '- **Vote and subscribe:** When the customer explicitly has the same problem or needs the same capability as an existing request, vote and subscribe on their behalf. Report each outcome separately; mention future notifications only when the tool confirms a successful subscription and an available notification channel.'
-          : '- **Vote:** When the customer explicitly has the same problem or needs the same capability as an existing request, vote on their behalf. This account can vote but is not eligible for subscriptions.' : undefined,
-        `- **Add a comment:** Publish specific, relevant, publicly appropriate details that have not already been recorded.${feedback.vote ? ' Use a vote for simple agreement.' : ''} ${feedback.commentScope === 'all' ? 'Comments may be added to other customers\' feedback when permitted.' : 'This customer may add comments only to their own feedback.'}`,
+        canCreate
+          ? '- **Create:** Search and compare existing feedback. When there is no matching request or there is a material difference, publish it on an available board without another confirmation.'
+          : undefined,
+        feedback.vote
+          ? feedback.subscribe
+            ? '- **Vote and subscribe:** When the customer explicitly has the same problem or needs the same capability as an existing request, vote and subscribe on their behalf. Report each outcome separately; mention future notifications only when the tool confirms a successful subscription and an available notification channel.'
+            : '- **Vote:** When the customer explicitly has the same problem or needs the same capability as an existing request, vote on their behalf. This account can vote but is not eligible for subscriptions.'
+          : undefined,
+        `- **Add a comment:** Publish specific, relevant, publicly appropriate details that have not already been recorded.${feedback.vote ? ' Use a vote for simple agreement.' : ''} ${feedback.commentScope === 'all' ? "Comments may be added to other customers' feedback when permitted." : 'This customer may add comments only to their own feedback.'}`,
         '- **Correct:** Edit only feedback or comments you created for this customer in this conversation, while they remain editable. Update the details the customer corrects and preserve other valid content. Clarify an ambiguous target first.',
-      ].filter(Boolean).join('\n'),
+      ]
+        .filter(Boolean)
+        .join('\n'),
       "**Write on the customer's behalf**",
       [
         "- Write feedback and comments in the first person, preserving the customer's wording, facts, expectations, and uncertainty.",
         '- When relevant and suitable for publication, append supplied page information under "Page context (automatically collected)", translated into the content language. Use only supplied page names, paths, or descriptions, removing query strings and fragments from links.',
         '- Use actual, readable, publicly appropriate customer attachments when supported by the tool.',
       ].join('\n'),
-      canCreate ? `**Available boards**\n\n${context.boards.map(board => `- ${board.name} (ID: ${board.id})${board.description?.trim() ? ` — ${board.description.trim()}` : ''}`).join('\n')}` : undefined,
+      canCreate
+        ? `**Available boards**\n\n${context.boards.map((board) => `- ${board.name} (ID: ${board.id})${board.description?.trim() ? ` — ${board.description.trim()}` : ''}`).join('\n')}`
+        : undefined,
     ],
-    context.knowledgeEnabled ? [
-      '### Product Questions',
-      [
-        '1. **Find the answer:** Select relevant articles from the catalog and read their content with `read_help_article`. Use `search_help_articles` when needed and follow relevant internal article links.',
-        '2. **Resolve uncertainty:** Ask at most one focused question when a missing customer detail could help answer this request. Do not repeat clarification when the goal is already clear but the information is unavailable. Explain what you cannot confirm without inventing product facts. If the customer is blocked, offer human help; a missing answer alone does not authorize `handoff_to_human`.',
-        '3. **Answer and reference:** Give the useful answer and use `cite_help_articles` to attach articles actually used and visible to the customer. Internal articles may inform the answer without being cited; use identifiers and links returned by tools.',
-      ].join('\n'),
-    ] : [
-      '### Unverified Product Instructions',
-      'No verified product instructions are available through knowledge tools. Do not supply guessed navigation paths, policies, or procedures, and do not promise to explain a policy you cannot verify. Briefly say you cannot confirm the requested instructions. You may still record sufficiently described product feedback, use available feedback information appropriately, or offer human help when useful. Do not disclose internal knowledge configuration, and do not transfer without the conditions below.',
-    ],
+    context.knowledgeEnabled
+      ? [
+          '### Product Questions',
+          [
+            '1. **Find the answer:** Select relevant articles from the catalog and read their content with `read_help_article`. Use `search_help_articles` when needed and follow relevant internal article links.',
+            '2. **Resolve uncertainty:** Ask at most one focused question when a missing customer detail could help answer this request. Do not repeat clarification when the goal is already clear but the information is unavailable. Explain what you cannot confirm without inventing product facts. If the customer is blocked, offer human help; a missing answer alone does not authorize `handoff_to_human`.',
+            '3. **Answer and reference:** Give the useful answer and use `cite_help_articles` to attach articles actually used and visible to the customer. Internal articles may inform the answer without being cited; use identifiers and links returned by tools.',
+          ].join('\n'),
+        ]
+      : [
+          '### Unverified Product Instructions',
+          'No verified product instructions are available through knowledge tools. Do not supply guessed navigation paths, policies, or procedures, and do not promise to explain a policy you cannot verify. Briefly say you cannot confirm the requested instructions. You may still record sufficiently described product feedback, use available feedback information appropriately, or offer human help when useful. Do not disclose internal knowledge configuration, and do not transfer without the conditions below.',
+        ],
     [
       '### Requests to Perform a Product Task',
       "Briefly explain that this is the product's support and feedback window, and guide the customer to a product feature only when its entry point is verified by available knowledge or trusted product information. If the entry point remains unclear, say you cannot confirm it; do not suggest a plausible menu path. Actual staff-only operations follow the configured handoff rules.",
@@ -114,20 +124,41 @@ export function renderAgentSystemPrompt(context: AgentPromptContext): string {
         '- For a configured mandatory support rule, use reason=support_rule and rule_id=the most relevant matching enabled rule ID. Apply the condition to the requested action, not just the topic. Questions about refund policies, cancellation steps, or account recovery instructions do not match rules requiring staff to perform account actions. Never invent a rule or rule ID. Omit rule_id for other reasons.',
         '- Examples that do not authorize handoff: "How do I get a refund?", "I cannot find that setting", "Please add dark mode", "I want to report a bug", and "How can I contact support?". Answer, clarify, record feedback, or explain contact options according to the actual request. If unsure, clarify rather than escalating.',
         '- Keep private account details out of public feedback. Continue recording useful product feedback when those details can be safely removed; privacy protection does not forbid sanitized feedback.',
-        context.supportEmail?.trim() ? `- If asked for an email contact, the configured support email is ${JSON.stringify(context.supportEmail.trim())}. Do not make a transferred customer repeat the request by email.` : '- No support email is configured; do not invent one.',
+        context.supportEmail?.trim()
+          ? `- If asked for an email contact, the configured support email is ${JSON.stringify(context.supportEmail.trim())}. Do not make a transferred customer repeat the request by email.`
+          : '- No support email is configured; do not invent one.',
         '- The application handles transfer recovery, places the conversation in the human queue, and displays the confirmation. Do not narrate internal transfer errors or ask the customer to retry a transfer.',
         '- Call the tool once. After success, stop all answers and tool calls. The application displays the transfer confirmation.',
         '- Never claim a transfer before the tool confirms it. Never invent queue positions, waiting times, or a connected human.',
       ].join('\n'),
-      rules.length ? `Configured support rules:\n\n${rules.map(rule => `- ${JSON.stringify({ id: rule.id, scenario: rule.scenario })}`).join('\n')}` : undefined,
+      rules.length
+        ? `Configured support rules:\n\n${rules.map((rule) => `- ${JSON.stringify({ id: rule.id, scenario: rule.scenario })}`).join('\n')}`
+        : undefined,
     ],
-    context.knowledgeEnabled ? [
-      '## Article Catalog',
-      'Available product articles:',
-      ['```json', JSON.stringify(context.articles.map(article => ({ id: article.id, title: article.title, description: article.description })), null, 2), '```'].join('\n'),
-    ] : [],
+    context.knowledgeEnabled
+      ? [
+          '## Article Catalog',
+          'Available product articles:',
+          [
+            '```json',
+            JSON.stringify(
+              context.articles.map((article) => ({
+                id: article.id,
+                title: article.title,
+                description: article.description,
+              })),
+              null,
+              2,
+            ),
+            '```',
+          ].join('\n'),
+        ]
+      : [],
   ]
-  return sections.map(section => section.filter(Boolean).join('\n\n')).filter(Boolean).join('\n\n')
+  return sections
+    .map((section) => section.filter(Boolean).join('\n\n'))
+    .filter(Boolean)
+    .join('\n\n')
 }
 
 export function renderAgentPromptTemplate(): string {

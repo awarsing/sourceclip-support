@@ -35,16 +35,21 @@ watch(listSearch, (val) => {
   }, 300)
 })
 
-watch(listStatus, () => { currentPage.value = 1 })
-
-const { data: listData, status: fetchStatus } = await useFetch<PagePaginatedList<ChangelogAdminListItem>>('/api/admin/changelogs', {
-  query: computed(() => ({
-    status: listStatus.value !== 'all' ? listStatus.value : undefined,
-    search: debouncedSearch.value || undefined,
-    page: currentPage.value,
-    pageSize,
-  })),
+watch(listStatus, () => {
+  currentPage.value = 1
 })
+
+const { data: listData, status: fetchStatus } = await useFetch<PagePaginatedList<ChangelogAdminListItem>>(
+  '/api/admin/changelogs',
+  {
+    query: computed(() => ({
+      status: listStatus.value !== 'all' ? listStatus.value : undefined,
+      search: debouncedSearch.value || undefined,
+      page: currentPage.value,
+      pageSize,
+    })),
+  },
+)
 
 const items = computed(() => listData.value?.data ?? [])
 const total = computed(() => listData.value?.pagination?.total ?? 0)

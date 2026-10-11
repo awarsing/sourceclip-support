@@ -3,7 +3,14 @@ import { pageContext, type PageContext } from '#layers/feedlog/shared/agent/cont
 
 const PROTOCOL_VERSION = 1
 
-export type WidgetOutboundType = 'ready' | 'auth-requested' | 'unread' | 'navigate' | 'close-request' | 'page-context-request' | 'resume-state'
+export type WidgetOutboundType =
+  | 'ready'
+  | 'auth-requested'
+  | 'unread'
+  | 'navigate'
+  | 'close-request'
+  | 'page-context-request'
+  | 'resume-state'
 
 export function useWidgetProtocol() {
   const route = useRoute()
@@ -30,9 +37,7 @@ export function useWidgetProtocol() {
 
   function send(type: WidgetOutboundType, payload?: Record<string, unknown>) {
     if (!embedded.value || !parentOrigin.value) return
-    const message = payload === undefined
-      ? { v: PROTOCOL_VERSION, type }
-      : { v: PROTOCOL_VERSION, type, payload }
+    const message = payload === undefined ? { v: PROTOCOL_VERSION, type } : { v: PROTOCOL_VERSION, type, payload }
     window.parent.postMessage(message, parentOrigin.value)
   }
 
@@ -43,14 +48,12 @@ export function useWidgetProtocol() {
     const { type, payload } = event.data
     if (type === 'init') {
       const source = pageContext.safeParse({ origin: event.origin })
-      hostOrigin.value = source.success ? source.data.origin ?? null : null
+      hostOrigin.value = source.success ? (source.data.origin ?? null) : null
       supportsPageContext.value = payload?.capabilities?.pageContext === true
       if (payload?.resumeState !== undefined) restoreState?.(payload.resumeState)
-    }
-    else if (type === 'resume-state-request' && typeof payload?.requestId === 'string' && captureState) {
+    } else if (type === 'resume-state-request' && typeof payload?.requestId === 'string' && captureState) {
       send('resume-state', { requestId: payload.requestId, state: captureState() })
-    }
-    else if (type === 'set-theme' && ['light', 'dark', 'auto'].includes(payload?.theme)) {
+    } else if (type === 'set-theme' && ['light', 'dark', 'auto'].includes(payload?.theme)) {
       theme.value = payload.theme
     }
   }
@@ -69,7 +72,7 @@ export function useWidgetProtocol() {
     const source = hostOrigin.value ? { origin: hostOrigin.value } : null
     if (!supportsPageContext.value) return source
     const requestId = crypto.randomUUID()
-    return new Promise(resolve => {
+    return new Promise((resolve) => {
       const finish = (context: PageContext | null) => {
         clearTimeout(timer)
         window.removeEventListener('message', receive)
@@ -77,7 +80,8 @@ export function useWidgetProtocol() {
       }
       const receive = (event: MessageEvent) => {
         if (event.source !== window.parent || event.origin !== parentOrigin.value) return
-        if (event.data?.v !== 1 || event.data.type !== 'page-context' || event.data.payload?.requestId !== requestId) return
+        if (event.data?.v !== 1 || event.data.type !== 'page-context' || event.data.payload?.requestId !== requestId)
+          return
         const parsed = pageContext.safeParse(event.data.payload.context)
         finish(parsed.success ? { ...parsed.data, ...source } : source)
       }

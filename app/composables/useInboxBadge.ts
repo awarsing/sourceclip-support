@@ -7,7 +7,9 @@ export function useInboxBadge() {
   function loadPositions(orgId: string, raw?: string | null) {
     if (!import.meta.client) return
     try {
-      const saved: unknown = JSON.parse(raw === undefined ? localStorage.getItem(storageKey(orgId)) ?? '{}' : raw ?? '{}')
+      const saved: unknown = JSON.parse(
+        raw === undefined ? (localStorage.getItem(storageKey(orgId)) ?? '{}') : (raw ?? '{}'),
+      )
       if (!saved || typeof saved !== 'object' || Array.isArray(saved)) return
       const next = { ...positions.value[orgId] }
       for (const [id, seq] of Object.entries(saved)) {
@@ -29,8 +31,11 @@ export function useInboxBadge() {
     loadPositions(orgId)
     if (observedSeq <= (positions.value[orgId]?.[id] ?? 0)) return
     positions.value[orgId] = { ...positions.value[orgId], [id]: observedSeq }
-    try { localStorage.setItem(storageKey(orgId), JSON.stringify(positions.value[orgId])) }
-    catch { /* The read position still applies until this page is refreshed. */ }
+    try {
+      localStorage.setItem(storageKey(orgId), JSON.stringify(positions.value[orgId]))
+    } catch {
+      /* The read position still applies until this page is refreshed. */
+    }
   }
   async function refresh() {
     const orgId = org.value.orgId
@@ -38,8 +43,11 @@ export function useInboxBadge() {
     const revision = (revisions.value[orgId] ?? 0) + 1
     revisions.value[orgId] = revision
     try {
-      const result = await useApiFetch<{ openConversations: { id: string; attentionSeq: number }[] }>('/api/admin/inbox/summary')
-      if (revisions.value[orgId] === revision) activity.value[orgId] = Object.fromEntries(result.openConversations.map(row => [row.id, row.attentionSeq]))
+      const result = await useApiFetch<{ openConversations: { id: string; attentionSeq: number }[] }>(
+        '/api/admin/inbox/summary',
+      )
+      if (revisions.value[orgId] === revision)
+        activity.value[orgId] = Object.fromEntries(result.openConversations.map((row) => [row.id, row.attentionSeq]))
     } catch {
       /* Navigation remains available if polling fails. */
     }
@@ -47,7 +55,10 @@ export function useInboxBadge() {
   function onStorage(event: StorageEvent) {
     if (event.key === storageKey(org.value.orgId)) loadPositions(org.value.orgId, event.newValue)
   }
-  onMounted(() => { loadPositions(org.value.orgId); window.addEventListener('storage', onStorage) })
+  onMounted(() => {
+    loadPositions(org.value.orgId)
+    window.addEventListener('storage', onStorage)
+  })
   onBeforeUnmount(() => window.removeEventListener('storage', onStorage))
   return { count, refresh, isUnread, markRead }
 }

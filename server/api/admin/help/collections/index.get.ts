@@ -31,18 +31,26 @@ export default defineEventHandler(async (event) => {
           collectionId: helpArticle.collectionId,
           title: helpArticle.title,
           status: helpArticle.status,
-      aiEnabled: helpArticle.aiEnabled,
+          aiEnabled: helpArticle.aiEnabled,
           position: helpArticle.position,
           updatedAt: helpArticle.updatedAt,
         })
         .from(helpArticle)
-        .where(and(eq(helpArticle.orgId, orgId), inArray(helpArticle.collectionId, collections.map(c => c.id))))
+        .where(
+          and(
+            eq(helpArticle.orgId, orgId),
+            inArray(
+              helpArticle.collectionId,
+              collections.map((c) => c.id),
+            ),
+          ),
+        )
         .orderBy(asc(helpArticle.position), asc(helpArticle.id))
     : []
 
   return {
     data: collections.map((c) => {
-      const own = articles.filter(a => a.collectionId === c.id)
+      const own = articles.filter((a) => a.collectionId === c.id)
       return {
         ...c,
         articleCount: own.length,

@@ -32,30 +32,39 @@ export default defineEventHandler(async (event) => {
 
   if (!existing.parentId) {
     // Deleting a top-level comment: cascade delete children + their likes
-    await db.delete(commentLike).where(
-      sql`${commentLike.commentId} IN (SELECT ${comment.id} FROM ${comment} WHERE ${comment.parentId} = ${id})`,
-    )
+    await db
+      .delete(commentLike)
+      .where(sql`${commentLike.commentId} IN (SELECT ${comment.id} FROM ${comment} WHERE ${comment.parentId} = ${id})`)
     await db.delete(comment).where(eq(comment.parentId, id))
     // Delete own likes
     await db.delete(commentLike).where(eq(commentLike.commentId, id))
     // Delete self
     await db.delete(comment).where(eq(comment.id, id))
     // Decrement post comment count by 1 + replyCount
-    await db.update(post).set({
-      commentCount: sql`greatest(${post.commentCount} - ${1 + existing.replyCount}, 0)`,
-    }).where(eq(post.id, existing.postId))
+    await db
+      .update(post)
+      .set({
+        commentCount: sql`greatest(${post.commentCount} - ${1 + existing.replyCount}, 0)`,
+      })
+      .where(eq(post.id, existing.postId))
   } else {
     // Deleting a child comment
     await db.delete(commentLike).where(eq(commentLike.commentId, id))
     await db.delete(comment).where(eq(comment.id, id))
     // Decrement parent's replyCount
-    await db.update(comment).set({
-      replyCount: sql`greatest(${comment.replyCount} - 1, 0)`,
-    }).where(eq(comment.id, existing.parentId))
+    await db
+      .update(comment)
+      .set({
+        replyCount: sql`greatest(${comment.replyCount} - 1, 0)`,
+      })
+      .where(eq(comment.id, existing.parentId))
     // Decrement post comment count
-    await db.update(post).set({
-      commentCount: sql`greatest(${post.commentCount} - 1, 0)`,
-    }).where(eq(post.id, existing.postId))
+    await db
+      .update(post)
+      .set({
+        commentCount: sql`greatest(${post.commentCount} - 1, 0)`,
+      })
+      .where(eq(post.id, existing.postId))
   }
 
   setResponseStatus(event, 204)

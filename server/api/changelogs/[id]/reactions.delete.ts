@@ -29,11 +29,13 @@ export default defineEventHandler(async (event) => {
   // Idempotent delete
   await db
     .delete(changelogReaction)
-    .where(and(
-      eq(changelogReaction.changelogId, id),
-      eq(changelogReaction.userId, session.user.id),
-      eq(changelogReaction.emoji, emoji),
-    ))
+    .where(
+      and(
+        eq(changelogReaction.changelogId, id),
+        eq(changelogReaction.userId, session.user.id),
+        eq(changelogReaction.emoji, emoji),
+      ),
+    )
 
   // Return current state
   const reactionRows = await db
@@ -53,14 +55,11 @@ export default defineEventHandler(async (event) => {
   const userRows = await db
     .select({ emoji: changelogReaction.emoji })
     .from(changelogReaction)
-    .where(and(
-      eq(changelogReaction.changelogId, id),
-      eq(changelogReaction.userId, session.user.id),
-    ))
+    .where(and(eq(changelogReaction.changelogId, id), eq(changelogReaction.userId, session.user.id)))
 
   return {
     reacted: false,
     reactionCounts,
-    userReactions: userRows.map(r => r.emoji),
+    userReactions: userRows.map((r) => r.emoji),
   }
 })

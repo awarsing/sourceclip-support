@@ -18,7 +18,9 @@ for (const [alias, specifier] of Object.entries(mastraDependencies)) {
   const entry = mastraRequire.resolve(alias)
   const packageRoot = resolve(dirname(entry), '..')
   const pkg = JSON.parse(readFileSync(resolve(packageRoot, 'package.json'), 'utf8')) as {
-    name: string, version: string, exports?: Record<string, { import?: string }>
+    name: string
+    version: string
+    exports?: Record<string, { import?: string }>
   }
   mastraTraceInclude.push(entry)
   const esmEntry = pkg.exports?.['.']?.import
@@ -77,9 +79,7 @@ export default defineNuxtConfig({
     name: 'FeedLog',
   },
 
-  components: [
-    { path: resolver.resolve('./app/components'), pathPrefix: false },
-  ],
+  components: [{ path: resolver.resolve('./app/components'), pathPrefix: false }],
 
   modules: [
     '@nuxt/fonts',
@@ -186,10 +186,15 @@ export default defineNuxtConfig({
       'inbox:schedule': { handler: resolver.resolve('./server/tasks/inbox/schedule.ts') },
     },
     scheduledTasks: {
-      [!process.env.NITRO_PRESET?.startsWith('cloudflare') && !process.env.NITRO_PRESET?.startsWith('vercel') && process.env.VERCEL !== '1'
-        ? '*/5 * * * *' : '0 3 * * *']: ['inbox:schedule'],
+      [!process.env.NITRO_PRESET?.startsWith('cloudflare') &&
+      !process.env.NITRO_PRESET?.startsWith('vercel') &&
+      process.env.VERCEL !== '1'
+        ? '*/5 * * * *'
+        : '0 3 * * *']: ['inbox:schedule'],
     },
-    vercel: { functions: { experimentalTriggers: [{ type: 'queue/v2beta', topic: 'feedlog-inbox', retryAfterSeconds: 60 }] } },
+    vercel: {
+      functions: { experimentalTriggers: [{ type: 'queue/v2beta', topic: 'feedlog-inbox', retryAfterSeconds: 60 }] },
+    },
     // Workers use pg's JavaScript client; its optional native addon is Node-only.
     alias: process.env.NITRO_PRESET?.startsWith('cloudflare')
       ? {

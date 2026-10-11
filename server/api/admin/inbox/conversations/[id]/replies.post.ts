@@ -23,7 +23,18 @@ export default inboxRoute(async ({ event, runtime, orgId, userId, id }) => {
   if (input.notifyByEmail) {
     return { ...result, email: await deliverReplyNow(runtime, orgId, id, result.item.id) }
   }
-  const { rows: [task] } = await runtime.pool.query("SELECT status,result,manual_retry,delivery_mode FROM scheduled_task WHERE kind='inbox_email' AND item_id=$1", [result.item.id])
-  const email = task ? { status: task.result ?? 'pending', deliveryMode: task.delivery_mode, canRetry: task.status === 'done' && task.result === 'failed' && !task.manual_retry } : null
+  const {
+    rows: [task],
+  } = await runtime.pool.query(
+    "SELECT status,result,manual_retry,delivery_mode FROM scheduled_task WHERE kind='inbox_email' AND item_id=$1",
+    [result.item.id],
+  )
+  const email = task
+    ? {
+        status: task.result ?? 'pending',
+        deliveryMode: task.delivery_mode,
+        canRetry: task.status === 'done' && task.result === 'failed' && !task.manual_retry,
+      }
+    : null
   return { ...result, email }
 })

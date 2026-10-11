@@ -11,7 +11,10 @@ export default defineEventHandler(async (event) => {
   const db = useDB()
   await Promise.all(
     body.ids.map((id, index) =>
-      db.update(board).set({ position: index }).where(and(eq(board.id, id), eq(board.orgId, orgId))),
+      db
+        .update(board)
+        .set({ position: index })
+        .where(and(eq(board.id, id), eq(board.orgId, orgId))),
     ),
   )
 

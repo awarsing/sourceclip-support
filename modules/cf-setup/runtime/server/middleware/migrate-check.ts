@@ -18,7 +18,9 @@ const BYPASS_PREFIXES = [
 
 function shouldBypass(path: string): boolean {
   return BYPASS_PREFIXES.some((prefix) =>
-    prefix.endsWith('/') ? path.startsWith(prefix) : path === prefix || path.startsWith(prefix + '/') || path === prefix,
+    prefix.endsWith('/')
+      ? path.startsWith(prefix)
+      : path === prefix || path.startsWith(prefix + '/') || path === prefix,
   )
 }
 

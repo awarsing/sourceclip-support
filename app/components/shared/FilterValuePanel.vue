@@ -12,26 +12,29 @@ export interface FilterValueOption {
   image?: string | null
 }
 
-const props = withDefaults(defineProps<{
-  kind: 'enum' | 'date' | 'single'
-  op: string
-  values?: string[]
-  from?: string
-  to?: string
-  options?: FilterValueOption[]
-  searchable?: boolean
-}>(), {
-  values: () => [],
-  options: () => [],
-  from: undefined,
-  to: undefined,
-  searchable: false,
-})
+const props = withDefaults(
+  defineProps<{
+    kind: 'enum' | 'date' | 'single'
+    op: string
+    values?: string[]
+    from?: string
+    to?: string
+    options?: FilterValueOption[]
+    searchable?: boolean
+  }>(),
+  {
+    values: () => [],
+    options: () => [],
+    from: undefined,
+    to: undefined,
+    searchable: false,
+  },
+)
 
 const emit = defineEmits<{
   'update:op': [op: string]
   'update:values': [values: string[]]
-  'update:range': [range: { from?: string, to?: string }]
+  'update:range': [range: { from?: string; to?: string }]
 }>()
 
 const search = ref('')
@@ -39,8 +42,7 @@ const showSearch = computed(() => props.searchable || props.options.length > 8)
 const visibleOptions = computed(() => {
   const kw = search.value.trim().toLowerCase()
   if (!kw) return props.options
-  return props.options.filter(o =>
-    o.label.toLowerCase().includes(kw) || (o.sub || '').toLowerCase().includes(kw))
+  return props.options.filter((o) => o.label.toLowerCase().includes(kw) || (o.sub || '').toLowerCase().includes(kw))
 })
 
 function toggleValue(value: string) {
@@ -48,18 +50,18 @@ function toggleValue(value: string) {
     emit('update:values', [value])
     return
   }
-  const next = props.values.includes(value)
-    ? props.values.filter(v => v !== value)
-    : [...props.values, value]
+  const next = props.values.includes(value) ? props.values.filter((v) => v !== value) : [...props.values, value]
   emit('update:values', next)
 }
 
 function quickRange(days: number | 'quarter') {
   const now = new Date()
-  const iso = (d: Date) => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`
-  const start = days === 'quarter'
-    ? new Date(now.getFullYear(), Math.floor(now.getMonth() / 3) * 3, 1)
-    : new Date(now.getFullYear(), now.getMonth(), now.getDate() - days)
+  const iso = (d: Date) =>
+    `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`
+  const start =
+    days === 'quarter'
+      ? new Date(now.getFullYear(), Math.floor(now.getMonth() / 3) * 3, 1)
+      : new Date(now.getFullYear(), now.getMonth(), now.getDate() - days)
   emit('update:op', 'range')
   emit('update:range', { from: iso(start), to: iso(now) })
 }

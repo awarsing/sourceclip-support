@@ -26,8 +26,7 @@ export function resolveBlobProvider(): BlobProvider {
   const preferred = config.blobProvider as string | undefined
 
   // 1. Explicit pick via runtime config
-  if (preferred && providers.has(preferred))
-    return providers.get(preferred)!
+  if (preferred && providers.has(preferred)) return providers.get(preferred)!
 
   // 2. Any non-default provider wins over the built-in nuxthub fallback,
   // so dropping in S3 / R2 / OSS doesn't require setting NUXT_BLOB_PROVIDER

@@ -1,5 +1,12 @@
 <script setup lang="ts">
-defineProps<{ dirty: boolean; saving: boolean; disabled: boolean; error: string | null; saved: boolean; savedHint?: string }>()
+defineProps<{
+  dirty: boolean
+  saving: boolean
+  disabled: boolean
+  error: string | null
+  saved: boolean
+  savedHint?: string
+}>()
 defineEmits<{ cancel: []; save: [] }>()
 </script>
 

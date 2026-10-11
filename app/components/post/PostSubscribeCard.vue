@@ -6,7 +6,9 @@ const emit = defineEmits<{ 'update:subscribed': [boolean] }>()
 
 const isSubscribed = ref(props.subscribed)
 const pending = ref(false)
-watchEffect(() => { isSubscribed.value = props.subscribed })
+watchEffect(() => {
+  isSubscribed.value = props.subscribed
+})
 
 async function toggle() {
   if (pending.value) return
@@ -16,8 +18,7 @@ async function toggle() {
     await useApiFetch(`/api/posts/${props.postId}/subscription`, { method: next ? 'POST' : 'DELETE' })
     isSubscribed.value = next
     emit('update:subscribed', next)
-  }
-  finally {
+  } finally {
     pending.value = false
   }
 }

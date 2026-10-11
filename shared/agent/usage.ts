@@ -11,11 +11,16 @@ export interface RunUsageRecord {
   usage: RunTokenUsage | null
 }
 
-export function addTokenUsage(previous: RunTokenUsage | null, step: { inputTokens?: number; outputTokens?: number }): RunTokenUsage {
-  const count = (value: number | undefined) => typeof value === 'number' && Number.isSafeInteger(value) && value >= 0 ? value : null
+export function addTokenUsage(
+  previous: RunTokenUsage | null,
+  step: { inputTokens?: number; outputTokens?: number },
+): RunTokenUsage {
+  const count = (value: number | undefined) =>
+    typeof value === 'number' && Number.isSafeInteger(value) && value >= 0 ? value : null
   const input = count(step.inputTokens)
   const output = count(step.outputTokens)
-  const add = (before: number | null | undefined, next: number | null) => next === null ? before ?? null : (before ?? 0) + next
+  const add = (before: number | null | undefined, next: number | null) =>
+    next === null ? (before ?? null) : (before ?? 0) + next
   return {
     inputTokens: add(previous?.inputTokens, input),
     outputTokens: add(previous?.outputTokens, output),
@@ -34,12 +39,13 @@ export function totalTokens(usage: Pick<RunTokenUsage, 'inputTokens' | 'outputTo
 
 export function summarizeTokenUsage(runs: RunUsageRecord[]) {
   const sum = (key: 'inputTokens' | 'outputTokens') => {
-    const values = runs.flatMap(run => run.usage?.[key] == null ? [] : [run.usage[key]])
+    const values = runs.flatMap((run) => (run.usage?.[key] == null ? [] : [run.usage[key]]))
     return values.length ? values.reduce((a, b) => a + b, 0) : null
   }
   return {
-    inputTokens: sum('inputTokens'), outputTokens: sum('outputTokens'),
-    recordedRuns: runs.filter(run => run.usage !== null).length,
+    inputTokens: sum('inputTokens'),
+    outputTokens: sum('outputTokens'),
+    recordedRuns: runs.filter((run) => run.usage !== null).length,
     complete: runs.length > 0 && runs.every(hasCompleteUsage),
   }
 }

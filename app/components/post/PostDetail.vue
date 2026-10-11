@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import '~/assets/css/md-editor-preview.css'
 import { toast } from 'vue-sonner'
-import { sanitizeAttachmentHtml } from '~/utils/attachment';
+import { sanitizeAttachmentHtml } from '~/utils/attachment'
 const localePath = useLocalePath()
 
 // Event types for post mutations
@@ -57,8 +57,12 @@ const canOpenCommentBox = computed(() => isPostAuthor.value || mayAct('allowComm
 
 // Permissions
 const postAuthorId = computed(() => post.value?.author?.id)
-const { canEdit: canEditPost, canDelete: canDeletePost, isOrgManager, showMenu: showPostMenu } = usePermission(postAuthorId, 'post')
-
+const {
+  canEdit: canEditPost,
+  canDelete: canDeletePost,
+  isOrgManager,
+  showMenu: showPostMenu,
+} = usePermission(postAuthorId, 'post')
 
 const { authorName } = useAuthorDisplay()
 
@@ -98,8 +102,14 @@ async function saveEditPost() {
   if (!post.value) return
   const title = editTitle.value.trim()
   const content = editContent.value.trim()
-  if (!title) { editError.value = t('post.detail.errors.titleRequired'); return }
-  if (!content) { editError.value = t('post.detail.errors.contentRequired'); return }
+  if (!title) {
+    editError.value = t('post.detail.errors.titleRequired')
+    return
+  }
+  if (!content) {
+    editError.value = t('post.detail.errors.contentRequired')
+    return
+  }
 
   editSaving.value = true
   editError.value = ''
@@ -159,8 +169,7 @@ async function sendStatusNotification(note: string) {
       method: 'POST',
       body: { status, note: note || undefined },
     })
-  }
-  catch (err: unknown) {
+  } catch (err: unknown) {
     // 409 = status changed under the admin between the write and the send.
     if ((err as { statusCode?: number })?.statusCode === 409) {
       console.error('[notifications] status changed by someone else')
@@ -203,9 +212,10 @@ async function handleUnmerge(postId: string) {
 
 async function handleSimilarMerge(direction: 'bring' | 'push', targetPost: any) {
   if (!post.value) return
-  const body = direction === 'bring'
-    ? { canonicalPostId: post.value.id, mergedPostId: targetPost.id }
-    : { canonicalPostId: targetPost.id, mergedPostId: post.value.id }
+  const body =
+    direction === 'bring'
+      ? { canonicalPostId: post.value.id, mergedPostId: targetPost.id }
+      : { canonicalPostId: targetPost.id, mergedPostId: post.value.id }
 
   try {
     await useApiFetch('/api/admin/posts/merge', { method: 'POST', body })
@@ -219,7 +229,7 @@ async function handleSimilarMerge(direction: 'bring' | 'push', targetPost: any) 
 async function handleVote() {
   if (!post.value) return
   if (isMerged.value) return // Block voting on merged posts
-  if (!await ensureIdentity('allowVote')) return
+  if (!(await ensureIdentity('allowVote'))) return
   const p = post.value
   const settled = p.hasVoted ? store.unvote(props.slug) : store.vote(props.slug)
   const syncList = () => emit('updated', { id: p.id, slug: p.slug, voteCount: p.voteCount, hasVoted: p.hasVoted })
@@ -241,7 +251,7 @@ function emitCommentCount() {
 
 // Comment handlers
 async function handleCommentSubmit(content: string, notify: boolean) {
-  if (!isPostAuthor.value && !await ensureIdentity('allowComment')) return
+  if (!isPostAuthor.value && !(await ensureIdentity('allowComment'))) return
   commentSubmitting.value = true
   try {
     await store.addComment(props.slug, content, { notify })
@@ -254,7 +264,7 @@ async function handleCommentSubmit(content: string, notify: boolean) {
 
 async function handleReplySubmit(content: string) {
   if (!replyingTo.value) return
-  if (!isPostAuthor.value && !await ensureIdentity('allowComment')) return
+  if (!isPostAuthor.value && !(await ensureIdentity('allowComment'))) return
   commentSubmitting.value = true
   try {
     const { parentId, commentId } = replyingTo.value
@@ -273,11 +283,11 @@ function handleReply(commentId: string) {
   editingCommentId.value = null
   editing.value = false
 
-  const topLevel = comments.value.find(c => c.id === commentId)
+  const topLevel = comments.value.find((c) => c.id === commentId)
   if (topLevel) {
     replyingTo.value = { commentId, parentId: commentId }
   } else {
-    const parent = comments.value.find(c => c.children?.some(ch => ch.id === commentId))
+    const parent = comments.value.find((c) => c.children?.some((ch) => ch.id === commentId))
     if (parent) {
       replyingTo.value = { commentId, parentId: parent.id }
     }
@@ -285,10 +295,11 @@ function handleReply(commentId: string) {
 }
 
 async function handleLike(commentId: string) {
-  if (!await ensureIdentity('allowVote')) return
+  if (!(await ensureIdentity('allowVote'))) return
 
-  const c = comments.value.find(item => item.id === commentId)
-    || comments.value.flatMap(item => item.children ?? []).find(ch => ch.id === commentId)
+  const c =
+    comments.value.find((item) => item.id === commentId) ||
+    comments.value.flatMap((item) => item.children ?? []).find((ch) => ch.id === commentId)
   if (!c) return
   if (c.hasLiked) {
     store.unlikeComment(props.slug, commentId)
@@ -320,8 +331,7 @@ function handleEditCommentCancel() {
 async function handleDeleteComment(commentId: string) {
   try {
     await store.deleteComment(props.slug, commentId)
-  }
-  catch (e: any) {
+  } catch (e: any) {
     // Uncaught, this rejected into nowhere and the comment silently stayed put.
     toast.error(e.data?.message || t('post.detail.errors.deleteFailed'))
     return

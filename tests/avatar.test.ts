@@ -5,11 +5,18 @@ import { AVATAR_MAX_BYTES, AvatarValidationError, inspectAvatar } from '../share
 
 const fixture = (extension: string) => readFileSync(new URL(`./fixtures/avatar.${extension}`, import.meta.url))
 const rejectsWith = (data: Uint8Array, code: AvatarValidationError['code']) => {
-  assert.throws(() => inspectAvatar(data), error => error instanceof AvatarValidationError && error.code === code)
+  assert.throws(
+    () => inspectAvatar(data),
+    (error) => error instanceof AvatarValidationError && error.code === code,
+  )
 }
 
 test('recognizes supported files from bytes without trusting a name or MIME', () => {
-  for (const [extension, mime] of [['png', 'image/png'], ['jpeg', 'image/jpeg'], ['webp', 'image/webp']]) {
+  for (const [extension, mime] of [
+    ['png', 'image/png'],
+    ['jpeg', 'image/jpeg'],
+    ['webp', 'image/webp'],
+  ]) {
     const image = inspectAvatar(fixture(extension!))
     assert.equal(image.width, 2)
     assert.equal(image.height, 3)
@@ -24,7 +31,10 @@ test('rejects empty, truncated and non-image input', () => {
 })
 
 test('does not accept SVG or GIF as avatars', () => {
-  rejectsWith(new TextEncoder().encode('<svg xmlns="http://www.w3.org/2000/svg" width="20" height="20"></svg>'), 'invalidImage')
+  rejectsWith(
+    new TextEncoder().encode('<svg xmlns="http://www.w3.org/2000/svg" width="20" height="20"></svg>'),
+    'invalidImage',
+  )
   rejectsWith(Buffer.from('R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7', 'base64'), 'invalidImage')
 })
 

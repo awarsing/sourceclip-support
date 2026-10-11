@@ -20,7 +20,9 @@ const canCreate = computed(() => used.value < SSO_SECRET_LIMIT)
 
 // Defer to onMounted: the list endpoint needs the session cookie, simplest to
 // fetch client-side after mount (mirrors the Members page).
-onMounted(() => { if (isOwner.value) void refresh() })
+onMounted(() => {
+  if (isOwner.value) void refresh()
+})
 
 // Create + rename share one dialog (SsoSecretDialog). dialogMode picks the copy;
 // renameTarget is set only in rename mode.
@@ -48,23 +50,24 @@ async function onDialogSubmit(payload: { label: string }) {
     if (mode === 'create') {
       const s = await create(payload.label)
       justCreatedId.value = s.id
-      setTimeout(() => { if (justCreatedId.value === s.id) justCreatedId.value = null }, 6000)
-    }
-    else if (target) {
+      setTimeout(() => {
+        if (justCreatedId.value === s.id) justCreatedId.value = null
+      }, 6000)
+    } else if (target) {
       await update(target.id, { label: payload.label })
     }
-  }
-  catch (e) {
-    toast.error((e as { data?: { message?: string } })?.data?.message
-      || (mode === 'create' ? t('dashboard.sso.createFailed') : t('dashboard.sso.renameFailed')))
+  } catch (e) {
+    toast.error(
+      (e as { data?: { message?: string } })?.data?.message ||
+        (mode === 'create' ? t('dashboard.sso.createFailed') : t('dashboard.sso.renameFailed')),
+    )
   }
 }
 
 async function onToggle(s: SsoSecret) {
   try {
     await update(s.id, { enabled: !s.enabled })
-  }
-  catch {
+  } catch {
     toast.error(t('dashboard.sso.updateFailed'))
   }
 }
@@ -85,8 +88,7 @@ async function confirmDelete() {
   if (!target) return
   try {
     await remove(target.id)
-  }
-  catch {
+  } catch {
     toast.error(t('dashboard.sso.deleteFailed'))
   }
 }

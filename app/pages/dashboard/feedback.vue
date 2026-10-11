@@ -12,28 +12,54 @@ const { t } = useI18n()
 
 type FieldKey = 'status' | 'boardId' | 'author' | 'created' | 'merged'
 
-const { data: authorsData } = await useFetch<{ data: { id: string, name: string | null, email: string | null, image: string | null }[] }>('/api/admin/posts/authors')
+const { data: authorsData } = await useFetch<{
+  data: { id: string; name: string | null; email: string | null; image: string | null }[]
+}>('/api/admin/posts/authors')
 const authors = computed(() => authorsData.value?.data ?? [])
 
 const fieldDefs = computed(() => [
   {
-    key: 'status' as FieldKey, kind: 'enum' as const, label: t('dashboard.filter.status'), icon: 'lucide:activity',
-    options: STATUS_OPTIONS.map(o => ({ value: o.value, label: t(statusLabelKey(o.value)), color: o.color })),
+    key: 'status' as FieldKey,
+    kind: 'enum' as const,
+    label: t('dashboard.filter.status'),
+    icon: 'lucide:activity',
+    options: STATUS_OPTIONS.map((o) => ({ value: o.value, label: t(statusLabelKey(o.value)), color: o.color })),
   },
   {
-    key: 'boardId' as FieldKey, kind: 'enum' as const, label: t('dashboard.filter.board'), icon: 'lucide:layers',
+    key: 'boardId' as FieldKey,
+    kind: 'enum' as const,
+    label: t('dashboard.filter.board'),
+    icon: 'lucide:layers',
     options: [
-      ...boards.value.map(b => ({ value: b.id, label: b.name })),
+      ...boards.value.map((b) => ({ value: b.id, label: b.name })),
       { value: 'none', label: t('dashboard.filter.noBoard') },
     ],
   },
   {
-    key: 'author' as FieldKey, kind: 'enum' as const, label: t('dashboard.filter.author'), icon: 'lucide:user', searchable: true,
-    options: authors.value.map(a => ({ value: a.id, label: a.name || a.email || a.id, sub: a.email || '', image: a.image })),
+    key: 'author' as FieldKey,
+    kind: 'enum' as const,
+    label: t('dashboard.filter.author'),
+    icon: 'lucide:user',
+    searchable: true,
+    options: authors.value.map((a) => ({
+      value: a.id,
+      label: a.name || a.email || a.id,
+      sub: a.email || '',
+      image: a.image,
+    })),
   },
-  { key: 'created' as FieldKey, kind: 'date' as const, label: t('dashboard.filter.created'), icon: 'lucide:calendar', options: [] },
   {
-    key: 'merged' as FieldKey, kind: 'single' as const, label: t('dashboard.filter.merged'), icon: 'lucide:git-merge',
+    key: 'created' as FieldKey,
+    kind: 'date' as const,
+    label: t('dashboard.filter.created'),
+    icon: 'lucide:calendar',
+    options: [],
+  },
+  {
+    key: 'merged' as FieldKey,
+    kind: 'single' as const,
+    label: t('dashboard.filter.merged'),
+    icon: 'lucide:git-merge',
     options: [
       { value: 'canonical_only', label: t('dashboard.feedback.canonicalOnly') },
       { value: 'merged_only', label: t('dashboard.feedback.mergedOnly') },
@@ -47,12 +73,13 @@ const conditions = ref<FilterCondition[]>(parseFilterQuery(route.query as Record
 
 const activeChips = computed(() =>
   conditions.value
-    .map(c => ({ condition: c, def: fieldDefs.value.find(d => d.key === c.field)! }))
-    .filter(x => x.def))
+    .map((c) => ({ condition: c, def: fieldDefs.value.find((d) => d.key === c.field)! }))
+    .filter((x) => x.def),
+)
 
 const availableFields = computed(() => {
-  const used = new Set(conditions.value.map(c => c.field))
-  return fieldDefs.value.filter(d => !used.has(d.key))
+  const used = new Set(conditions.value.map((c) => c.field))
+  return fieldDefs.value.filter((d) => !used.has(d.key))
 })
 
 function blankCondition(key: FieldKey): FilterCondition {
@@ -73,7 +100,7 @@ const pickingField = ref<FieldKey | null>(null)
 const draft = ref<FilterCondition | null>(null)
 
 const picking = computed(() => {
-  const def = fieldDefs.value.find(d => d.key === pickingField.value)
+  const def = fieldDefs.value.find((d) => d.key === pickingField.value)
   return def && draft.value ? { def, condition: draft.value } : null
 })
 
@@ -92,16 +119,16 @@ function patchDraft(patch: Record<string, unknown>) {
   if (!draft.value) return
   const next = { ...draft.value, ...patch } as FilterCondition
   draft.value = next
-  const rest = conditions.value.filter(c => c.field !== next.field)
+  const rest = conditions.value.filter((c) => c.field !== next.field)
   conditions.value = hasValue(next) ? [...rest, next] : rest
 }
 
 function patchCondition(field: string, patch: Record<string, unknown>) {
-  conditions.value = conditions.value.map(c => (c.field === field ? { ...c, ...patch } as FilterCondition : c))
+  conditions.value = conditions.value.map((c) => (c.field === field ? ({ ...c, ...patch } as FilterCondition) : c))
 }
 
 function removeCondition(field: string) {
-  conditions.value = conditions.value.filter(c => c.field !== field)
+  conditions.value = conditions.value.filter((c) => c.field !== field)
 }
 
 function clearAllFilters() {
@@ -121,7 +148,11 @@ const addFilterOpen = ref(false)
 
 // ---- Sort & Pagination ----
 const sortBy = ref<'createdAt' | 'votes' | 'comments'>(
-  (['createdAt', 'votes', 'comments'].includes(route.query.sort as string) ? route.query.sort : 'createdAt') as 'createdAt' | 'votes' | 'comments')
+  (['createdAt', 'votes', 'comments'].includes(route.query.sort as string) ? route.query.sort : 'createdAt') as
+    | 'createdAt'
+    | 'votes'
+    | 'comments',
+)
 const sortOrder = ref<'asc' | 'desc'>(route.query.order === 'asc' ? 'asc' : 'desc')
 const currentPage = ref(Math.max(Number(route.query.page) || 1, 1))
 const pageSize = 10
@@ -129,35 +160,49 @@ const pageSize = 10
 const searchTerm = ref((route.query.q as string) || '')
 const searchActive = computed(() => searchTerm.value.length > 0)
 
-watch([conditions, searchTerm], () => {
-  currentPage.value = 1
-}, { deep: true })
+watch(
+  [conditions, searchTerm],
+  () => {
+    currentPage.value = 1
+  },
+  { deep: true },
+)
 
 // replaceState, not the router — a push would re-run the route watchers and
 // refetch a list we already have.
-watch([conditions, searchTerm, sortBy, sortOrder, currentPage], () => {
-  const qs = serializeFilterQuery(conditions.value, {
-    q: searchTerm.value,
-    sort: sortBy.value,
-    order: sortOrder.value,
-    page: currentPage.value,
-  })
-  window.history.replaceState(window.history.state, '', qs ? `${route.path}?${qs}` : route.path)
-}, { deep: true })
+watch(
+  [conditions, searchTerm, sortBy, sortOrder, currentPage],
+  () => {
+    const qs = serializeFilterQuery(conditions.value, {
+      q: searchTerm.value,
+      sort: sortBy.value,
+      order: sortOrder.value,
+      page: currentPage.value,
+    })
+    window.history.replaceState(window.history.state, '', qs ? `${route.path}?${qs}` : route.path)
+  },
+  { deep: true },
+)
 
 // While searching, route to the additive /search endpoint; otherwise use the
 // standard list endpoint. Both return PagePaginatedList<PostListItem>.
-const apiUrl = computed(() => searchActive.value ? '/api/admin/posts/search' : '/api/admin/posts')
+const apiUrl = computed(() => (searchActive.value ? '/api/admin/posts/search' : '/api/admin/posts'))
 
 // Fetch data
-const { data: postsData, refresh: refreshPosts, status: fetchStatus } = await useFetch<PagePaginatedList<PostListItem>>(apiUrl, {
-  query: computed(() => filterApiQuery(conditions.value, {
-    q: searchTerm.value || undefined,
-    sort: sortBy.value,
-    order: sortOrder.value,
-    page: currentPage.value,
-    pageSize,
-  })),
+const {
+  data: postsData,
+  refresh: refreshPosts,
+  status: fetchStatus,
+} = await useFetch<PagePaginatedList<PostListItem>>(apiUrl, {
+  query: computed(() =>
+    filterApiQuery(conditions.value, {
+      q: searchTerm.value || undefined,
+      sort: sortBy.value,
+      order: sortOrder.value,
+      page: currentPage.value,
+      pageSize,
+    }),
+  ),
 })
 
 const posts = computed(() => postsData.value?.data ?? [])
@@ -172,7 +217,6 @@ function toggleSort(col: 'createdAt' | 'votes' | 'comments') {
   sortBy.value = col
   currentPage.value = 1
 }
-
 
 const { authorName } = useAuthorDisplay()
 
@@ -203,7 +247,7 @@ function openPostDetail(item: PostListItem) {
 function onPostUpdated(updated: { id: string; status?: string; boardId?: string | null; [key: string]: any }) {
   const list = postsData.value?.data
   if (!list) return
-  const idx = list.findIndex(p => p.id === updated.id)
+  const idx = list.findIndex((p) => p.id === updated.id)
   if (idx === -1) return
 
   const dropped = (field: EnumFilterField, value: string) => {
@@ -211,8 +255,10 @@ function onPostUpdated(updated: { id: string; status?: string; boardId?: string 
     if (!c || c.field === 'created' || c.field === 'merged' || !c.values.length) return false
     return c.op === 'is' ? !c.values.includes(value) : c.values.includes(value)
   }
-  if ((updated.status !== undefined && dropped('status', updated.status))
-    || (updated.boardId !== undefined && dropped('boardId', updated.boardId ?? 'none'))) {
+  if (
+    (updated.status !== undefined && dropped('status', updated.status)) ||
+    (updated.boardId !== undefined && dropped('boardId', updated.boardId ?? 'none'))
+  ) {
     list.splice(idx, 1)
     if (postsData.value?.pagination) postsData.value.pagination.total--
     return
@@ -224,7 +270,7 @@ function onPostUpdated(updated: { id: string; status?: string; boardId?: string 
 function onPostDeleted(postId: string) {
   const list = postsData.value?.data
   if (!list) return
-  const idx = list.findIndex(p => p.id === postId)
+  const idx = list.findIndex((p) => p.id === postId)
   if (idx !== -1) {
     list.splice(idx, 1)
     if (postsData.value?.pagination) postsData.value.pagination.total--

@@ -1,17 +1,20 @@
 <script setup lang="ts">
 import { sanitizeAttachmentHtml } from '~/utils/attachment'
 
-const props = withDefaults(defineProps<{
-  parentId?: string
-  replyToId?: string
-  placeholder?: string
-  initialContent?: string
-  loading?: boolean
-  canNotify?: boolean
-}>(), {
-  loading: false,
-  canNotify: false,
-})
+const props = withDefaults(
+  defineProps<{
+    parentId?: string
+    replyToId?: string
+    placeholder?: string
+    initialContent?: string
+    loading?: boolean
+    canNotify?: boolean
+  }>(),
+  {
+    loading: false,
+    canNotify: false,
+  },
+)
 
 const emit = defineEmits<{
   submit: [content: string, notify: boolean]

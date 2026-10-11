@@ -37,7 +37,10 @@ export default defineEventHandler(async (event) => {
       throw createError({ statusCode: 404, message: 'SSO is not configured for this organization' })
     }
 
-    const identity = await verifySsoJwt(token, secrets.map(s => s.secret))
+    const identity = await verifySsoJwt(
+      token,
+      secrets.map((s) => s.secret),
+    )
     const userId = await findOrCreateSsoUser(db, identity)
 
     // Mint the session and mark it with ssoOrgId. createSession persists the
@@ -62,9 +65,8 @@ export default defineEventHandler(async (event) => {
     // better-auth's sameSite type allows capitalized variants ("Lax"); h3 wants
     // lowercase. Runtime default is "lax" — normalize to keep both happy.
     const rawSameSite = cookie.attributes.sameSite
-    const sameSite = typeof rawSameSite === 'string'
-      ? (rawSameSite.toLowerCase() as 'lax' | 'strict' | 'none')
-      : rawSameSite
+    const sameSite =
+      typeof rawSameSite === 'string' ? (rawSameSite.toLowerCase() as 'lax' | 'strict' | 'none') : rawSameSite
     setCookie(event, cookie.name, value, {
       httpOnly: cookie.attributes.httpOnly,
       sameSite,
@@ -85,9 +87,10 @@ export default defineEventHandler(async (event) => {
     // rejects any Set-Cookie for a `__Secure-`-prefixed name that omits Secure.
     const dataCookie = ctx.authCookies.sessionData
     const dataRawSameSite = dataCookie.attributes.sameSite
-    const dataSameSite = typeof dataRawSameSite === 'string'
-      ? (dataRawSameSite.toLowerCase() as 'lax' | 'strict' | 'none')
-      : dataRawSameSite
+    const dataSameSite =
+      typeof dataRawSameSite === 'string'
+        ? (dataRawSameSite.toLowerCase() as 'lax' | 'strict' | 'none')
+        : dataRawSameSite
     const dataDeleteOpts = {
       path: dataCookie.attributes.path ?? '/',
       secure: dataCookie.attributes.secure,
@@ -102,8 +105,7 @@ export default defineEventHandler(async (event) => {
     }
 
     return sendRedirect(event, returnTo, 302)
-  }
-  catch (err) {
+  } catch (err) {
     // The token comes from the customer's product, so a failure is the
     // integrator's problem, not the visitor's. Instead of a raw 400, send a
     // friendly interstitial (contact admin) that auto-continues to the board

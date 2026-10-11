@@ -8,7 +8,7 @@ const localePath = useLocalePath()
 const { isGuest, hasAccount, claimIfPending } = useGuestSession()
 // A guest is not an account. The header keeps offering sign-in and shows no
 // avatar or sign-out, because the visitor never created the identity behind it.
-const user = computed(() => isGuest.value ? undefined : session.value?.user)
+const user = computed(() => (isGuest.value ? undefined : session.value?.user))
 
 // Fold in anything the visitor wrote as a guest. Silent — from their side
 // nothing happened, their feedback is simply still theirs.
@@ -40,7 +40,9 @@ const initials = computed(() => {
 // Fall back to initials when avatar image fails to load
 const avatarError = ref(false)
 const avatarUrl = computed(() => resolveAttachmentUrl(user.value?.image))
-watch(user, () => { avatarError.value = false })
+watch(user, () => {
+  avatarError.value = false
+})
 
 const { isOpen: showLoginModal, open: openLoginModal } = useLoginModal()
 const showChangePassword = ref(false)
@@ -69,9 +71,7 @@ const navItems = computed(() => [
   { key: 'nav.feedback', to: '/', icon: 'lucide:message-square' },
   { key: 'nav.roadmap', to: '/roadmap', icon: 'lucide:map' },
   { key: 'nav.changelog', to: '/changelog', icon: 'lucide:newspaper' },
-  ...(portalOrg.value.modules.helpCenter
-    ? [{ key: 'nav.helpCenter', to: '/help', icon: 'lucide:book-open' }]
-    : []),
+  ...(portalOrg.value.modules.helpCenter ? [{ key: 'nav.helpCenter', to: '/help', icon: 'lucide:book-open' }] : []),
 ])
 
 async function handleSignOut() {
@@ -82,7 +82,12 @@ async function handleSignOut() {
 // Mobile expandable nav
 const mobileNavOpen = ref(false)
 const route = useRoute()
-watch(() => route.path, () => { mobileNavOpen.value = false })
+watch(
+  () => route.path,
+  () => {
+    mobileNavOpen.value = false
+  },
+)
 </script>
 
 <template>

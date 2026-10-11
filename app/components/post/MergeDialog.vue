@@ -71,9 +71,10 @@ async function handleMerge() {
   merging.value = true
   error.value = ''
 
-  const body = props.direction === 'bring'
-    ? { canonicalPostId: props.postId, mergedPostId: selectedId.value }
-    : { canonicalPostId: selectedId.value, mergedPostId: props.postId }
+  const body =
+    props.direction === 'bring'
+      ? { canonicalPostId: props.postId, mergedPostId: selectedId.value }
+      : { canonicalPostId: selectedId.value, mergedPostId: props.postId }
 
   try {
     await useApiFetch('/api/admin/posts/merge', { method: 'POST', body })

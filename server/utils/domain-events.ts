@@ -142,10 +142,7 @@ function toHookName(name: DomainEventName): DomainEventHookName {
   return `feedlog:${name.replace('.', ':')}` as DomainEventHookName
 }
 
-export type DomainEventInput<Name extends DomainEventName> = Omit<
-  DomainEventEnvelope<Name>,
-  'id' | 'occurredAt'
->
+export type DomainEventInput<Name extends DomainEventName> = Omit<DomainEventEnvelope<Name>, 'id' | 'occurredAt'>
 
 // Creation is separate from publication so a caller can persist the event
 // (keeping its id) before publishing, and so occurredAt names the moment the
@@ -210,7 +207,7 @@ async function dispatchDomainEvent(
     async (handlers) => {
       // The async wrapper turns a listener's synchronous throw into a
       // rejection; bare handler(...) would escape allSettled mid-map.
-      const outcomes = await Promise.allSettled(handlers.map(async handler => handler(domainEvent, context)))
+      const outcomes = await Promise.allSettled(handlers.map(async (handler) => handler(domainEvent, context)))
       for (const outcome of outcomes) {
         if (outcome.status === 'rejected') {
           console.error(

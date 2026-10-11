@@ -39,12 +39,14 @@ export default defineEventHandler(async (event) => {
       description: helpArticle.description,
     })
     .from(helpArticle)
-    .where(and(
-      eq(helpArticle.orgId, orgId),
-      eq(helpArticle.collectionId, row.collectionId),
-      eq(helpArticle.status, 'published'),
-      ne(helpArticle.id, row.id),
-    ))
+    .where(
+      and(
+        eq(helpArticle.orgId, orgId),
+        eq(helpArticle.collectionId, row.collectionId),
+        eq(helpArticle.status, 'published'),
+        ne(helpArticle.id, row.id),
+      ),
+    )
     .orderBy(asc(helpArticle.position), asc(helpArticle.id))
 
   return {

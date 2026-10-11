@@ -39,13 +39,13 @@ function collectFiles(manifest: Record<string, ManifestEntry>, ids: Set<string>)
   for (const id of ids) {
     const entry = manifest[id]!
     if (entry.file) files.push(entry.file)
-    files.push(...entry.css ?? [])
+    files.push(...(entry.css ?? []))
   }
   return files
 }
 
 function collectHints(manifest: Record<string, ManifestEntry>): Hint[] {
-  const routeId = Object.keys(manifest).find(id => ROUTE_MODULE_RE.test(id))
+  const routeId = Object.keys(manifest).find((id) => ROUTE_MODULE_RE.test(id))
   if (!routeId) return []
 
   const entryModules = new Set<string>()
@@ -65,9 +65,9 @@ function collectHints(manifest: Record<string, ManifestEntry>): Hint[] {
   for (const file of collectFiles(manifest, needed)) {
     if (shipped.has(file)) continue
     shipped.add(file)
-    hints.push(file.endsWith('.css')
-      ? { file, rel: 'preload', as: 'style' }
-      : { file, rel: 'modulepreload', as: 'script' })
+    hints.push(
+      file.endsWith('.css') ? { file, rel: 'preload', as: 'style' } : { file, rel: 'modulepreload', as: 'script' },
+    )
   }
   return hints
 }

@@ -6,7 +6,7 @@ import { post, postEmbedding, postSearch } from '#layers/feedlog/server/db/schem
 export default defineEventHandler(async (event) => {
   const { orgId } = await requireOrgPermission(event, { feedlog: ['moderate'] })
 
-  const body = await readBody(event) as { dryRun?: boolean } | null
+  const body = (await readBody(event)) as { dryRun?: boolean } | null
   const dryRun = body?.dryRun ?? false
 
   const db = useDB()
@@ -34,20 +34,14 @@ export default defineEventHandler(async (event) => {
 
     if (!dryRun) {
       // Always upsert post_search
-      await db
-        .insert(postSearch)
-        .values({ postId: p.id, orgId: p.orgId, searchText })
-        .onConflictDoUpdate({
-          target: postSearch.postId,
-          set: { searchText },
-        })
+      await db.insert(postSearch).values({ postId: p.id, orgId: p.orgId, searchText }).onConflictDoUpdate({
+        target: postSearch.postId,
+        set: { searchText },
+      })
 
       // Update content_hash if missing or outdated
       if (p.contentHash !== hash) {
-        await db
-          .update(post)
-          .set({ contentHash: hash })
-          .where(eq(post.id, p.id))
+        await db.update(post).set({ contentHash: hash }).where(eq(post.id, p.id))
       }
     }
     searchUpdated++

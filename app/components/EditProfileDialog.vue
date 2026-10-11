@@ -24,7 +24,9 @@ const initials = computed(() => (name.value.trim() || '?').slice(0, 2).toUpperCa
 const busy = computed(() => loading.value || processing.value)
 const dialogOpen = computed({
   get: () => open.value,
-  set: (value: boolean) => { if (!loading.value) open.value = value },
+  set: (value: boolean) => {
+    if (!loading.value) open.value = value
+  },
 })
 
 function clearSelection() {
@@ -35,15 +37,21 @@ function clearSelection() {
   previewUrl.value = null
 }
 
-watch(open, (value) => {
-  clearSelection()
-  if (value) {
-    name.value = session.value?.user?.name ?? ''
-    image.value = session.value?.user?.image ?? null
-    previewError.value = false
-  }
-}, { immediate: true })
-watch(imageUrl, () => { previewError.value = false })
+watch(
+  open,
+  (value) => {
+    clearSelection()
+    if (value) {
+      name.value = session.value?.user?.name ?? ''
+      image.value = session.value?.user?.image ?? null
+      previewError.value = false
+    }
+  },
+  { immediate: true },
+)
+watch(imageUrl, () => {
+  previewError.value = false
+})
 onBeforeUnmount(clearSelection)
 
 function removeAvatar() {
@@ -64,12 +72,10 @@ async function onFileChange(event: Event) {
     if (previewUrl.value) URL.revokeObjectURL(previewUrl.value)
     pendingAvatar = prepared
     previewUrl.value = URL.createObjectURL(prepared)
-  }
-  catch (error) {
+  } catch (error) {
     if (currentSelection !== selection || !open.value) return
     toast.error(t(`auth.profile.${error instanceof AvatarValidationError ? error.code : 'invalidImage'}`))
-  }
-  finally {
+  } finally {
     if (currentSelection === selection) processing.value = false
   }
 }
@@ -92,8 +98,7 @@ async function onSubmit() {
         })
         image.value = resolveAttachmentUrl(result.key)
         clearSelection()
-      }
-      catch {
+      } catch {
         toast.error(t('auth.profile.uploadFailed'))
         return
       }
@@ -106,11 +111,9 @@ async function onSubmit() {
     await refresh()
     toast.success(t('auth.success.profileUpdated'))
     open.value = false
-  }
-  catch {
+  } catch {
     toast.error(t('auth.profile.saveFailed'))
-  }
-  finally {
+  } finally {
     loading.value = false
   }
 }

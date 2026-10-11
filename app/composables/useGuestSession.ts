@@ -16,8 +16,7 @@ let claimInFlight: Promise<void> | null = null
 function readToken(): string | null {
   try {
     return localStorage.getItem(GUEST_TOKEN_STORAGE_KEY)
-  }
-  catch {
+  } catch {
     return null
   }
 }
@@ -25,8 +24,7 @@ function readToken(): string | null {
 function writeToken(token: string): void {
   try {
     localStorage.setItem(GUEST_TOKEN_STORAGE_KEY, token)
-  }
-  catch {
+  } catch {
     // Private mode. The identity still works for this visit; it just can't be
     // claimed onto an account later, which beats refusing the write.
   }
@@ -35,8 +33,9 @@ function writeToken(token: string): void {
 function clearToken(): void {
   try {
     localStorage.removeItem(GUEST_TOKEN_STORAGE_KEY)
+  } catch {
+    /* nothing left to do */
   }
-  catch { /* nothing left to do */ }
 }
 
 export function useGuestSession() {
@@ -87,14 +86,17 @@ export function useGuestSession() {
       if (res.token) writeToken(res.token)
       await refreshNuxtData('auth-session')
       return true
-    }
-    catch {
+    } catch {
       return false
     }
   }
 
   function mint(): Promise<boolean> {
-    const pending = mintInFlight ?? (mintInFlight = doMint().finally(() => { mintInFlight = null }))
+    const pending =
+      mintInFlight ??
+      (mintInFlight = doMint().finally(() => {
+        mintInFlight = null
+      }))
     return pending
   }
 
@@ -119,8 +121,7 @@ export function useGuestSession() {
         body: { anonymousToken },
       })
       moved = res?.claimed === true
-    }
-    catch (e) {
+    } catch (e) {
       const status = (e as { statusCode?: number })?.statusCode ?? 0
       // Keep the token only while a retry could plausibly work; the next page
       // load will try again. Anything else is permanent, and retrying it forever
@@ -158,7 +159,9 @@ export function useGuestSession() {
     // The lock is per-realm while the token is shared across the whole origin,
     // so it only dedupes within this context. Overlap between contexts is left
     // to the endpoint, which answers a spent token with claimed:false.
-    claimInFlight ??= runClaim(token).finally(() => { claimInFlight = null })
+    claimInFlight ??= runClaim(token).finally(() => {
+      claimInFlight = null
+    })
   }
 
   return { isGuest, hasAccount, hasIdentity, guestMay, mayAct, ensureIdentity, claimIfPending }

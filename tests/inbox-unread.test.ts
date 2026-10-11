@@ -21,11 +21,18 @@ test('local unread summary includes every open conversation once and only custom
     const runtime = { pool: db } as unknown as InboxRuntime
     const before = await db.query('SELECT * FROM conversation')
     const rows = (await inboxOpenActivity(runtime, 'org')).sort((a, b) => a.id.localeCompare(b.id))
-    assert.deepEqual(rows, [{ id: 'first', attentionSeq: 3 }, { id: 'second', attentionSeq: 1 }])
+    assert.deepEqual(rows, [
+      { id: 'first', attentionSeq: 3 },
+      { id: 'second', attentionSeq: 1 },
+    ])
     assert.deepEqual(await db.query('SELECT * FROM conversation'), before)
-    await db.exec("UPDATE conversation SET last_seq=7 WHERE id='first'; INSERT INTO conversation_item VALUES ('first',7,'customer','{}')")
-    assert.equal((await inboxOpenActivity(runtime, 'org')).find(row => row.id === 'first')!.attentionSeq, 7)
+    await db.exec(
+      "UPDATE conversation SET last_seq=7 WHERE id='first'; INSERT INTO conversation_item VALUES ('first',7,'customer','{}')",
+    )
+    assert.equal((await inboxOpenActivity(runtime, 'org')).find((row) => row.id === 'first')!.attentionSeq, 7)
     await db.exec("UPDATE conversation SET status='pending' WHERE id='first'")
     assert.deepEqual(await inboxOpenActivity(runtime, 'org'), [{ id: 'second', attentionSeq: 1 }])
-  } finally { await db.close() }
+  } finally {
+    await db.close()
+  }
 })

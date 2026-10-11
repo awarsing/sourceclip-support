@@ -24,7 +24,7 @@ const fileInput = ref<HTMLInputElement | null>(null)
 const replyInput = ref<HTMLTextAreaElement | null>(null)
 const draftImages = reactive<Record<string, { key: string }[]>>({})
 const uploadCounts = reactive<Record<string, number>>({})
-const images = computed(() => selected.value ? draftImages[selected.value] || [] : [])
+const images = computed(() => (selected.value ? draftImages[selected.value] || [] : []))
 const uploading = computed(() => !!selected.value && !!uploadCounts[selected.value])
 const sendable = computed(() => !!draft.value.trim() || images.value.length > 0)
 const statusOptions = ['all', 'open', 'pending', 'snoozed', 'closed', 'ai_handling'] as const
@@ -49,23 +49,33 @@ const hasFilters = computed(() => !!filters.q.trim() || filters.status !== 'all'
 const selected = ref<string | null>(null)
 const detail = ref<InboxDetail | null>(null)
 function showSystemNotice(part: Content['parts'][number]) {
-  return part.type === 'system_event' && (part.kind === 'handoff'
-    || (part.reason === 'manual' && (part.kind === 'snoozed' || part.kind === 'closed')))
+  return (
+    part.type === 'system_event' &&
+    (part.kind === 'handoff' || (part.reason === 'manual' && (part.kind === 'snoozed' || part.kind === 'closed')))
+  )
 }
 function handoffNotice(part: SystemEventPart) {
   const builtin = part.rule?.id
-  const key = part.reason === 'support_rule' && builtin && ['builtin-billing', 'builtin-account-access', 'builtin-privacy-legal'].includes(builtin)
-    ? builtin : part.reason
+  const key =
+    part.reason === 'support_rule' &&
+    builtin &&
+    ['builtin-billing', 'builtin-account-access', 'builtin-privacy-legal'].includes(builtin)
+      ? builtin
+      : part.reason
   return t(`inbox.handoffNotices.${key}`)
 }
-const visibleItems = computed(() => (detail.value?.items ?? []).filter(item =>
-  item.authorType !== 'system' || item.content.parts.some(showSystemNotice),
-))
+const visibleItems = computed(() =>
+  (detail.value?.items ?? []).filter(
+    (item) => item.authorType !== 'system' || item.content.parts.some(showSystemNotice),
+  ),
+)
 const drafts = reactive<Record<string, string>>({})
 const deliveryModes = reactive<Record<string, 'auto' | 'immediate'>>({})
 const deliveryMode = computed({
-  get: () => selected.value ? deliveryModes[selected.value] ?? 'auto' : 'auto',
-  set: (value: 'auto' | 'immediate') => { if (selected.value) deliveryModes[selected.value] = value },
+  get: () => (selected.value ? (deliveryModes[selected.value] ?? 'auto') : 'auto'),
+  set: (value: 'auto' | 'immediate') => {
+    if (selected.value) deliveryModes[selected.value] = value
+  },
 })
 const draft = computed({
   get: () => (selected.value ? drafts[selected.value] || '' : ''),
@@ -135,7 +145,8 @@ async function loadDetail(id: string, older = false, initial = false) {
   const data = await useApiFetch<InboxDetail>(`/api/admin/inbox/conversations/${id}`, { query })
   if (id !== selected.value || version !== detailVersion) return
   Object.assign(emailResults, data.emails)
-  const atBottom = !timeline.value || timeline.value.scrollHeight - timeline.value.scrollTop - timeline.value.clientHeight < 80
+  const atBottom =
+    !timeline.value || timeline.value.scrollHeight - timeline.value.scrollTop - timeline.value.clientHeight < 80
   const previousHeight = timeline.value?.scrollHeight ?? 0
   if (detail.value && !initial) {
     const items = [...new Map([...detail.value.items, ...data.items].map((item) => [item.id, item])).values()].sort(
@@ -159,8 +170,16 @@ async function loadDetail(id: string, older = false, initial = false) {
 function reportRead() {
   const id = selected.value
   const element = timeline.value
-  if (!id || !detail.value || !element || document.hidden || feedbackOpen.value || !element.clientHeight
-    || element.scrollHeight - element.scrollTop - element.clientHeight > 8) return
+  if (
+    !id ||
+    !detail.value ||
+    !element ||
+    document.hidden ||
+    feedbackOpen.value ||
+    !element.clientHeight ||
+    element.scrollHeight - element.scrollTop - element.clientHeight > 8
+  )
+    return
   markRead(id, detail.value.nextAfterSeq)
 }
 async function loadFeedback(more = false) {
@@ -203,7 +222,9 @@ async function command(action: string, extra: Record<string, unknown> = {}) {
   else activeAction.value = action
   const previous = commandQueue
   let release!: () => void
-  commandQueue = new Promise<void>(resolve => { release = resolve })
+  commandQueue = new Promise<void>((resolve) => {
+    release = resolve
+  })
   try {
     // Serialize writes so the next command uses the sequence returned by the previous one.
     await previous
@@ -215,14 +236,22 @@ async function command(action: string, extra: Record<string, unknown> = {}) {
   }
 }
 async function executeCommand(action: string, extra: Record<string, unknown> = {}) {
-  if (!detail.value || !selected.value || (action === 'reply' && (!canReply.value || !sendable.value || uploading.value))) return
+  if (
+    !detail.value ||
+    !selected.value ||
+    (action === 'reply' && (!canReply.value || !sendable.value || uploading.value))
+  )
+    return
   const id = selected.value
   const version = detailVersion
-  const content: Content = { parts: [...(draft.value.trim() ? [{ type: 'text' as const, text: draft.value.trim() }] : []), ...images.value.map(image => ({ type: 'image' as const, storage_key: image.key }))] }
+  const content: Content = {
+    parts: [
+      ...(draft.value.trim() ? [{ type: 'text' as const, text: draft.value.trim() }] : []),
+      ...images.value.map((image) => ({ type: 'image' as const, storage_key: image.key })),
+    ],
+  }
   const payload =
-    action === 'reply'
-      ? { notifyByEmail: deliveryMode.value === 'immediate', content }
-      : { action, ...extra }
+    action === 'reply' ? { notifyByEmail: deliveryMode.value === 'immediate', content } : { action, ...extra }
   const signature = JSON.stringify([action, payload])
   let request = pending.get(id)
   if (!request || request.signature !== signature) {
@@ -248,10 +277,14 @@ async function executeCommand(action: string, extra: Record<string, unknown> = {
       draftImages[id] = []
       if (result.email) emailResults[result.item.id] = result.email
       if (id === selected.value && version === detailVersion && detail.value) {
-        if (!detail.value.items.some(item => item.id === result.item.id)) {
+        if (!detail.value.items.some((item) => item.id === result.item.id)) {
           const user = session.value?.user
           detail.value.items.push({
-            ...result.item, content, authorType: 'staff', context: null, agentRunId: null,
+            ...result.item,
+            content,
+            authorType: 'staff',
+            context: null,
+            agentRunId: null,
             author: user ? { id: user.id, name: user.name, image: user.image, isAnonymous: false } : null,
           })
           detail.value.items.sort((a, b) => a.seq - b.seq)
@@ -289,7 +322,9 @@ async function retryEmail(itemId: string) {
     emailResults[itemId] = result.email
   } catch {
     emailResults[itemId] = { status: 'failed', canRetry: false }
-  } finally { emailSending[itemId] = false }
+  } finally {
+    emailSending[itemId] = false
+  }
 }
 function sendKey(event: KeyboardEvent) {
   if (event.isComposing || event.keyCode === 229) return
@@ -298,8 +333,7 @@ function sendKey(event: KeyboardEvent) {
 }
 function wakeTime(choice: string) {
   const value = new Date()
-  if (choice === 'hour' || choice === 'threeHours')
-    value.setHours(value.getHours() + (choice === 'hour' ? 1 : 3))
+  if (choice === 'hour' || choice === 'threeHours') value.setHours(value.getHours() + (choice === 'hour' ? 1 : 3))
   else if (choice === 'tomorrow') {
     value.setDate(value.getDate() + 1)
     value.setHours(9, 0, 0, 0)
@@ -318,7 +352,14 @@ function wakeTime(choice: string) {
 }
 async function closeConversation() {
   const id = selected.value
-  if (await confirm({ title: t('inbox.close'), description: t('inbox.confirmClose'), confirmText: t('inbox.close'), cancelText: t('inbox.cancel') })) {
+  if (
+    await confirm({
+      title: t('inbox.close'),
+      description: t('inbox.confirmClose'),
+      confirmText: t('inbox.close'),
+      cancelText: t('inbox.cancel'),
+    })
+  ) {
     if (selected.value === id) await command('close')
   }
 }
@@ -329,22 +370,32 @@ function resetFilters() {
   filters.sort = 'newest'
   void refreshList()
 }
-function closeSearch() { searchOpen.value = false; filters.q = ''; void refreshList() }
+function closeSearch() {
+  searchOpen.value = false
+  filters.q = ''
+  void refreshList()
+}
 async function uploadFiles(files: File[]) {
   const id = selected.value
   if (!id || sending.value || !canReply.value || !files.length) return
   uploadCounts[id] = (uploadCounts[id] || 0) + 1
   for (const file of files) {
     if (!file.type.startsWith('image/') || file.size > 16 * 1024 * 1024) {
-      toast.error(t('widget.uploadTooLarge', { size: 16 })); continue
+      toast.error(t('widget.uploadTooLarge', { size: 16 }))
+      continue
     }
-    if ((draftImages[id]?.length || 0) >= 9) { toast.error(t('widget.tooManyParts')); break }
+    if ((draftImages[id]?.length || 0) >= 9) {
+      toast.error(t('widget.tooManyParts'))
+      break
+    }
     try {
       const body = new FormData()
       body.append('file', file)
       const result = await useApiFetch<{ key: string }>('/api/upload', { method: 'POST', body })
       ;(draftImages[id] ??= []).push({ key: result.key })
-    } catch { toast.error(t('widget.uploadFailed')) }
+    } catch {
+      toast.error(t('widget.uploadFailed'))
+    }
   }
   uploadCounts[id]!--
 }
@@ -354,8 +405,11 @@ function pickFiles(event: Event) {
   input.value = ''
 }
 function pasteImages(event: ClipboardEvent) {
-  const files = Array.from(event.clipboardData?.files || []).filter(file => file.type.startsWith('image/'))
-  if (files.length) { event.preventDefault(); void uploadFiles(files) }
+  const files = Array.from(event.clipboardData?.files || []).filter((file) => file.type.startsWith('image/'))
+  if (files.length) {
+    event.preventDefault()
+    void uploadFiles(files)
+  }
 }
 watch(
   () => [filters.status, filters.priority, filters.sort],
@@ -370,7 +424,9 @@ watch(
 const updateWidth = () => {
   wide.value = media?.matches ?? false
 }
-watch(feedbackOpen, () => { void nextTick(reportRead) })
+watch(feedbackOpen, () => {
+  void nextTick(reportRead)
+})
 onMounted(() => {
   media = matchMedia('(min-width: 1280px)')
   updateWidth()
@@ -399,7 +455,10 @@ onBeforeUnmount(() => {
   document.removeEventListener('visibilitychange', reportRead)
 })
 
-const { data: initialList, error: initialListError } = await useFetch<{ items: typeof rows.value; nextCursor: string | null }>('/api/admin/inbox/conversations', {
+const { data: initialList, error: initialListError } = await useFetch<{
+  items: typeof rows.value
+  nextCursor: string | null
+}>('/api/admin/inbox/conversations', {
   query: { ...filters },
   immediate: canModerate.value,
 })

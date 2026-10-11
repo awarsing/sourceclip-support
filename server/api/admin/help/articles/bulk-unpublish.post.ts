@@ -11,11 +11,7 @@ export default defineEventHandler(async (event) => {
   const affected = await db
     .update(helpArticle)
     .set({ status: 'archived' })
-    .where(and(
-      eq(helpArticle.orgId, orgId),
-      inArray(helpArticle.id, body.ids),
-      eq(helpArticle.status, 'published'),
-    ))
+    .where(and(eq(helpArticle.orgId, orgId), inArray(helpArticle.id, body.ids), eq(helpArticle.status, 'published')))
     .returning({ id: helpArticle.id })
 
   return { affected: affected.length, skipped: body.ids.length - affected.length }

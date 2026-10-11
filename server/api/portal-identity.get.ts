@@ -15,26 +15,30 @@ function resolveLogoUrl(logo: string | null | undefined): string | null {
 // Public portal identity for share-card meta and first-paint branding.
 // The unconfigured default org maps to the FeedLog brand; usePageOg turns the
 // two cases into the personalized vs generic copy variants.
-export default defineEventHandler(async (event): Promise<{
-  name: string
-  logo: string | null
-  isDefault: boolean
-  branding: ResolvedBranding
-  guest: ResolvedGuestAccess
-  modules: ResolvedPortalModules
-}> => {
-  const slug = event.context.orgSlug ?? DEFAULT_ORG_SLUG
-  const info = await getOrgInfo(slug)
-  const rawName = info?.name ?? DEFAULT_ORG_NAME
-  const isDefault = rawName === DEFAULT_ORG_NAME
-  return {
-    name: isDefault ? 'FeedLog' : rawName,
-    logo: resolveLogoUrl(info?.logo),
-    isDefault,
-    branding: resolveBranding(info?.metadata),
-    // Rides along so the portal knows, on first paint, whether a write should
-    // mint a guest identity or open the sign-in modal.
-    guest: resolveGuestAccess(info?.metadata),
-    modules: resolvePortalModules(info?.metadata),
-  }
-})
+export default defineEventHandler(
+  async (
+    event,
+  ): Promise<{
+    name: string
+    logo: string | null
+    isDefault: boolean
+    branding: ResolvedBranding
+    guest: ResolvedGuestAccess
+    modules: ResolvedPortalModules
+  }> => {
+    const slug = event.context.orgSlug ?? DEFAULT_ORG_SLUG
+    const info = await getOrgInfo(slug)
+    const rawName = info?.name ?? DEFAULT_ORG_NAME
+    const isDefault = rawName === DEFAULT_ORG_NAME
+    return {
+      name: isDefault ? 'FeedLog' : rawName,
+      logo: resolveLogoUrl(info?.logo),
+      isDefault,
+      branding: resolveBranding(info?.metadata),
+      // Rides along so the portal knows, on first paint, whether a write should
+      // mint a guest identity or open the sign-in modal.
+      guest: resolveGuestAccess(info?.metadata),
+      modules: resolvePortalModules(info?.metadata),
+    }
+  },
+)

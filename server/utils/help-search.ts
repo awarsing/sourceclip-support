@@ -38,7 +38,7 @@ export function splitHelpQuery(q: string): HelpQueryToken[] {
     flush()
   }
 
-  return tokens.filter(token => token.kind === 'cjk' || /[a-z0-9]/i.test(token.text))
+  return tokens.filter((token) => token.kind === 'cjk' || /[a-z0-9]/i.test(token.text))
 }
 
 export function buildHelpTsQuery(tokens: HelpQueryToken[]): SQL | null {
@@ -76,11 +76,11 @@ export function helpHighlightRanges(text: string, tokens: HelpQueryToken[]): [nu
     let pattern: RegExp
     if (token.kind === 'latin') {
       const root = token.text.replace(LATIN_STEM, '')
-      pattern = root.length >= 4 && root.length < token.text.length
-        ? new RegExp(`${escapeRegExp(root)}[\\p{L}\\p{N}]*`, 'giu')
-        : new RegExp(escapeRegExp(token.text), 'gi')
-    }
-    else {
+      pattern =
+        root.length >= 4 && root.length < token.text.length
+          ? new RegExp(`${escapeRegExp(root)}[\\p{L}\\p{N}]*`, 'giu')
+          : new RegExp(escapeRegExp(token.text), 'gi')
+    } else {
       pattern = new RegExp(escapeRegExp(token.text), 'g')
     }
 
@@ -103,7 +103,11 @@ function truncateToWidth(text: string, maxWidth: number): string {
   return text
 }
 
-export function buildHelpExcerpt(body: string, description: string | null, tokens: HelpQueryToken[]): {
+export function buildHelpExcerpt(
+  body: string,
+  description: string | null,
+  tokens: HelpQueryToken[],
+): {
   excerpt: string
   ranges: [number, number][]
 } {
@@ -117,7 +121,7 @@ export function buildHelpExcerpt(body: string, description: string | null, token
   const [hitStart, hitEnd] = hits[0]!
 
   let start = hitStart
-  for (let width = 0; start > 0;) {
+  for (let width = 0; start > 0; ) {
     const next = charWidth(body[start - 1]!)
     if (width + next > EXCERPT_BEFORE) break
     width += next
@@ -125,7 +129,7 @@ export function buildHelpExcerpt(body: string, description: string | null, token
   }
 
   let end = hitEnd
-  for (let width = 0; end < body.length;) {
+  for (let width = 0; end < body.length; ) {
     const next = charWidth(body[end]!)
     if (width + next > EXCERPT_AFTER) break
     width += next

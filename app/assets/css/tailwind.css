@@ -51,8 +51,8 @@
   --color-sidebar-border: var(--sidebar-border);
   --color-sidebar-ring: var(--sidebar-ring);
   --shadow-warm: 0 4px 20px rgba(196, 90, 70, 0.08);
-  --font-heading: 'Inter', sans-serif;
-  --font-body: 'Inter', sans-serif;
+  --font-heading: "Inter", sans-serif;
+  --font-body: "Inter", sans-serif;
 }
 
 :root {
@@ -84,7 +84,7 @@
   --popover: oklch(1 0 0);
   --popover-foreground: oklch(0.275 0.009 28.9);
   /* Primary: #C45A46 terracotta red */
-  --primary: oklch(0.595 0.140 32.3);
+  --primary: oklch(0.595 0.14 32.3);
   --primary-foreground: oklch(1 0 0);
   /* Secondary: #FCEEEA surface accent warm blush */
   --secondary: oklch(0.959 0.016 36.3);
@@ -103,10 +103,10 @@
   --success: oklch(0.553 0.057 148.1);
   --success-foreground: oklch(1 0 0);
   /* Border: #EADFDB clay warm border */
-  --border: oklch(0.911 0.013 41.0);
-  --input: oklch(0.911 0.013 41.0);
+  --border: oklch(0.911 0.013 41);
+  --input: oklch(0.911 0.013 41);
   /* Focus ring: use the primary color */
-  --ring: oklch(0.595 0.140 32.3);
+  --ring: oklch(0.595 0.14 32.3);
   /* Keep chart colors unchanged */
   --chart-1: oklch(0.646 0.222 41.116);
   --chart-2: oklch(0.6 0.118 184.704);
@@ -116,12 +116,12 @@
   /* Sidebar: white background with terracotta selected state */
   --sidebar: oklch(1 0 0);
   --sidebar-foreground: oklch(0.275 0.009 28.9);
-  --sidebar-primary: oklch(0.595 0.140 32.3);
-  --sidebar-primary-foreground: oklch(0.595 0.140 32.3);
+  --sidebar-primary: oklch(0.595 0.14 32.3);
+  --sidebar-primary-foreground: oklch(0.595 0.14 32.3);
   --sidebar-accent: oklch(0.959 0.016 36.3);
-  --sidebar-accent-foreground: oklch(0.595 0.140 32.3);
-  --sidebar-border: oklch(0.911 0.013 41.0);
-  --sidebar-ring: oklch(0.595 0.140 32.3);
+  --sidebar-accent-foreground: oklch(0.595 0.14 32.3);
+  --sidebar-border: oklch(0.911 0.013 41);
+  --sidebar-ring: oklch(0.595 0.14 32.3);
 }
 
 /* Dark mode: warm-toned dark variant (MVP placeholder, adjust later as needed) */
@@ -143,40 +143,40 @@
   --status-archived-bg: rgba(198, 161, 132, 0.15);
   --status-archived-border: rgba(198, 161, 132, 0.25);
 
-  --background: oklch(0.200 0.010 30);
+  --background: oklch(0.2 0.01 30);
   --foreground: oklch(0.985 0.004 78.2);
-  --card: oklch(0.250 0.010 30);
+  --card: oklch(0.25 0.01 30);
   --card-foreground: oklch(0.985 0.004 78.2);
-  --popover: oklch(0.250 0.010 30);
+  --popover: oklch(0.25 0.01 30);
   --popover-foreground: oklch(0.985 0.004 78.2);
-  --primary: oklch(0.650 0.140 32.3);
+  --primary: oklch(0.65 0.14 32.3);
   --primary-foreground: oklch(1 0 0);
-  --secondary: oklch(0.300 0.020 30);
+  --secondary: oklch(0.3 0.02 30);
   --secondary-foreground: oklch(0.985 0.004 78.2);
-  --muted: oklch(0.300 0.010 30);
-  --muted-foreground: oklch(0.708 0.010 30);
+  --muted: oklch(0.3 0.01 30);
+  --muted-foreground: oklch(0.708 0.01 30);
   --accent: oklch(0.694 0.141 37.4);
   --accent-foreground: oklch(1 0 0);
   --destructive: oklch(0.704 0.191 22.216);
   --destructive-foreground: oklch(1 0 0);
-  --success: oklch(0.600 0.057 148.1);
+  --success: oklch(0.6 0.057 148.1);
   --success-foreground: oklch(1 0 0);
   --border: oklch(1 0 0 / 10%);
   --input: oklch(1 0 0 / 15%);
-  --ring: oklch(0.650 0.140 32.3);
+  --ring: oklch(0.65 0.14 32.3);
   --chart-1: oklch(0.646 0.222 41.116);
   --chart-2: oklch(0.696 0.17 162.48);
   --chart-3: oklch(0.769 0.188 70.08);
   --chart-4: oklch(0.627 0.265 303.9);
   --chart-5: oklch(0.645 0.246 16.439);
-  --sidebar: oklch(0.250 0.010 30);
+  --sidebar: oklch(0.25 0.01 30);
   --sidebar-foreground: oklch(0.985 0.004 78.2);
-  --sidebar-primary: oklch(0.650 0.140 32.3);
+  --sidebar-primary: oklch(0.65 0.14 32.3);
   --sidebar-primary-foreground: oklch(0.985 0.004 78.2);
-  --sidebar-accent: oklch(0.300 0.020 30);
+  --sidebar-accent: oklch(0.3 0.02 30);
   --sidebar-accent-foreground: oklch(0.985 0.004 78.2);
   --sidebar-border: oklch(1 0 0 / 10%);
-  --sidebar-ring: oklch(0.650 0.140 32.3);
+  --sidebar-ring: oklch(0.65 0.14 32.3);
 }
 
 @layer base {
@@ -186,7 +186,12 @@
   body {
     @apply bg-background text-foreground font-body antialiased tabular-nums;
   }
-  h1, h2, h3, h4, h5, h6 {
+  h1,
+  h2,
+  h3,
+  h4,
+  h5,
+  h6 {
     @apply font-heading;
   }
   button,
@@ -195,14 +200,13 @@
   }
 }
 
-
 /* md-editor modal and image preview conflict with Shadcn Dialog */
 /* md-editor / medium-zoom pointer-events hack */
-  .md-editor-modal-container,
-  .medium-zoom-overlay,
-  .medium-zoom-image--opened {
-    pointer-events: auto
-  }
+.md-editor-modal-container,
+.medium-zoom-overlay,
+.medium-zoom-image--opened {
+  pointer-events: auto;
+}
 
 /* md-editor-v3 ships `word-break: break-all` on its preview containers, which splits ordinary
    words mid-character instead of wrapping at spaces. Restore normal word wrapping, keeping

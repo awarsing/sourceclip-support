@@ -14,15 +14,13 @@ const isSearching = computed(() => !!search.value.trim())
 const filteredBoards = computed(() => {
   if (!isSearching.value) return boards.value
   const q = search.value.toLowerCase()
-  return boards.value.filter(b =>
-    b.name.toLowerCase().includes(q) || (b.description ?? '').toLowerCase().includes(q),
-  )
+  return boards.value.filter((b) => b.name.toLowerCase().includes(q) || (b.description ?? '').toLowerCase().includes(q))
 })
 
 // Drag reorder — vuedraggable already updated boards array order via v-model,
 // just persist the new order to the backend
 async function onDragEnd() {
-  const ids = boards.value.map(b => b.id)
+  const ids = boards.value.map((b) => b.id)
   try {
     await useApiFetch('/api/admin/boards/reorder', { method: 'PATCH', body: { ids } })
   } catch (e) {

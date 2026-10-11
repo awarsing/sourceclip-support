@@ -36,14 +36,16 @@ function stripMarkdown(text: string): string {
 }
 
 function computeHash(title: string, content: string): string {
-  return createHash('sha256').update(title + '\n' + content).digest('hex')
+  return createHash('sha256')
+    .update(title + '\n' + content)
+    .digest('hex')
 }
 
 async function generateEmbedding(text: string): Promise<number[]> {
   const response = await fetch(`${OPENAI_BASE_URL}/embeddings`, {
     method: 'POST',
     headers: {
-      'Authorization': `Bearer ${OPENAI_API_KEY}`,
+      Authorization: `Bearer ${OPENAI_API_KEY}`,
       'Content-Type': 'application/json',
     },
     body: JSON.stringify({
@@ -58,7 +60,7 @@ async function generateEmbedding(text: string): Promise<number[]> {
     throw new Error(`OpenAI API error: ${response.status} ${error}`)
   }
 
-  const data = await response.json() as { data: { embedding: number[] }[] }
+  const data = (await response.json()) as { data: { embedding: number[] }[] }
   return data.data[0].embedding
 }
 
@@ -100,7 +102,7 @@ async function main() {
 
       try {
         // Rate limit: wait 500ms between API calls
-        await new Promise(resolve => setTimeout(resolve, 500))
+        await new Promise((resolve) => setTimeout(resolve, 500))
         const embedding = await generateEmbedding(searchText)
         const vectorStr = `[${embedding.join(',')}]`
         await sql`

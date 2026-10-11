@@ -11,12 +11,14 @@ const { open: openLogin } = useLoginModal()
 const localePath = useLocalePath()
 const { t } = useI18n()
 const isMember = computed(() => hasAccount.value && !!ctx.value.role)
-const scope = computed(() => isMember.value ? `${ctx.value.orgId}:${session.value?.user.id}` : '')
+const scope = computed(() => (isMember.value ? `${ctx.value.orgId}:${session.value?.user.id}` : ''))
 const preferences = ref<MemberPreferenceResponse | null>(null)
 const enabled = ref(false)
 const state = ref<'loading' | 'ready' | 'saving' | 'saved' | 'loadError' | 'saveError' | 'unknown'>('loading')
 const busy = computed(() => state.value === 'loading' || state.value === 'saving')
-const dirty = computed(() => !!preferences.value && enabled.value !== preferences.value.notifications.staff_feedback_email_enabled)
+const dirty = computed(
+  () => !!preferences.value && enabled.value !== preferences.value.notifications.staff_feedback_email_enabled,
+)
 let generation = 0
 let mounted = false
 let savedTimer: ReturnType<typeof setTimeout> | undefined
@@ -28,7 +30,9 @@ function applyPreferences(value: MemberPreferenceResponse) {
 
 function showSaved() {
   state.value = 'saved'
-  savedTimer = setTimeout(() => { state.value = 'ready' }, 2500)
+  savedTimer = setTimeout(() => {
+    state.value = 'ready'
+  }, 2500)
 }
 
 async function load() {
@@ -42,8 +46,7 @@ async function load() {
     if (current !== generation) return
     applyPreferences(value)
     state.value = 'ready'
-  }
-  catch {
+  } catch {
     if (current === generation) state.value = 'loadError'
   }
 }
@@ -75,8 +78,7 @@ async function save() {
     if (current !== generation) return
     applyPreferences(result)
     showSaved()
-  }
-  catch (error) {
+  } catch (error) {
     if (current !== generation) return
     const status = (error as { statusCode?: number }).statusCode ?? 0
     if (status >= 400 && status < 500 && status !== 408) {
@@ -90,8 +92,7 @@ async function save() {
       preferences.value = result
       if (result.notifications.staff_feedback_email_enabled === value) showSaved()
       else state.value = 'saveError'
-    }
-    catch {
+    } catch {
       if (current !== generation) return
       preferences.value = null
       state.value = 'unknown'
@@ -99,13 +100,17 @@ async function save() {
   }
 }
 
-watch(scope, () => {
-  ++generation
-  clearTimeout(savedTimer)
-  preferences.value = null
-  state.value = 'loading'
-  if (mounted) void load()
-}, { immediate: true, flush: 'sync' })
+watch(
+  scope,
+  () => {
+    ++generation
+    clearTimeout(savedTimer)
+    preferences.value = null
+    state.value = 'loading'
+    if (mounted) void load()
+  },
+  { immediate: true, flush: 'sync' },
+)
 
 // Wait for the async layout to hydrate before replacing its loading content.
 onMounted(() => {

@@ -27,8 +27,11 @@ export function estimateTokens(text: string): number {
 }
 
 export function withinRetention(orgId: string) {
-  return gt(conversation.lastMessageAt, sql`now() - make_interval(days => coalesce(
+  return gt(
+    conversation.lastMessageAt,
+    sql`now() - make_interval(days => coalesce(
     (select ${organizationWidget.conversationRetentionDays} from ${organizationWidget}
       where ${organizationWidget.orgId} = ${orgId}),
-    ${CONVERSATION_RETENTION_DEFAULT_DAYS}))`)
+    ${CONVERSATION_RETENTION_DEFAULT_DAYS}))`,
+  )
 }

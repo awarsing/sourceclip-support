@@ -18,9 +18,7 @@ export default defineEventHandler(async (event) => {
   const orgId = event.context.orgId!
   const body = await readValidatedBody(event, schema.parse)
 
-  const text = body.content
-    ? body.title + '\n' + body.content
-    : body.title
+  const text = body.content ? body.title + '\n' + body.content : body.title
 
   const userId = session?.user.id
   const limit = body.limit ?? 3

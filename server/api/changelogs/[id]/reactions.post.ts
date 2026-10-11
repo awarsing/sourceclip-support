@@ -54,14 +54,11 @@ async function getReactionState(db: ReturnType<typeof useDB>, changelogId: strin
   const userRows = await db
     .select({ emoji: changelogReaction.emoji })
     .from(changelogReaction)
-    .where(and(
-      eq(changelogReaction.changelogId, changelogId),
-      eq(changelogReaction.userId, userId),
-    ))
+    .where(and(eq(changelogReaction.changelogId, changelogId), eq(changelogReaction.userId, userId)))
 
   return {
     reacted: true,
     reactionCounts,
-    userReactions: userRows.map(r => r.emoji),
+    userReactions: userRows.map((r) => r.emoji),
   }
 }

@@ -16,9 +16,8 @@ useHead({ title: () => t('auth.sso.pageTitle') })
 // same-origin relative path, never protocol-relative (`//evil.com`).
 const route = useRoute()
 const rawReturn = route.query.return_to
-const returnTo = typeof rawReturn === 'string' && rawReturn.startsWith('/') && !rawReturn.startsWith('//')
-  ? rawReturn
-  : '/'
+const returnTo =
+  typeof rawReturn === 'string' && rawReturn.startsWith('/') && !rawReturn.startsWith('//') ? rawReturn : '/'
 
 const seconds = ref(3)
 let timer: ReturnType<typeof setInterval> | undefined

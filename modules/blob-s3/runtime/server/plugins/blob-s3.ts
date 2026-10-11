@@ -14,8 +14,7 @@ function isBucketEndpoint(endpoint: string | undefined, bucket: string) {
   try {
     const hostname = new URL(endpoint).hostname
     return hostname === bucket || hostname.startsWith(`${bucket}.`)
-  }
-  catch {
+  } catch {
     return false
   }
 }
@@ -38,14 +37,18 @@ export default defineNitroPlugin(() => {
   }
 
   const endpointIncludesBucket = isBucketEndpoint(endpoint, bucket)
-  const storage = createBlobStorage(createDriver({
-    accessKeyId,
-    secretAccessKey,
-    bucket: endpointIncludesBucket ? '' : bucket,
-    region,
-    endpoint,
-  }))
+  const storage = createBlobStorage(
+    createDriver({
+      accessKeyId,
+      secretAccessKey,
+      bucket: endpointIncludesBucket ? '' : bucket,
+      region,
+      endpoint,
+    }),
+  )
 
   registerBlobProvider({ name: 's3', storage })
-  logger.info(`Registered blob provider: s3 (bucket=${bucket}${endpoint ? `, endpoint=${endpoint}` : ''}${endpointIncludesBucket ? ', bucketEndpoint=true' : ''})`)
+  logger.info(
+    `Registered blob provider: s3 (bucket=${bucket}${endpoint ? `, endpoint=${endpoint}` : ''}${endpointIncludesBucket ? ', bucketEndpoint=true' : ''})`,
+  )
 })

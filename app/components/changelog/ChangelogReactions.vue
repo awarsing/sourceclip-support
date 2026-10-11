@@ -1,5 +1,4 @@
 <script setup lang="ts">
-
 const props = defineProps<{
   changelogId: string
   reactionCounts: Record<string, number>
@@ -26,12 +25,10 @@ function visibleCount(emoji: string) {
   return counts[emoji] ?? 0
 }
 
-const displayedReactions = computed(() =>
-  CHANGELOG_EMOJIS.filter(emoji => visibleCount(emoji) > 0),
-)
+const displayedReactions = computed(() => CHANGELOG_EMOJIS.filter((emoji) => visibleCount(emoji) > 0))
 
 async function toggle(emoji: string) {
-  if (!await ensureIdentity('allowVote')) {
+  if (!(await ensureIdentity('allowVote'))) {
     pickerOpen.value = false
     return
   }

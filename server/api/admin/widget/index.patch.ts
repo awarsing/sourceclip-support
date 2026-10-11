@@ -26,7 +26,7 @@ export default defineEventHandler(async (event): Promise<ResolvedWidgetSettings 
   const patch: Partial<typeof organizationWidget.$inferInsert> = { ...fields }
   if (supportEmail !== undefined) patch.supportEmail = supportEmail || null
   if (customRules) {
-    patch.customRules = customRules.map(rule => ({
+    patch.customRules = customRules.map((rule) => ({
       ...rule,
       id: rule.id || `c_${uuidv7()}`,
     }))
@@ -35,8 +35,11 @@ export default defineEventHandler(async (event): Promise<ResolvedWidgetSettings 
   const saved = await useDB().transaction(async (tx) => {
     // Create before locking so concurrent first saves share the same row.
     await tx.insert(organizationWidget).values({ orgId }).onConflictDoNothing()
-    const [existing] = await tx.select().from(organizationWidget)
-      .where(eq(organizationWidget.orgId, orgId)).for('update')
+    const [existing] = await tx
+      .select()
+      .from(organizationWidget)
+      .where(eq(organizationWidget.orgId, orgId))
+      .for('update')
 
     // Rule limits span two fields; validate against the locked current values.
     const capError = checkEnabledRuleCap(
@@ -50,8 +53,11 @@ export default defineEventHandler(async (event): Promise<ResolvedWidgetSettings 
     if (!Object.keys(body).length) return existing!
     // Each settings section owns its fields, so another section cannot be
     // overwritten by values read before its save completed.
-    const [updated] = await tx.update(organizationWidget).set(patch)
-      .where(eq(organizationWidget.orgId, orgId)).returning()
+    const [updated] = await tx
+      .update(organizationWidget)
+      .set(patch)
+      .where(eq(organizationWidget.orgId, orgId))
+      .returning()
     return updated!
   })
 

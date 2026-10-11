@@ -8,9 +8,13 @@ type OgPage =
   | { kind: 'home' }
   | { kind: 'roadmap' }
   | { kind: 'changelogList' }
-  | { kind: 'post', title: MaybeRefOrGetter<string | undefined>, content: MaybeRefOrGetter<string | undefined> }
+  | { kind: 'post'; title: MaybeRefOrGetter<string | undefined>; content: MaybeRefOrGetter<string | undefined> }
   | { kind: 'helpHome' }
-  | { kind: 'helpCollection', title: MaybeRefOrGetter<string | undefined>, description: MaybeRefOrGetter<string | null | undefined> }
+  | {
+      kind: 'helpCollection'
+      title: MaybeRefOrGetter<string | undefined>
+      description: MaybeRefOrGetter<string | null | undefined>
+    }
   | {
       kind: 'helpArticle'
       title: MaybeRefOrGetter<string | undefined>
@@ -97,7 +101,8 @@ export function usePageOg(page: OgPage) {
         const excerpt = body ? generateExcerpt(body) : ''
         return {
           title: isDefault ? pageTitle : t('seo.titleWithOrg', { title: pageTitle, name }),
-          description: excerpt || (isDefault ? 'Vote and join the discussion.' : `Vote and join the discussion on ${name}.`),
+          description:
+            excerpt || (isDefault ? 'Vote and join the discussion.' : `Vote and join the discussion on ${name}.`),
           ogType: 'article',
         }
       }

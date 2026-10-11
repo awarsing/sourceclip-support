@@ -6,14 +6,29 @@ import { widgetEmbedKey } from '#layers/feedlog/app/composables/useWidgetEmbed'
 import { widgetProtocolKey } from '#layers/feedlog/app/composables/useWidgetProtocol'
 import type { WidgetChatResume } from '#layers/feedlog/app/composables/useWidgetResume'
 
-
 const props = defineProps<{
-  productName: string; openId: string | null; resumeState?: WidgetChatResume | null
+  productName: string
+  openId: string | null
+  resumeState?: WidgetChatResume | null
 }>()
-const emit = defineEmits<{ authRequired: []; filed: []; replied: [id: string, lastSeq: number]; started: [id: string]; busy: [value: boolean]; stateChange: [state: WidgetChatResume] }>()
+const emit = defineEmits<{
+  authRequired: []
+  filed: []
+  replied: [id: string, lastSeq: number]
+  started: [id: string]
+  busy: [value: boolean]
+  stateChange: [state: WidgetChatResume]
+}>()
 const { t } = useI18n()
 const messageTime = useConversationTime()
-const messageAuthor = (item: Item) => item.authorType === 'customer' ? t('widget.messageYou') : item.authorType === 'agent' ? t('widget.messageAI') : item.author?.name ? t('widget.messageStaffNamed', { name: item.author.name }) : t('widget.messageStaff')
+const messageAuthor = (item: Item) =>
+  item.authorType === 'customer'
+    ? t('widget.messageYou')
+    : item.authorType === 'agent'
+      ? t('widget.messageAI')
+      : item.author?.name
+        ? t('widget.messageStaffNamed', { name: item.author.name })
+        : t('widget.messageStaff')
 const { user, widgetFetch, widgetRequest, ensureIdentity } = inject(widgetEmbedKey)!
 const protocol = inject(widgetProtocolKey, null)
 const apiBase = '/api/widget/conversations'
@@ -32,35 +47,59 @@ const articleSlug = ref<string | null>(null)
 const observedSeq = ref(0)
 let chatActive = true
 function reportRead(id: string) {
-  if (chatActive && !document.hidden && !articleSlug.value && observedSeq.value > 0) emit('replied', id, observedSeq.value)
+  if (chatActive && !document.hidden && !articleSlug.value && observedSeq.value > 0)
+    emit('replied', id, observedSeq.value)
 }
 const handlingMode = ref<'ai' | 'human' | 'closed'>('ai')
 const bodyEl = ref<HTMLElement | null>(null)
 const draftEl = ref<HTMLTextAreaElement | null>(null)
 const latestRun = computed(() => runs.value.at(-1))
 const busy = computed(() => sending.value || (handlingMode.value === 'ai' && latestRun.value?.status === 'running'))
-const canRetry = computed(() => !!pending.value || (handlingMode.value === 'ai' && items.value.at(-1)?.authorType === 'customer' && latestRun.value?.status !== 'running'))
+const canRetry = computed(
+  () =>
+    !!pending.value ||
+    (handlingMode.value === 'ai' &&
+      items.value.at(-1)?.authorType === 'customer' &&
+      latestRun.value?.status !== 'running'),
+)
 const resumeKey = 'feedlog:widget:agent-pending'
-const hasFeedbackCard = (content: Content) => content.parts.some(part => 'feedback_id' in part)
+const hasFeedbackCard = (content: Content) => content.parts.some((part) => 'feedback_id' in part)
 let version = 0
 
 function savePending() {
   try {
-    if (pending.value) sessionStorage.setItem(resumeKey, JSON.stringify({ owner: user.value?.id, conversationId: conversationId.value, pending: pending.value }))
+    if (pending.value)
+      sessionStorage.setItem(
+        resumeKey,
+        JSON.stringify({ owner: user.value?.id, conversationId: conversationId.value, pending: pending.value }),
+      )
     else sessionStorage.removeItem(resumeKey)
-  } catch { /* The request can still be retried while this frame remains open. */ }
+  } catch {
+    /* The request can still be retried while this frame remains open. */
+  }
 }
-watch(draft, () => {
-  if (!draftEl.value) return
-  draftEl.value.style.height = 'auto'
-  draftEl.value.style.height = `${draftEl.value.scrollHeight}px`
-}, { flush: 'post' })
+watch(
+  draft,
+  () => {
+    if (!draftEl.value) return
+    draftEl.value.style.height = 'auto'
+    draftEl.value.style.height = `${draftEl.value.scrollHeight}px`
+  },
+  { flush: 'post' },
+)
 const MAX_UPLOAD_MB = 16
-interface Attachment { key: string, name: string }
+interface Attachment {
+  key: string
+  name: string
+}
 const attachments = ref<Attachment[]>([])
 const pendingUploads = ref(0)
 const uploading = computed(() => pendingUploads.value > 0)
-watch(() => busy.value || uploading.value || loadingThread.value, value => emit('busy', value), { immediate: true })
+watch(
+  () => busy.value || uploading.value || loadingThread.value,
+  (value) => emit('busy', value),
+  { immediate: true },
+)
 const uploadError = ref('')
 const fileInput = ref<HTMLInputElement | null>(null)
 const articleScrollTop = ref(0)
@@ -70,11 +109,11 @@ function reportState() {
   emit('stateChange', {
     conversationId: conversationId.value,
     draft: draft.value,
-    attachments: attachments.value.map(file => ({ ...file })),
+    attachments: attachments.value.map((file) => ({ ...file })),
     pending: pending.value,
     articleSlug: articleSlug.value,
     articleScrollTop: articleScrollTop.value,
-    firstSeq: items.value.find(item => item.seq > 0)?.seq ?? null,
+    firstSeq: items.value.find((item) => item.seq > 0)?.seq ?? null,
     scrollTop,
   })
 }
@@ -90,14 +129,18 @@ async function restoreState(state: WidgetChatResume) {
   if (current !== version) return
   // Restore the loaded history range before applying its scroll offset.
   while (state.firstSeq && nextBeforeSeq.value && (items.value[0]?.seq ?? 0) > state.firstSeq) {
-    try { await loadHistory(true) } catch { break }
+    try {
+      await loadHistory(true)
+    } catch {
+      break
+    }
     if (current !== version) return
   }
   draft.value = state.draft
-  attachments.value = state.attachments.map(file => ({ ...file }))
+  attachments.value = state.attachments.map((file) => ({ ...file }))
   pending.value = state.pending
   const request = pending.value
-  if (request?.action === 'send' && items.value.some(item => item.id === request.message.id)) confirmInput(request)
+  if (request?.action === 'send' && items.value.some((item) => item.id === request.message.id)) confirmInput(request)
   savePending()
   articleScrollTop.value = state.articleScrollTop
   articleSlug.value = state.articleSlug
@@ -108,7 +151,12 @@ async function restoreState(state: WidgetChatResume) {
   if (bodyEl.value) bodyEl.value.scrollTop = scrollTop
   reportState()
 }
-watch(() => props.resumeState, state => { if (state) void restoreState(state) })
+watch(
+  () => props.resumeState,
+  (state) => {
+    if (state) void restoreState(state)
+  },
+)
 
 function onFilePicked(e: Event) {
   const input = e.target as HTMLInputElement
@@ -118,7 +166,7 @@ function onFilePicked(e: Event) {
 }
 
 function onPaste(e: ClipboardEvent) {
-  const images = Array.from(e.clipboardData?.files ?? []).filter(f => f.type.startsWith('image/'))
+  const images = Array.from(e.clipboardData?.files ?? []).filter((f) => f.type.startsWith('image/'))
   if (!images.length) return
   // A copied file carries its name as text/plain; without this it lands in the draft.
   e.preventDefault()
@@ -129,7 +177,7 @@ async function uploadFiles(files: File[]) {
   if (!files.length || awaitingRun.value) return
   // An attachment is a write like any other, so it is enough on its own to earn
   // a guest identity.
-  if (!await ensureIdentity()) {
+  if (!(await ensureIdentity())) {
     uploadError.value = t('widget.uploadFailed')
     return
   }
@@ -145,8 +193,7 @@ async function uploadFiles(files: File[]) {
       form.append('file', file)
       const res = await widgetFetch<{ key: string }>('/api/upload', { method: 'POST', body: form })
       attachments.value.push({ key: res.key, name: file.name })
-    }
-    catch (err) {
+    } catch (err) {
       // Same 401 contract as send(): park before the SDK rebuilds the frame.
       if ((err as { statusCode?: number })?.statusCode === 401) {
         savePending()
@@ -159,9 +206,10 @@ async function uploadFiles(files: File[]) {
   pendingUploads.value--
 }
 
-
 function scrollToBottom() {
-  nextTick(() => { if (bodyEl.value) bodyEl.value.scrollTop = bodyEl.value.scrollHeight })
+  nextTick(() => {
+    if (bodyEl.value) bodyEl.value.scrollTop = bodyEl.value.scrollHeight
+  })
 }
 function onEnterKey(event: KeyboardEvent) {
   if (event.isComposing || event.keyCode === 229) return
@@ -178,7 +226,7 @@ async function loadHistory(older = false) {
   handlingMode.value = data.conversation.handling ?? 'ai'
   if (handlingMode.value !== 'ai') transient.value = ''
   items.value = older ? [...data.items, ...items.value] : data.items
-  const merged = new Map((older ? runs.value : []).map(run => [run.id, run]))
+  const merged = new Map((older ? runs.value : []).map((run) => [run.id, run]))
   for (const run of data.runs) merged.set(run.id, run)
   runs.value = [...merged.values()].sort((a, b) => a.startedAt.localeCompare(b.startedAt) || a.id.localeCompare(b.id))
   nextBeforeSeq.value = data.nextBeforeSeq
@@ -191,12 +239,22 @@ async function loadHistory(older = false) {
 }
 async function refreshStatus() {
   failure.value = ''
-  try { await loadHistory() } catch { failure.value = t('widget.loadFailed') }
+  try {
+    await loadHistory()
+  } catch {
+    failure.value = t('widget.loadFailed')
+  }
 }
 function confirmInput(input: ChatInput) {
   if (input.action === 'send') {
-    if (!items.value.some(item => item.id === input.message.id)) {
-      items.value.push({ ...input.message, seq: 0, authorType: 'customer', agentRunId: null, createdAt: new Date().toISOString() })
+    if (!items.value.some((item) => item.id === input.message.id)) {
+      items.value.push({
+        ...input.message,
+        seq: 0,
+        authorType: 'customer',
+        agentRunId: null,
+        createdAt: new Date().toISOString(),
+      })
     }
     draft.value = ''
     attachments.value = []
@@ -218,7 +276,7 @@ async function submit(input: ChatInput) {
   transient.value = ''
   let finished = false
   try {
-    if (!await ensureIdentity()) {
+    if (!(await ensureIdentity())) {
       if (current === version) failure.value = t('widget.sendFailed')
       return
     }
@@ -244,16 +302,24 @@ async function submit(input: ChatInput) {
           confirmInput(input)
           emit('started', id)
         }
-        if (name === 'text') { transient.value += data.delta; scrollToBottom() }
+        if (name === 'text') {
+          transient.value += data.delta
+          scrollToBottom()
+        }
         if (name === 'finish') finished = true
         if (name === 'handoff' || name === 'closed') {
-          if (name === 'handoff' && !items.value.some(item => item.id === data.noticeItemId)) {
+          if (name === 'handoff' && !items.value.some((item) => item.id === data.noticeItemId)) {
             // The event confirms persistence; render it before the history fetch.
             // Reusing its ID lets history update the same bubble without a gap.
             items.value.push({
-              id: data.noticeItemId, seq: data.lastSeq, authorType: 'system', notice: 'handoff',
+              id: data.noticeItemId,
+              seq: data.lastSeq,
+              authorType: 'system',
+              notice: 'handoff',
               content: { parts: [{ type: 'text', text: t('widget.conversationNotices.handoff') }] },
-              context: null, agentRunId: null, createdAt: new Date().toISOString(),
+              context: null,
+              agentRunId: null,
+              createdAt: new Date().toISOString(),
             })
           }
           transient.value = ''
@@ -272,11 +338,18 @@ async function submit(input: ChatInput) {
     }
   } catch (error) {
     if (current !== version) return
-    if ((error as { statusCode?: number }).statusCode === 401) { savePending(); emit('authRequired') }
-    else {
+    if ((error as { statusCode?: number }).statusCode === 401) {
+      savePending()
+      emit('authRequired')
+    } else {
       failure.value = t('widget.sendFailed')
       await loadHistory().catch(() => {})
-      if (current === version && awaitingRun.value && input.action === 'send' && items.value.some(item => item.id === input.message.id)) {
+      if (
+        current === version &&
+        awaitingRun.value &&
+        input.action === 'send' &&
+        items.value.some((item) => item.id === input.message.id)
+      ) {
         confirmInput(input)
         emit('started', id)
       }
@@ -294,19 +367,40 @@ async function submit(input: ChatInput) {
 async function send() {
   const text = draft.value.trim()
   if ((!text && !attachments.value.length) || busy.value || uploading.value) return
-  if (attachments.value.length + (text ? 1 : 0) > 10) { uploadError.value = t('widget.tooManyParts'); return }
+  if (attachments.value.length + (text ? 1 : 0) > 10) {
+    uploadError.value = t('widget.tooManyParts')
+    return
+  }
   conversationId.value ??= crypto.randomUUID()
-  const input: ChatInput = { action: 'send', idempotency_key: crypto.randomUUID(), message: {
-    id: crypto.randomUUID(), content: { parts: [...(text ? [{ type: 'text' as const, text }] : []), ...attachments.value.map(file => ({ type: 'image' as const, storage_key: file.key }))] },
-    context: null,
-  } }
+  const input: ChatInput = {
+    action: 'send',
+    idempotency_key: crypto.randomUUID(),
+    message: {
+      id: crypto.randomUUID(),
+      content: {
+        parts: [
+          ...(text ? [{ type: 'text' as const, text }] : []),
+          ...attachments.value.map((file) => ({ type: 'image' as const, storage_key: file.key })),
+        ],
+      },
+      context: null,
+    },
+  }
   const previous = pending.value
-  await submit(previous?.action === 'send' && JSON.stringify(previous.message.content) === JSON.stringify(input.message.content) ? previous : input)
+  await submit(
+    previous?.action === 'send' && JSON.stringify(previous.message.content) === JSON.stringify(input.message.content)
+      ? previous
+      : input,
+  )
 }
 async function retry() {
   if (busy.value) return
   const last = items.value.at(-1)
-  const input = pending.value ?? (last?.authorType === 'customer' ? { action: 'retry' as const, idempotency_key: crypto.randomUUID(), trigger_item_id: last.id } : null)
+  const input =
+    pending.value ??
+    (last?.authorType === 'customer'
+      ? { action: 'retry' as const, idempotency_key: crypto.randomUUID(), trigger_item_id: last.id }
+      : null)
   if (input) await submit(input)
 }
 async function openConversation(id: string | null) {
@@ -325,53 +419,99 @@ async function openConversation(id: string | null) {
   handlingMode.value = 'ai'
   if (!id) return
   loadingThread.value = true
-  try { await loadHistory() } catch { failure.value = t('widget.loadFailed') }
-  finally { loadingThread.value = false; scrollToBottom() }
+  try {
+    await loadHistory()
+  } catch {
+    failure.value = t('widget.loadFailed')
+  } finally {
+    loadingThread.value = false
+    scrollToBottom()
+  }
 }
-watch(() => props.openId, id => { if (id !== conversationId.value) void openConversation(id) })
+watch(
+  () => props.openId,
+  (id) => {
+    if (id !== conversationId.value) void openConversation(id)
+  },
+)
 onMounted(async () => {
-  if (props.resumeState) { await restoreState(props.resumeState); return }
+  if (props.resumeState) {
+    await restoreState(props.resumeState)
+    return
+  }
   let saved: { owner: string; conversationId: string; pending: ChatInput } | null = null
-  try { saved = JSON.parse(sessionStorage.getItem(resumeKey) ?? 'null') } catch { /* Ignore an incomplete local draft. */ }
+  try {
+    saved = JSON.parse(sessionStorage.getItem(resumeKey) ?? 'null')
+  } catch {
+    /* Ignore an incomplete local draft. */
+  }
   if (saved && saved.owner === user.value?.id && !props.openId) {
     await openConversation(saved.conversationId)
     pending.value = saved.pending
     failure.value = t('widget.sendFailed')
     if (saved.pending.action === 'send') {
       const message = saved.pending.message
-      if (items.value.some(item => item.id === message.id)) confirmInput(saved.pending)
+      if (items.value.some((item) => item.id === message.id)) confirmInput(saved.pending)
       else {
-        draft.value = message.content.parts.filter(part => part.type === 'text').map(part => part.text).join('\n')
-        attachments.value = message.content.parts.filter(part => part.type === 'image').map(part => ({ key: part.storage_key, name: part.storage_key }))
+        draft.value = message.content.parts
+          .filter((part) => part.type === 'text')
+          .map((part) => part.text)
+          .join('\n')
+        attachments.value = message.content.parts
+          .filter((part) => part.type === 'image')
+          .map((part) => ({ key: part.storage_key, name: part.storage_key }))
       }
     }
   } else await openConversation(props.openId)
 })
 let polling: ReturnType<typeof setInterval> | undefined
 let pollingBusy = false
-onMounted(() => { polling = setInterval(async () => {
-  if (!chatActive || articleSlug.value || !conversationId.value || document.hidden || loadingThread.value || sending.value || pollingBusy) return
-  const current = version
-  const id = conversationId.value
-  pollingBusy = true
-  try {
-    const data = await widgetFetch<Detail>(`${apiBase}/${id}/items?afterSeq=${observedSeq.value}`)
-    if (current !== version) return
-    const merged = new Map(items.value.map(item => [item.id, item]))
-    for (const item of data.items) merged.set(item.id, item)
-    items.value = [...merged.values()].sort((a, b) => a.seq - b.seq)
-    handlingMode.value = data.conversation.handling ?? 'ai'
-    if (handlingMode.value !== 'ai') transient.value = ''
-    const runMap = new Map(runs.value.map(run => [run.id, run]))
-    for (const run of data.runs) runMap.set(run.id, run)
-    runs.value = [...runMap.values()].sort((a, b) => a.startedAt.localeCompare(b.startedAt))
-    observedSeq.value = data.nextAfterSeq ?? observedSeq.value
-    if (data.items.length) { await nextTick(); reportRead(id); scrollToBottom() }
-  } catch { /* Preserve the conversation and retry on the next visible interval. */ }
-  finally { pollingBusy = false }
-}, 5000) })
-onBeforeUnmount(() => { version++; clearInterval(polling) })
-onDeactivated(() => { chatActive = false })
+onMounted(() => {
+  polling = setInterval(async () => {
+    if (
+      !chatActive ||
+      articleSlug.value ||
+      !conversationId.value ||
+      document.hidden ||
+      loadingThread.value ||
+      sending.value ||
+      pollingBusy
+    )
+      return
+    const current = version
+    const id = conversationId.value
+    pollingBusy = true
+    try {
+      const data = await widgetFetch<Detail>(`${apiBase}/${id}/items?afterSeq=${observedSeq.value}`)
+      if (current !== version) return
+      const merged = new Map(items.value.map((item) => [item.id, item]))
+      for (const item of data.items) merged.set(item.id, item)
+      items.value = [...merged.values()].sort((a, b) => a.seq - b.seq)
+      handlingMode.value = data.conversation.handling ?? 'ai'
+      if (handlingMode.value !== 'ai') transient.value = ''
+      const runMap = new Map(runs.value.map((run) => [run.id, run]))
+      for (const run of data.runs) runMap.set(run.id, run)
+      runs.value = [...runMap.values()].sort((a, b) => a.startedAt.localeCompare(b.startedAt))
+      observedSeq.value = data.nextAfterSeq ?? observedSeq.value
+      if (data.items.length) {
+        await nextTick()
+        reportRead(id)
+        scrollToBottom()
+      }
+    } catch {
+      /* Preserve the conversation and retry on the next visible interval. */
+    } finally {
+      pollingBusy = false
+    }
+  }, 5000)
+})
+onBeforeUnmount(() => {
+  version++
+  clearInterval(polling)
+})
+onDeactivated(() => {
+  chatActive = false
+})
 onActivated(() => {
   chatActive = true
   if (conversationId.value && !busy.value && !loadingThread.value) void refreshStatus()

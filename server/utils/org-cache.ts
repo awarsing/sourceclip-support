@@ -32,7 +32,9 @@ const defaultBackend: OrgCacheBackend = {
       .limit(1)
     return rows[0] ?? null
   },
-  async invalidate() { /* no-op — default backend reads live from DB */ },
+  async invalidate() {
+    /* no-op — default backend reads live from DB */
+  },
 }
 
 let _backend: OrgCacheBackend = defaultBackend

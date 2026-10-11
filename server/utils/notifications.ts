@@ -42,12 +42,17 @@ export interface RecipientRow {
 // The post's subscribers across its merge family. Excludes org admins and the
 // actor. includeVoters=false also drops upvoters (the author subscribed via
 // authorship, not a vote, so they survive).
-export async function resolvePostThreadRecipients(orgId: string, postId: string, actorId: string, includeVoters = true): Promise<RecipientRow[]> {
+export async function resolvePostThreadRecipients(
+  orgId: string,
+  postId: string,
+  actorId: string,
+  includeVoters = true,
+): Promise<RecipientRow[]> {
   const db = useDB()
   const excludeVoters = includeVoters
     ? sql``
     : sql`AND NOT EXISTS (SELECT 1 FROM vote v WHERE v.user_id = ps.user_id AND v.post_id IN (SELECT id FROM family))`
-  return await db.execute(sql`
+  return (await db.execute(sql`
     WITH RECURSIVE family AS (
       SELECT id FROM post WHERE id = ${postId}::uuid
       UNION ALL
@@ -70,12 +75,16 @@ export async function resolvePostThreadRecipients(orgId: string, postId: string,
         WHERE m.user_id = ps.user_id AND m.organization_id = ${orgId}
           AND m.role IN ('owner', 'manager')
       )
-  `) as unknown as RecipientRow[]
+  `)) as unknown as RecipientRow[]
 }
 
 export async function resolveOrgBranding(orgId: string): Promise<{ slug: string; brandColor: string }> {
   const db = useDB()
-  const rows = await db.select({ slug: organization.slug, metadata: organization.metadata }).from(organization).where(eq(organization.id, orgId)).limit(1)
+  const rows = await db
+    .select({ slug: organization.slug, metadata: organization.metadata })
+    .from(organization)
+    .where(eq(organization.id, orgId))
+    .limit(1)
   return { slug: rows[0]?.slug ?? '', brandColor: resolveBranding(rows[0]?.metadata).primaryColor }
 }
 
@@ -116,12 +125,24 @@ async function emitAdminReply(input: CommentEmitInput): Promise<void> {
   if (recipients.length === 0) return
 
   // Actor is the same for every recipient — resolve once for the email.
-  const [actor] = await db.select({ name: user.name, image: user.image }).from(user).where(eq(user.id, input.actorId)).limit(1)
-  await deliverToRecipients(input.orgId, orgSlug, brandColor, recipients, 'post.admin_replied', {
-    snippet: input.snippet.slice(0, 280),
-    actorName: actor?.name ?? undefined,
-    actorImage: actor?.image ?? null,
-  }, input.requestOrigin)
+  const [actor] = await db
+    .select({ name: user.name, image: user.image })
+    .from(user)
+    .where(eq(user.id, input.actorId))
+    .limit(1)
+  await deliverToRecipients(
+    input.orgId,
+    orgSlug,
+    brandColor,
+    recipients,
+    'post.admin_replied',
+    {
+      snippet: input.snippet.slice(0, 280),
+      actorName: actor?.name ?? undefined,
+      actorImage: actor?.image ?? null,
+    },
+    input.requestOrigin,
+  )
 }
 
 // Only an admin's top-level comment notifies anyone (official reply).
@@ -131,8 +152,9 @@ export async function emitCommentNotifications(input: CommentEmitInput): Promise
     if (typeKey === 'post.admin_replied') {
       // The widget's red dot rides the same event as the email, but reaches only
       // the author. Separate try so a widget failure can't cost anyone their mail.
-      await markPostUnreadForAuthor(input.postId, input.actorId)
-        .catch((err: unknown) => console.error('[widget] unread mark failed', err))
+      await markPostUnreadForAuthor(input.postId, input.actorId).catch((err: unknown) =>
+        console.error('[widget] unread mark failed', err),
+      )
       await emitAdminReply(input)
     }
   }
@@ -162,7 +184,11 @@ export async function emitAdminNotification(input: AdminEmitInput): Promise<void
   const recipients = await resolveOrgAdminRecipients(input.orgId, input.actorId)
   if (recipients.length === 0) return
 
-  const [actor] = await db.select({ name: user.name, image: user.image }).from(user).where(eq(user.id, input.actorId)).limit(1)
+  const [actor] = await db
+    .select({ name: user.name, image: user.image })
+    .from(user)
+    .where(eq(user.id, input.actorId))
+    .limit(1)
   const payload: NotificationPayload = {
     snippet: input.snippet.slice(0, 280),
     actorName: actor?.name ?? undefined,

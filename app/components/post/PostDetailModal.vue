@@ -1,7 +1,6 @@
 <script setup lang="ts">
-
 import type { PostUpdatedEvent } from './PostDetail.vue'
-import { preventShadcnDialogClose } from '~/lib/md-editor-helper';
+import { preventShadcnDialogClose } from '~/lib/md-editor-helper'
 
 const props = defineProps<{
   slug?: string | null
@@ -17,13 +16,16 @@ const emit = defineEmits<{
 const localePath = useLocalePath()
 const store = usePostDetailStore()
 
-watch(open, (isOpen) => {
-  if (isOpen && props.slug) {
-    store.fetchPost(props.slug)
-    store.fetchComments(props.slug)
-  }
-}, { immediate: true })
-
+watch(
+  open,
+  (isOpen) => {
+    if (isOpen && props.slug) {
+      store.fetchPost(props.slug)
+      store.fetchComments(props.slug)
+    }
+  },
+  { immediate: true },
+)
 </script>
 
 <template>

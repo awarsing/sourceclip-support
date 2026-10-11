@@ -17,7 +17,10 @@ const logger = consola.withTag('auth')
 
 const env = process.env
 
-const systemAdminEmails = env.SYSTEM_ADMIN_EMAILS?.split(',').map(s => s.trim()).filter(Boolean) ?? []
+const systemAdminEmails =
+  env.SYSTEM_ADMIN_EMAILS?.split(',')
+    .map((s) => s.trim())
+    .filter(Boolean) ?? []
 
 const hasGoogle = !!(env.GOOGLE_CLIENT_ID && env.GOOGLE_CLIENT_SECRET)
 const hasGithub = !!(env.GITHUB_CLIENT_ID && env.GITHUB_CLIENT_SECRET)
@@ -41,11 +44,14 @@ if (!hasOAuth && !emailLoginEnabled) {
 // First OAuth signup still copies name / avatar from the provider. Later
 // callbacks must not overwrite them: users can edit both in-app, and a re-login
 // would otherwise discard those edits.
-const socialProviders: Record<string, {
-  clientId: string
-  clientSecret: string
-  overrideUserInfoOnSignIn: boolean
-}> = {}
+const socialProviders: Record<
+  string,
+  {
+    clientId: string
+    clientSecret: string
+    overrideUserInfoOnSignIn: boolean
+  }
+> = {}
 if (hasGoogle) {
   socialProviders.google = {
     clientId: env.GOOGLE_CLIENT_ID!,
@@ -63,34 +69,34 @@ if (hasGithub) {
 
 const emailAndPassword = emailLoginEnabled
   ? {
-    enabled: true,
-    requireEmailVerification,
-    password: { hash: hashPassword, verify: verifyPassword },
-    ...(hasEmailProvider && {
-      sendResetPassword: async ({ user, url }: { user: { email: string; name: string }; url: string }) => {
-        await sendEmail({
-          to: user.email,
-          subject: 'Reset your FeedLog password',
-          html: renderResetPasswordEmail({ url, name: user.name }),
-        })
-      },
-    }),
-  }
+      enabled: true,
+      requireEmailVerification,
+      password: { hash: hashPassword, verify: verifyPassword },
+      ...(hasEmailProvider && {
+        sendResetPassword: async ({ user, url }: { user: { email: string; name: string }; url: string }) => {
+          await sendEmail({
+            to: user.email,
+            subject: 'Reset your FeedLog password',
+            html: renderResetPasswordEmail({ url, name: user.name }),
+          })
+        },
+      }),
+    }
   : { enabled: false }
 
 const emailVerification = hasEmailProvider
   ? {
-    sendOnSignUp: true,
-    autoSignInAfterVerification: true,
-    expiresIn: 3600,
-    sendVerificationEmail: async ({ user, url }: { user: { email: string; name: string }; url: string }) => {
-      await sendEmail({
-        to: user.email,
-        subject: 'Confirm your email to start using FeedLog',
-        html: renderVerificationEmail({ url, name: user.name }),
-      })
-    },
-  }
+      sendOnSignUp: true,
+      autoSignInAfterVerification: true,
+      expiresIn: 3600,
+      sendVerificationEmail: async ({ user, url }: { user: { email: string; name: string }; url: string }) => {
+        await sendEmail({
+          to: user.email,
+          subject: 'Confirm your email to start using FeedLog',
+          html: renderVerificationEmail({ url, name: user.name }),
+        })
+      },
+    }
   : undefined
 
 // Build the orgList shape attached to every session via customSession plugin.
@@ -126,12 +132,15 @@ async function loadOrgList(userId: string, confineToOrgId?: string | null) {
 // invited users sign in and click Accept on /invite?id=... themselves.
 async function bootstrapAfterUserCreate(newUser: { id: string; email: string }) {
   if (!systemAdminEmails.includes(newUser.email)) return
-  await db.insert(member).values({
-    id: uuidv7(),
-    organizationId: DEFAULT_ORG_ID,
-    userId: newUser.id,
-    role: 'owner',
-  }).onConflictDoNothing()
+  await db
+    .insert(member)
+    .values({
+      id: uuidv7(),
+      organizationId: DEFAULT_ORG_ID,
+      userId: newUser.id,
+      role: 'owner',
+    })
+    .onConflictDoNothing()
 }
 
 // The plugin picks the name before the row exists, so the id-derived tag can only
@@ -139,7 +148,8 @@ async function bootstrapAfterUserCreate(newUser: { id: string; email: string }) 
 // guest — worth it so the dashboard and a raw DB query can tell two guests apart
 // without composing the tag themselves.
 async function nameGuestUser(userId: string) {
-  await db.update(userTable)
+  await db
+    .update(userTable)
     .set({ name: `Anonymous ${guestTag(userId)}` })
     .where(eq(userTable.id, userId))
 }
@@ -182,8 +192,7 @@ export function buildAuthConfig(overrides: AuthConfigOverrides = {}): BetterAuth
   const sendInvitationEmail: SendInvite = async (data, request) => {
     try {
       await rawSendInvite(data, request)
-    }
-    catch (e) {
+    } catch (e) {
       logger.warn(`Invitation email failed for ${data.email}: ${(e as Error)?.message ?? e}`)
     }
   }

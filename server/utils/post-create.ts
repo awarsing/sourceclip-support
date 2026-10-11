@@ -66,9 +66,7 @@ export async function createPostRecord(
   await db.insert(postSearch).values({ postId: created.id, orgId: input.orgId, searchText })
 
   if (input.subscribeAuthor) {
-    await db.insert(postSubscription)
-      .values({ postId: created.id, userId: input.authorId })
-      .onConflictDoNothing()
+    await db.insert(postSubscription).values({ postId: created.id, userId: input.authorId }).onConflictDoNothing()
   }
 
   return { ...created, contentHash }

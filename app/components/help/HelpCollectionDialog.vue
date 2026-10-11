@@ -27,16 +27,22 @@ const visible = ref(true)
 const error = ref('')
 const submitting = ref(false)
 
-watch(open, (value) => {
-  if (!value) return
-  icon.value = props.collection?.icon ?? HELP_COLLECTION_ICON_DEFAULT
-  name.value = props.collection?.name ?? ''
-  description.value = props.collection?.description ?? ''
-  visible.value = props.collection?.visible ?? true
-  error.value = ''
-}, { immediate: true })
+watch(
+  open,
+  (value) => {
+    if (!value) return
+    icon.value = props.collection?.icon ?? HELP_COLLECTION_ICON_DEFAULT
+    name.value = props.collection?.name ?? ''
+    description.value = props.collection?.description ?? ''
+    visible.value = props.collection?.visible ?? true
+    error.value = ''
+  },
+  { immediate: true },
+)
 
-watch([name, description], () => { error.value = '' })
+watch([name, description], () => {
+  error.value = ''
+})
 
 async function handleSave() {
   if (!name.value.trim()) {
@@ -58,11 +64,9 @@ async function handleSave() {
 
     open.value = false
     emit('saved')
-  }
-  catch (e) {
+  } catch (e) {
     error.value = (e as { data?: { message?: string } }).data?.message || t('help.admin.collection.saveFailed')
-  }
-  finally {
+  } finally {
     submitting.value = false
   }
 }
@@ -85,11 +89,9 @@ async function handleDelete() {
     await $fetch(`/api/admin/help/collections/${props.collection.id}`, { method: 'DELETE' })
     open.value = false
     emit('deleted')
-  }
-  catch (e) {
+  } catch (e) {
     error.value = (e as { data?: { message?: string } }).data?.message || t('help.admin.collection.saveFailed')
-  }
-  finally {
+  } finally {
     submitting.value = false
   }
 }

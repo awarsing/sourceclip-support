@@ -42,7 +42,7 @@ function hydrate() {
 watch(() => props.org, hydrate, { immediate: true })
 
 const current = computed(() => resolveGuestAccess(props.org.metadata))
-const dirty = computed(() => ROWS.some(r => form[r.key] !== current.value[r.key]))
+const dirty = computed(() => ROWS.some((r) => form[r.key] !== current.value[r.key]))
 const canSave = computed(() => props.isOwner && dirty.value && !saving.value)
 
 async function save() {
@@ -55,11 +55,9 @@ async function save() {
       data: { metadata: mergeGuestAccessMetadata(props.org.metadata, { ...form }) },
     })
     emit('saved')
-  }
-  catch {
+  } catch {
     error.value = t('settings.guest.saveFailed')
-  }
-  finally {
+  } finally {
     saving.value = false
   }
 }

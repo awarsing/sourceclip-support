@@ -17,13 +17,25 @@ export default defineEventHandler(async (event): Promise<PagePaginatedList<PostL
 
   const db = useDB()
 
-  const flat = (rows: Array<{
-    id: string; slug: string; title: string; excerpt: string | null; status: string
-    boardId: string | null; voteCount: number; commentCount: number; mergedCount: number
-    authorId: string; authorName: string | null; authorImage: string | null
-    authorIsAnonymous: boolean | null; createdAt: Date
-  }>): PagePaginatedList<PostListItem> => ({
-    data: rows.map(r => ({
+  const flat = (
+    rows: Array<{
+      id: string
+      slug: string
+      title: string
+      excerpt: string | null
+      status: string
+      boardId: string | null
+      voteCount: number
+      commentCount: number
+      mergedCount: number
+      authorId: string
+      authorName: string | null
+      authorImage: string | null
+      authorIsAnonymous: boolean | null
+      createdAt: Date
+    }>,
+  ): PagePaginatedList<PostListItem> => ({
+    data: rows.map((r) => ({
       id: r.id,
       slug: r.slug,
       title: r.title,

@@ -21,10 +21,7 @@ export default defineEventHandler(async (event): Promise<{ data: BoardItem[]; to
       .where(eq(board.orgId, orgId))
       .groupBy(board.id)
       .orderBy(asc(board.position)),
-    db
-      .select({ count: sql<number>`cast(count(*) as int)` })
-      .from(post)
-      .where(eq(post.orgId, orgId)),
+    db.select({ count: sql<number>`cast(count(*) as int)` }).from(post).where(eq(post.orgId, orgId)),
   ])
 
   return { data: boards, totalPostCount: totalResult[0]?.count ?? 0 }

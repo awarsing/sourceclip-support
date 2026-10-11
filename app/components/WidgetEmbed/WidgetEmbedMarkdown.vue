@@ -10,7 +10,7 @@ function sanitize(html: string) {
     RETURN_DOM_FRAGMENT: true,
   })
   // Links must not replace the iframe and leave the customer outside the chat.
-  fragment.querySelectorAll('a[href]').forEach(link => {
+  fragment.querySelectorAll('a[href]').forEach((link) => {
     link.setAttribute('target', '_blank')
     link.setAttribute('rel', 'noopener noreferrer')
   })

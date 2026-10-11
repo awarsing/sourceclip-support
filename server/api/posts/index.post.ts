@@ -17,12 +17,15 @@ export default defineEventHandler(async (event) => {
     subscribeAuthor: !isActorAdmin(session, orgId),
   })
 
-  publishDomainEvent(event, createDomainEvent({
-    name: 'feedback.created',
-    orgId,
-    userId: session.user.id,
-    data: { feedbackId: created.id, boardId: created.boardId, source: 'portal', messageId: null },
-  }))
+  publishDomainEvent(
+    event,
+    createDomainEvent({
+      name: 'feedback.created',
+      orgId,
+      userId: session.user.id,
+      data: { feedbackId: created.id, boardId: created.boardId, source: 'portal', messageId: null },
+    }),
+  )
 
   const author = await fetchPostAuthor(session.user.id)
 

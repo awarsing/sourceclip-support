@@ -44,7 +44,7 @@ export default defineEventHandler(async (event): Promise<CursorPaginatedList<Cha
   const items = hasMore ? rows.slice(0, pageSize) : rows
 
   // Batch query reaction counts
-  const changelogIds = items.map(r => r.id)
+  const changelogIds = items.map((r) => r.id)
   let reactionCountsMap: Record<string, Record<string, number>> = {}
   let userReactionsMap: Record<string, string[]> = {}
 
@@ -72,10 +72,7 @@ export default defineEventHandler(async (event): Promise<CursorPaginatedList<Cha
           emoji: changelogReaction.emoji,
         })
         .from(changelogReaction)
-        .where(and(
-          inArray(changelogReaction.changelogId, changelogIds),
-          eq(changelogReaction.userId, session.user.id),
-        ))
+        .where(and(inArray(changelogReaction.changelogId, changelogIds), eq(changelogReaction.userId, session.user.id)))
 
       for (const r of userReactions) {
         if (!userReactionsMap[r.changelogId]) userReactionsMap[r.changelogId] = []
@@ -84,7 +81,7 @@ export default defineEventHandler(async (event): Promise<CursorPaginatedList<Cha
     }
   }
 
-  const data: ChangelogListItem[] = items.map(r => ({
+  const data: ChangelogListItem[] = items.map((r) => ({
     id: r.id,
     slug: r.slug,
     title: r.title ?? '',
@@ -97,9 +94,7 @@ export default defineEventHandler(async (event): Promise<CursorPaginatedList<Cha
   }))
 
   const lastItem = data[data.length - 1]
-  const nextCursor = hasMore && lastItem
-    ? encodeCursor({ s: lastItem.publishedAt, id: lastItem.id })
-    : null
+  const nextCursor = hasMore && lastItem ? encodeCursor({ s: lastItem.publishedAt, id: lastItem.id }) : null
 
   return { data, pagination: { nextCursor } }
 })

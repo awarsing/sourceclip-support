@@ -17,9 +17,7 @@ export default defineEventHandler(async (event) => {
       throw createError({ statusCode: 404, message: 'Collection not found' })
     }
 
-    await tx
-      .delete(helpArticle)
-      .where(and(eq(helpArticle.collectionId, id), eq(helpArticle.orgId, orgId)))
+    await tx.delete(helpArticle).where(and(eq(helpArticle.collectionId, id), eq(helpArticle.orgId, orgId)))
   })
 
   setResponseStatus(event, 204)

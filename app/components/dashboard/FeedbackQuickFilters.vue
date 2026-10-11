@@ -3,7 +3,7 @@
 
 const props = defineProps<{
   conditions: FilterCondition[]
-  boards: { id: string, name: string }[]
+  boards: { id: string; name: string }[]
 }>()
 
 const emit = defineEmits<{
@@ -15,14 +15,16 @@ const { t } = useI18n()
 
 const boardsOpen = ref(true)
 
-const statuses = computed(() => STATUS_OPTIONS.map(s => ({
-  value: s.value,
-  label: t(statusLabelKey(s.value)),
-  color: s.color,
-})))
+const statuses = computed(() =>
+  STATUS_OPTIONS.map((s) => ({
+    value: s.value,
+    label: t(statusLabelKey(s.value)),
+    color: s.color,
+  })),
+)
 
 const boardEntries = computed(() => [
-  ...props.boards.map(b => ({ value: b.id, label: b.name })),
+  ...props.boards.map((b) => ({ value: b.id, label: b.name })),
   { value: 'none', label: t('dashboard.filter.noBoard') },
 ])
 

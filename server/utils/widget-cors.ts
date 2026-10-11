@@ -21,8 +21,7 @@ export function applyWidgetCors(event: H3Event): void {
     // Stops a shared cache (config is cacheable) replaying one customer's
     // Allow-Origin to another.
     appendResponseHeader(event, 'Vary', 'Origin')
-  }
-  else {
+  } else {
     setResponseHeader(event, 'Access-Control-Allow-Origin', '*')
   }
   setResponseHeader(event, 'Access-Control-Allow-Headers', ALLOWED_HEADERS)

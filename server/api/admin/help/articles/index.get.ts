@@ -10,14 +10,9 @@ export default defineEventHandler(async (event) => {
   const pageSize = Math.min(Number(query.pageSize) || 10, 100)
 
   const db = useDB()
-  const where = q
-    ? and(eq(helpArticle.orgId, orgId), ilike(helpArticle.title, `%${q}%`))
-    : eq(helpArticle.orgId, orgId)
+  const where = q ? and(eq(helpArticle.orgId, orgId), ilike(helpArticle.title, `%${q}%`)) : eq(helpArticle.orgId, orgId)
 
-  const [countResult] = await db
-    .select({ total: sql<number>`cast(count(*) as int)` })
-    .from(helpArticle)
-    .where(where)
+  const [countResult] = await db.select({ total: sql<number>`cast(count(*) as int)` }).from(helpArticle).where(where)
 
   const rows = await db
     .select({

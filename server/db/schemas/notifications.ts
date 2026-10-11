@@ -15,10 +15,12 @@ export interface NotificationPayload {
 // and votes insert a row (unless the actor is an org admin); the subscribe card
 // and the DELETE endpoint add/remove rows. Recipient resolution reads this table
 // directly across the merge family.
-export const postSubscription = pgTable('post_subscription', {
-  postId: uuid('post_id').notNull(),
-  userId: text('user_id').notNull(),
-  createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
-}, (t) => [
-  primaryKey({ columns: [t.postId, t.userId] }),
-])
+export const postSubscription = pgTable(
+  'post_subscription',
+  {
+    postId: uuid('post_id').notNull(),
+    userId: text('user_id').notNull(),
+    createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => [primaryKey({ columns: [t.postId, t.userId] })],
+)

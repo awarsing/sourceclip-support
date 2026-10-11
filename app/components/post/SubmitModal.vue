@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import '~/assets/css/md-editor-preview.css'
-import { preventShadcnDialogClose } from '~/lib/md-editor-helper';
-import { sanitizeAttachmentHtml } from '~/utils/attachment';
+import { preventShadcnDialogClose } from '~/lib/md-editor-helper'
+import { sanitizeAttachmentHtml } from '~/utils/attachment'
 
 const props = defineProps<{
   defaultBoardId?: string
@@ -118,7 +118,7 @@ async function handleSubmit() {
   // When guest posting is off this opens the sign-in modal instead and the draft
   // waits; that path is reachable from a pre-filled link, where the reporter
   // arrives already holding text worth not throwing away.
-  if (!await ensureIdentity('allowPost')) {
+  if (!(await ensureIdentity('allowPost'))) {
     awaitingLogin.value = true
     return
   }
@@ -168,7 +168,6 @@ watch(open, (v) => {
     reset()
   }
 })
-
 </script>
 
 <template>

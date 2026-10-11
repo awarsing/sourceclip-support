@@ -7,11 +7,7 @@
   },
   "files": {
     "ignoreUnknown": true,
-    "includes": [
-      "**",
-      "!pnpm-lock.yaml",
-      "!server/db/migrations/meta"
-    ]
+    "includes": ["**", "!pnpm-lock.yaml", "!server/db/migrations/meta"]
   },
   "formatter": {
     "enabled": true,
@@ -52,9 +48,7 @@
   },
   "overrides": [
     {
-      "includes": [
-        "**/*.vue"
-      ],
+      "includes": ["**/*.vue"],
       "linter": {
         "rules": {
           "correctness": {

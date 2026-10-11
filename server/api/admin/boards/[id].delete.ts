@@ -9,9 +9,15 @@ export default defineEventHandler(async (event) => {
   const db = useDB()
 
   // Clear board_id on this org's posts that were attached to the board.
-  await db.update(post).set({ boardId: null }).where(and(eq(post.boardId, id), eq(post.orgId, orgId)))
+  await db
+    .update(post)
+    .set({ boardId: null })
+    .where(and(eq(post.boardId, id), eq(post.orgId, orgId)))
 
-  const [deleted] = await db.delete(board).where(and(eq(board.id, id), eq(board.orgId, orgId))).returning({ id: board.id })
+  const [deleted] = await db
+    .delete(board)
+    .where(and(eq(board.id, id), eq(board.orgId, orgId)))
+    .returning({ id: board.id })
 
   if (!deleted) {
     throw createError({ statusCode: 404, message: 'Board not found' })

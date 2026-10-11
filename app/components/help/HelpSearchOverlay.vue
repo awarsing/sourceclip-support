@@ -21,31 +21,34 @@ const loading = ref(false)
 let timer: ReturnType<typeof setTimeout>
 let seq = 0
 
-watch(() => props.query, (value) => {
-  clearTimeout(timer)
-  loading.value = true
-  const q = value.trim()
-  timer = setTimeout(async () => {
-    const mine = ++seq
-    try {
-      const result = await $fetch<{ total: number; data: SearchHit[] }>('/api/help/search', { query: { q } })
-      if (mine !== seq) return
-      hits.value = result.data
-      total.value = result.total
-      rateLimited.value = false
-    }
-    catch (e) {
-      if (mine !== seq) return
-      hits.value = []
-      total.value = 0
-      rateLimited.value = (e as { statusCode?: number; response?: { status?: number } }).statusCode === 429
-        || (e as { response?: { status?: number } }).response?.status === 429
-    }
-    finally {
-      if (mine === seq) loading.value = false
-    }
-  }, 200)
-}, { immediate: true })
+watch(
+  () => props.query,
+  (value) => {
+    clearTimeout(timer)
+    loading.value = true
+    const q = value.trim()
+    timer = setTimeout(async () => {
+      const mine = ++seq
+      try {
+        const result = await $fetch<{ total: number; data: SearchHit[] }>('/api/help/search', { query: { q } })
+        if (mine !== seq) return
+        hits.value = result.data
+        total.value = result.total
+        rateLimited.value = false
+      } catch (e) {
+        if (mine !== seq) return
+        hits.value = []
+        total.value = 0
+        rateLimited.value =
+          (e as { statusCode?: number; response?: { status?: number } }).statusCode === 429 ||
+          (e as { response?: { status?: number } }).response?.status === 429
+      } finally {
+        if (mine === seq) loading.value = false
+      }
+    }, 200)
+  },
+  { immediate: true },
+)
 
 function segments(text: string, ranges: [number, number][]) {
   const out: { text: string; hit: boolean }[] = []

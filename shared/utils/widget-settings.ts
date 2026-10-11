@@ -1,14 +1,7 @@
 import type { HandoffRule } from '../inbox/state'
 import { CONVERSATION_RETENTION_DEFAULT_DAYS } from '../constants/conversation'
-import {
-  WIDGET_LAUNCHER_CONFIG_DEFAULT,
-  type WidgetLauncherConfig,
-} from '../constants/widget-launcher'
-import {
-  WIDGET_BUILTIN_RULES,
-  WIDGET_BUILTIN_RULE_IDS,
-  type WidgetCustomRule,
-} from '../constants/widget-rules'
+import { WIDGET_LAUNCHER_CONFIG_DEFAULT, type WidgetLauncherConfig } from '../constants/widget-launcher'
+import { WIDGET_BUILTIN_RULES, WIDGET_BUILTIN_RULE_IDS, type WidgetCustomRule } from '../constants/widget-rules'
 
 // Resolves an organization_widget row (or its absence) into the shape the admin
 // UI renders and the AI prompt consumes. No row = all defaults (lazy creation).
@@ -44,8 +37,8 @@ export interface ResolvedWidgetSettings {
 }
 
 export function countEnabledRules(disabledBuiltins: string[], customRules: WidgetCustomRule[]): number {
-  const builtinsOn = WIDGET_BUILTIN_RULE_IDS.filter(id => !disabledBuiltins.includes(id)).length
-  const customOn = customRules.filter(r => r.enabled).length
+  const builtinsOn = WIDGET_BUILTIN_RULE_IDS.filter((id) => !disabledBuiltins.includes(id)).length
+  const customOn = customRules.filter((r) => r.enabled).length
   return builtinsOn + customOn
 }
 
@@ -55,7 +48,7 @@ export function resolveWidgetSettings(row: WidgetConfigRow | undefined | null): 
   const disabledBuiltins = row?.disabledBuiltins ?? []
   const customRules = row?.customRules ?? []
 
-  const builtins: ResolvedBuiltinRule[] = WIDGET_BUILTIN_RULES.map(r => ({
+  const builtins: ResolvedBuiltinRule[] = WIDGET_BUILTIN_RULES.map((r) => ({
     id: r.id,
     scenario: r.scenario,
     scenarioZh: r.scenarioZh,
@@ -76,7 +69,9 @@ export function resolveWidgetSettings(row: WidgetConfigRow | undefined | null): 
 export function getEnabledSupportRules(row: WidgetConfigRow | undefined | null): HandoffRule[] {
   const settings = resolveWidgetSettings(row)
   return [
-    ...settings.rules.builtins.filter(r => r.enabled).map(({ id, scenario, scenarioZh }) => ({ id, scenario, scenarioZh })),
-    ...settings.rules.custom.filter(r => r.enabled).map(({ id, scenario }) => ({ id, scenario })),
+    ...settings.rules.builtins
+      .filter((r) => r.enabled)
+      .map(({ id, scenario, scenarioZh }) => ({ id, scenario, scenarioZh })),
+    ...settings.rules.custom.filter((r) => r.enabled).map(({ id, scenario }) => ({ id, scenario })),
   ]
 }

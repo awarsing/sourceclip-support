@@ -54,6 +54,9 @@ export function lighten(hex: string, amount: number): string {
     b = hue2rgb(p, q, hue - 1 / 3)
   }
 
-  const toHex = (v: number) => Math.round(v * 255).toString(16).padStart(2, '0')
+  const toHex = (v: number) =>
+    Math.round(v * 255)
+      .toString(16)
+      .padStart(2, '0')
   return `#${toHex(r)}${toHex(g)}${toHex(b)}`
 }

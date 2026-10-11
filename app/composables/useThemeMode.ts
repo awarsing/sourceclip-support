@@ -20,10 +20,9 @@ export function useThemeMode() {
   const portal = usePortalOrg()
 
   const isDashboard = computed(() => route.path.startsWith('/dashboard'))
-  const isPortalSurface = computed(() =>
-    !route.path.startsWith('/dashboard')
-    && !route.path.startsWith('/proto')
-    && !route.path.startsWith('/auth'))
+  const isPortalSurface = computed(
+    () => !route.path.startsWith('/dashboard') && !route.path.startsWith('/proto') && !route.path.startsWith('/auth'),
+  )
   const themed = computed(() => isDashboard.value || isPortalSurface.value)
 
   const cookieOpts = { maxAge: ONE_YEAR, sameSite: 'lax' as const, path: '/' }
@@ -51,7 +50,9 @@ export function useThemeMode() {
     systemListenerAttached = true
     const mq = window.matchMedia('(prefers-color-scheme: dark)')
     systemDark.value = mq.matches
-    mq.addEventListener('change', (e) => { systemDark.value = e.matches })
+    mq.addEventListener('change', (e) => {
+      systemDark.value = e.matches
+    })
   }
 
   // Resolve a preference to an actual dark/light boolean. 'system' needs the

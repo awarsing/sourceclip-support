@@ -44,7 +44,7 @@ const { data: roadmapData, refresh } = await useFetch('/api/roadmap', {
 
 // Build columns from API data
 const columns = computed(() =>
-  roadmapStatuses.map(status => ({
+  roadmapStatuses.map((status) => ({
     id: status,
     label: t(statusLabelKey(status)),
     cssVar: STATUS_CONFIG[status].cssVar,
@@ -147,9 +147,7 @@ function setCardRef(id: string, el: Element | ComponentPublicInstance | null) {
 // Find the dragging post data
 function getDraggingPost(): RoadmapItem | null {
   if (!draggingPostId.value || !draggingFromStatus.value || !roadmapData.value) return null
-  return roadmapData.value[draggingFromStatus.value].data.find(
-    p => p.id === draggingPostId.value,
-  ) ?? null
+  return roadmapData.value[draggingFromStatus.value].data.find((p) => p.id === draggingPostId.value) ?? null
 }
 
 // Show ghost preview in target column and scroll to it
@@ -174,11 +172,15 @@ function showGhostPreview(targetStatus: RoadmapStatus) {
 async function setupDragAndDrop() {
   if (!props.editable || !import.meta.client) return
 
-  cleanupFns.forEach(fn => fn())
+  cleanupFns.forEach((fn) => fn())
   cleanupFns.length = 0
 
-  const { draggable: makeDraggable, dropTargetForElements } = await import('@atlaskit/pragmatic-drag-and-drop/element/adapter')
-  const { setCustomNativeDragPreview } = await import('@atlaskit/pragmatic-drag-and-drop/element/set-custom-native-drag-preview')
+  const { draggable: makeDraggable, dropTargetForElements } = await import(
+    '@atlaskit/pragmatic-drag-and-drop/element/adapter'
+  )
+  const { setCustomNativeDragPreview } = await import(
+    '@atlaskit/pragmatic-drag-and-drop/element/set-custom-native-drag-preview'
+  )
 
   // Register drop targets (columns)
   for (const status of roadmapStatuses) {
@@ -214,7 +216,7 @@ async function setupDragAndDrop() {
 
     let cardStatus: RoadmapStatus | null = null
     for (const status of roadmapStatuses) {
-      if (roadmapData.value?.[status]?.data.some(p => p.id === id)) {
+      if (roadmapData.value?.[status]?.data.some((p) => p.id === id)) {
         cardStatus = status
         break
       }
@@ -267,8 +269,10 @@ async function setupDragAndDrop() {
 }
 
 watch(
-  () => columns.value.map(c => c.items.length),
-  () => { nextTick(() => setupDragAndDrop()) },
+  () => columns.value.map((c) => c.items.length),
+  () => {
+    nextTick(() => setupDragAndDrop())
+  },
 )
 
 onMounted(() => {
@@ -276,7 +280,7 @@ onMounted(() => {
 })
 
 onUnmounted(() => {
-  cleanupFns.forEach(fn => fn())
+  cleanupFns.forEach((fn) => fn())
 })
 
 // ---- Handle drop (pessimistic update) ----
@@ -290,7 +294,7 @@ function handleDrop(postId: string, fromStatus: RoadmapStatus, toStatus: Roadmap
   if (fromStatus === toStatus || !roadmapData.value) return
 
   const fromCol = roadmapData.value[fromStatus]
-  const idx = fromCol.data.findIndex(p => p.id === postId)
+  const idx = fromCol.data.findIndex((p) => p.id === postId)
   if (idx === -1) return
 
   const item = fromCol.data[idx]!
@@ -313,7 +317,7 @@ async function writeDrop() {
         method: 'PATCH',
         body: { status: toStatus, notify: false },
       }),
-      new Promise(r => setTimeout(r, MIN_LOADING_MS)),
+      new Promise((r) => setTimeout(r, MIN_LOADING_MS)),
     ])
 
     // Insert before clearing pendingDrop so the key stays the same (pending → card, no animation)
@@ -326,7 +330,7 @@ async function writeDrop() {
 
     // Now remove source card (triggers leave animation in source column)
     const fromCol = roadmapData.value[fromStatus]
-    const sourceIdx = fromCol.data.findIndex(p => p.id === postId)
+    const sourceIdx = fromCol.data.findIndex((p) => p.id === postId)
     if (sourceIdx !== -1) {
       fromCol.data.splice(sourceIdx, 1)
       fromCol.total--
@@ -357,8 +361,8 @@ async function loadMore(status: RoadmapStatus) {
     })
 
     if (moreData && roadmapData.value) {
-      const existingIds = new Set(col.data.map(p => p.id))
-      const newItems = moreData.data.filter(p => !existingIds.has(p.id))
+      const existingIds = new Set(col.data.map((p) => p.id))
+      const newItems = moreData.data.filter((p) => !existingIds.has(p.id))
       col.data.push(...newItems)
       col.nextCursor = moreData.pagination.nextCursor
     }
@@ -375,7 +379,7 @@ function updateItem(updated: { id: string; status?: string; [key: string]: unkno
   let foundStatus: RoadmapStatus | null = null
   let foundIndex = -1
   for (const status of roadmapStatuses) {
-    const idx = roadmapData.value[status].data.findIndex(p => p.id === updated.id)
+    const idx = roadmapData.value[status].data.findIndex((p) => p.id === updated.id)
     if (idx !== -1) {
       foundStatus = status
       foundIndex = idx
@@ -383,8 +387,7 @@ function updateItem(updated: { id: string; status?: string; [key: string]: unkno
     }
   }
 
-  const isRoadmapStatus = (s: string): s is RoadmapStatus =>
-    (roadmapStatuses as readonly string[]).includes(s)
+  const isRoadmapStatus = (s: string): s is RoadmapStatus => (roadmapStatuses as readonly string[]).includes(s)
   const newStatus = updated.status ?? foundStatus
 
   if (!foundStatus && (!newStatus || !isRoadmapStatus(newStatus))) return
@@ -437,7 +440,7 @@ function removeItem(postId: string) {
 
   for (const status of roadmapStatuses) {
     const col = roadmapData.value[status]
-    const idx = col.data.findIndex(p => p.id === postId)
+    const idx = col.data.findIndex((p) => p.id === postId)
     if (idx !== -1) {
       col.data.splice(idx, 1)
       col.total--
@@ -445,7 +448,6 @@ function removeItem(postId: string) {
     }
   }
 }
-
 </script>
 
 <template>

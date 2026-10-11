@@ -26,8 +26,11 @@ export default defineNitroPlugin(async () => {
       logger.error('Database migration failed:', error)
       throw error
     } finally {
-      try { await db.execute(sql`SELECT pg_advisory_unlock(42)`) }
-      finally { await connection.end() }
+      try {
+        await db.execute(sql`SELECT pg_advisory_unlock(42)`)
+      } finally {
+        await connection.end()
+      }
     }
   }
 })

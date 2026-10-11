@@ -54,17 +54,12 @@ export default defineEventHandler(async (event) => {
   // Update search text and trigger embedding if content changed
   if (contentChanged) {
     const searchText = stripMarkdown(newTitle + '\n' + newContent)
-    await db
-      .insert(postSearch)
-      .values({ postId: id, orgId, searchText })
-      .onConflictDoUpdate({
-        target: postSearch.postId,
-        set: { searchText },
-      })
+    await db.insert(postSearch).values({ postId: id, orgId, searchText }).onConflictDoUpdate({
+      target: postSearch.postId,
+      set: { searchText },
+    })
 
-    event.waitUntil(
-      generatePostEmbedding(id, orgId, newTitle, newContent, updates.contentHash as string),
-    )
+    event.waitUntil(generatePostEmbedding(id, orgId, newTitle, newContent, updates.contentHash as string))
   }
 
   // Status changes are silent here — notifications go through the separate

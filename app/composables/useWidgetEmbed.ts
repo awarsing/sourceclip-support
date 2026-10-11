@@ -38,8 +38,7 @@ if (import.meta.client) {
 function readGuestToken(): string | null {
   try {
     return localStorage.getItem(GUEST_TOKEN_STORAGE_KEY)
-  }
-  catch {
+  } catch {
     // Safari blocks storage for a third-party frame outright. The guest identity
     // then lasts one page load instead of persisting — still better than refusing
     // the write.
@@ -50,15 +49,17 @@ function readGuestToken(): string | null {
 function writeGuestToken(token: string): void {
   try {
     localStorage.setItem(GUEST_TOKEN_STORAGE_KEY, token)
+  } catch {
+    /* see readGuestToken */
   }
-  catch { /* see readGuestToken */ }
 }
 
 function clearGuestToken(): void {
   try {
     localStorage.removeItem(GUEST_TOKEN_STORAGE_KEY)
+  } catch {
+    /* see readGuestToken */
   }
-  catch { /* see readGuestToken */ }
 }
 
 export function useWidgetEmbed() {
@@ -88,10 +89,13 @@ export function useWidgetEmbed() {
       },
     })
     if (!res.ok) {
-      const body = await res.json().catch(() => null) as { message?: string; data?: { code?: string } } | null
+      const body = (await res.json().catch(() => null)) as { message?: string; data?: { code?: string } } | null
       // A plain Error with the status attached: createError() is server-flavoured
       // and this runs only in the browser.
-      const err = new Error(body?.message || `Request failed (${res.status})`) as Error & { statusCode: number; code?: string }
+      const err = new Error(body?.message || `Request failed (${res.status})`) as Error & {
+        statusCode: number
+        code?: string
+      }
       err.statusCode = res.status
       err.code = body?.data?.code
       throw err
@@ -99,7 +103,7 @@ export function useWidgetEmbed() {
     return res
   }
   async function widgetFetch<T>(path: string, init: RequestInit = {}): Promise<T> {
-    return await (await widgetRequest(path, init)).json() as T
+    return (await (await widgetRequest(path, init)).json()) as T
   }
 
   async function claimGuest(anonymousToken: string): Promise<void> {
@@ -108,8 +112,7 @@ export function useWidgetEmbed() {
         method: 'POST',
         body: JSON.stringify({ anonymousToken }),
       })
-    }
-    catch (e) {
+    } catch (e) {
       const statusCode = (e as { statusCode?: number })?.statusCode ?? 0
       // Keep the token only while a retry could plausibly work; the next frame
       // load will try again. Anything else is permanent, and retrying it forever
@@ -141,8 +144,7 @@ export function useWidgetEmbed() {
       // filed something before the product knew who they were. Fold it in, once.
       if (capturedToken && stored && stored !== capturedToken) await claimGuest(stored)
       return true
-    }
-    catch {
+    } catch {
       // A dead product token means the SDK re-exchanges and rebuilds the frame.
       // A dead stored token is just stale — drop it and carry on as nobody.
       if (!capturedToken) clearGuestToken()
@@ -165,15 +167,14 @@ export function useWidgetEmbed() {
         body: '{}',
       })
       if (!res.ok) return false
-      const body = await res.json() as { token?: string | null; user?: WidgetEmbedUser | null }
+      const body = (await res.json()) as { token?: string | null; user?: WidgetEmbedUser | null }
       if (!body?.token || !body.user) return false
       token.value = body.token
       user.value = body.user
       writeGuestToken(body.token)
       status.value = 'authenticated'
       return true
-    }
-    catch {
+    } catch {
       return false
     }
   }
@@ -187,7 +188,12 @@ export function useWidgetEmbed() {
   function ensureIdentity(): Promise<boolean> {
     if (token.value) return Promise.resolve(true)
     if (!allowGuest.value) return Promise.resolve(false)
-    return mintInFlight ?? (mintInFlight = mint().finally(() => { mintInFlight = null }))
+    return (
+      mintInFlight ??
+      (mintInFlight = mint().finally(() => {
+        mintInFlight = null
+      }))
+    )
   }
 
   return { token, user, status, allowGuest, widgetFetch, widgetRequest, loadSession, ensureIdentity }

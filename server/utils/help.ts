@@ -17,7 +17,7 @@ export function generateHelpShortId(): string {
 export function generateHelpSlug(title: string): string {
   // Keep non-Chinese runs intact so product names and version numbers stay readable.
   const latin = pinyin(title, { keepUnrecognized: true })
-    .map(([reading], index) => reading === title[index] ? reading : ` ${reading} `)
+    .map(([reading], index) => (reading === title[index] ? reading : ` ${reading} `))
     .join('')
   return slugify(latin, { lower: true, strict: true }).slice(0, 80)
 }
@@ -44,8 +44,7 @@ export async function withHelpShortId<T>(insert: (shortId: string) => Promise<T>
   for (let i = 0; i < maxRetries; i++) {
     try {
       return await insert(generateHelpShortId())
-    }
-    catch (err) {
+    } catch (err) {
       if ((err as { code?: string })?.code !== '23505') throw err
     }
   }

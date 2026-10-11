@@ -7,13 +7,15 @@ import { resolveMemberNotifications, type MemberPreferenceUpdate } from '../../s
 type PreferenceDB = Pick<PgDatabase<PgQueryResultHKT>, 'select' | 'insert'>
 
 export async function findOwnMemberPreference(db: PreferenceDB, orgId: string, userId: string) {
-  const [row] = await db.select({
-    memberId: member.id,
-    role: member.role,
-    email: user.email,
-    organization: { id: organization.id, name: organization.name },
-    preference: memberPreference,
-  }).from(member)
+  const [row] = await db
+    .select({
+      memberId: member.id,
+      role: member.role,
+      email: user.email,
+      organization: { id: organization.id, name: organization.name },
+      preference: memberPreference,
+    })
+    .from(member)
     .innerJoin(user, eq(user.id, member.userId))
     .innerJoin(organization, eq(organization.id, member.organizationId))
     .leftJoin(memberPreference, eq(memberPreference.memberId, member.id))
@@ -22,8 +24,14 @@ export async function findOwnMemberPreference(db: PreferenceDB, orgId: string, u
   return row
 }
 
-export async function saveMemberNotifications(db: PreferenceDB, memberId: string, notifications: MemberPreferenceUpdate['notifications']) {
-  const [row] = await db.insert(memberPreference).values({ memberId, notifications })
+export async function saveMemberNotifications(
+  db: PreferenceDB,
+  memberId: string,
+  notifications: MemberPreferenceUpdate['notifications'],
+) {
+  const [row] = await db
+    .insert(memberPreference)
+    .values({ memberId, notifications })
     .onConflictDoUpdate({
       target: memberPreference.memberId,
       // Merge at the write, including competing first inserts, so unrelated keys survive.
@@ -37,18 +45,19 @@ export async function saveMemberNotifications(db: PreferenceDB, memberId: string
 }
 
 export async function findStaffFeedbackRecipients(db: PreferenceDB, orgId: string, actorId: string) {
-  const rows = await db.select({
-    userId: member.userId,
-    email: user.email,
-    preference: memberPreference,
-  }).from(member)
+  const rows = await db
+    .select({
+      userId: member.userId,
+      email: user.email,
+      preference: memberPreference,
+    })
+    .from(member)
     .innerJoin(user, eq(user.id, member.userId))
     .leftJoin(memberPreference, eq(memberPreference.memberId, member.id))
-    .where(and(
-      eq(member.organizationId, orgId),
-      inArray(member.role, ['owner', 'manager']),
-      ne(member.userId, actorId),
-    ))
-  return rows.filter(row => resolveMemberNotifications(row.preference?.notifications).staff_feedback_email_enabled)
+    .where(
+      and(eq(member.organizationId, orgId), inArray(member.role, ['owner', 'manager']), ne(member.userId, actorId)),
+    )
+  return rows
+    .filter((row) => resolveMemberNotifications(row.preference?.notifications).staff_feedback_email_enabled)
     .map(({ userId, email }) => ({ userId, email }))
 }

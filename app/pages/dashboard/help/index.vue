@@ -76,7 +76,9 @@ watch(page, () => {
 const flat = computed(() => view.value === 'articles' || !!debouncedSearch.value)
 const selecting = computed(() => selected.value.size > 0)
 
-const { data: stats, refresh: refreshStats } = await useFetch<{ collectionCount: number; articleCount: number }>('/api/admin/help/stats')
+const { data: stats, refresh: refreshStats } = await useFetch<{ collectionCount: number; articleCount: number }>(
+  '/api/admin/help/stats',
+)
 
 const { data: collectionsData, refresh: refreshCollections } = await useFetch<{
   data: AdminCollection[]
@@ -95,7 +97,7 @@ const { data: articlesData, refresh: refreshArticles } = await useFetch<{
 const collections = computed(() => collectionsData.value?.data ?? [])
 const articles = computed(() => articlesData.value?.data ?? [])
 
-const total = computed(() => (flat.value ? articlesData.value?.pagination.total ?? 0 : collections.value.length))
+const total = computed(() => (flat.value ? (articlesData.value?.pagination.total ?? 0) : collections.value.length))
 const pageCount = computed(() => Math.max(1, Math.ceil(total.value / PAGE_SIZE)))
 
 const isEmpty = computed(() => (stats.value?.collectionCount ?? 0) === 0 && (stats.value?.articleCount ?? 0) === 0)
@@ -103,7 +105,9 @@ const hasCollections = computed(() => (stats.value?.collectionCount ?? 0) > 0)
 
 const draggableCollections = computed({
   get: () => collections.value,
-  set: (value) => { if (collectionsData.value) collectionsData.value.data = value },
+  set: (value) => {
+    if (collectionsData.value) collectionsData.value.data = value
+  },
 })
 
 async function refreshAll() {
@@ -125,9 +129,9 @@ function toggleSelected(id: string) {
 }
 
 function collectionSelection(collection: AdminCollection): 'none' | 'some' | 'all' {
-  const ids = collection.articles.map(a => a.id)
+  const ids = collection.articles.map((a) => a.id)
   if (!ids.length) return 'none'
-  const hit = ids.filter(id => selected.value.has(id)).length
+  const hit = ids.filter((id) => selected.value.has(id)).length
   return hit === 0 ? 'none' : hit === ids.length ? 'all' : 'some'
 }
 
@@ -177,10 +181,9 @@ async function onCollectionsDragEnd() {
   try {
     await $fetch('/api/admin/help/collections/reorder', {
       method: 'PATCH',
-      body: { ids: collections.value.map(c => c.id) },
+      body: { ids: collections.value.map((c) => c.id) },
     })
-  }
-  catch {
+  } catch {
     toast.error(t('help.admin.reorderFailed'))
     await refreshAll()
   }
@@ -190,10 +193,9 @@ async function onArticlesDragEnd(collection: AdminCollection) {
   try {
     await $fetch('/api/admin/help/articles/reorder', {
       method: 'PATCH',
-      body: { collectionId: collection.id, ids: collection.articles.map(a => a.id) },
+      body: { collectionId: collection.id, ids: collection.articles.map((a) => a.id) },
     })
-  }
-  catch {
+  } catch {
     toast.error(t('help.admin.reorderFailed'))
     await refreshAll()
   }
@@ -217,9 +219,12 @@ async function runBulk(action: 'publish' | 'unpublish' | 'ai-visibility', aiEnab
     })
     selected.value = new Set()
     await refreshAll()
-    toast.success(action === 'ai-visibility' ? t('help.admin.aiUpdated') : t(`help.admin.${action}Result`, { n: result.affected }, result.affected))
-  }
-  catch {
+    toast.success(
+      action === 'ai-visibility'
+        ? t('help.admin.aiUpdated')
+        : t(`help.admin.${action}Result`, { n: result.affected }, result.affected),
+    )
+  } catch {
     toast.error(t('help.admin.bulkFailed'))
   }
 }

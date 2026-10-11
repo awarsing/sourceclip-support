@@ -22,17 +22,25 @@ async function generateSlugWith(title: string, exists: SlugExistsCheck, maxRetri
 // Generate slug with uniqueness check against post table
 export async function generateSlug(title: string, maxRetries = 3): Promise<string> {
   const db = useDB()
-  return generateSlugWith(title, async (slug) => {
-    const [existing] = await db.select({ id: post.id }).from(post).where(eq(post.slug, slug)).limit(1)
-    return !!existing
-  }, maxRetries)
+  return generateSlugWith(
+    title,
+    async (slug) => {
+      const [existing] = await db.select({ id: post.id }).from(post).where(eq(post.slug, slug)).limit(1)
+      return !!existing
+    },
+    maxRetries,
+  )
 }
 
 // Generate slug with uniqueness check against changelog table
 export async function generateChangelogSlug(title: string, maxRetries = 3): Promise<string> {
   const db = useDB()
-  return generateSlugWith(title, async (slug) => {
-    const [existing] = await db.select({ id: changelog.id }).from(changelog).where(eq(changelog.slug, slug)).limit(1)
-    return !!existing
-  }, maxRetries)
+  return generateSlugWith(
+    title,
+    async (slug) => {
+      const [existing] = await db.select({ id: changelog.id }).from(changelog).where(eq(changelog.slug, slug)).limit(1)
+      return !!existing
+    },
+    maxRetries,
+  )
 }

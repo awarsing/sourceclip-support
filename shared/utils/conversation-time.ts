@@ -9,7 +9,8 @@ export function formatConversationTime(value: string | Date, locale: string, jus
   const days = Math.floor(hours / 24)
   if (days < 7) return `${days}d`
   return date.toLocaleDateString(locale === 'zh' ? 'zh-CN' : locale, {
-    month: 'short', day: 'numeric',
+    month: 'short',
+    day: 'numeric',
     ...(date.getFullYear() !== new Date(now).getFullYear() ? { year: 'numeric' as const } : {}),
   })
 }
