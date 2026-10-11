@@ -1,4 +1,3 @@
-/* eslint-disable @typescript-eslint/no-explicit-any -- Fixtures cover partial runtime contexts, invalid inputs and heterogeneous tool results. */
 import assert from 'node:assert/strict'
 import { test, after } from 'node:test'
 import { uuidv7 } from 'uuidv7'

@@ -1,0 +1,3 @@
+# Drizzle migrations and snapshots are generated history; applied migrations
+# are immutable.
+server/db/migrations/** linguist-generated=true

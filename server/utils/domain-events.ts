@@ -133,7 +133,6 @@ type FeedLogDomainEventHooks = {
 
 declare module 'nitropack/types' {
   // Declaration merging into Nitro's hook table — the "empty" interface is the merge.
-  // eslint-disable-next-line @typescript-eslint/no-empty-object-type
   interface NitroRuntimeHooks extends FeedLogDomainEventHooks {}
 }
 

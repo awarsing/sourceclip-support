@@ -1,7 +1,6 @@
 import { recoverLocked } from '../server/lib/inbox/service'
 import { syncRunTask } from '../server/lib/inbox/tasks'
 import { inboxTick } from '../server/lib/inbox/tick'
-/* eslint-disable @typescript-eslint/no-explicit-any -- Fixtures exercise partial request contexts and heterogeneous tool outputs. */
 import assert from 'node:assert/strict'
 import { after, test } from 'node:test'
 import { uuidv7 } from 'uuidv7'
