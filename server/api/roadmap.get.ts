@@ -30,22 +30,7 @@ export default defineEventHandler(async (event): Promise<RoadmapResponse> => {
     if (boardCondition) conditions.push(boardCondition)
 
     return db
-      .select({
-        id: post.id,
-        slug: post.slug,
-        title: post.title,
-        excerpt: post.excerpt,
-        status: post.status,
-        boardId: post.boardId,
-        voteCount: post.voteCount,
-        commentCount: post.commentCount,
-        mergedCount: sql<number>`(SELECT count(*)::int FROM post p2 WHERE p2.merged_to = ${post.id})`,
-        authorId: post.authorId,
-        authorName: user.name,
-        authorImage: user.image,
-        authorIsAnonymous: user.isAnonymous,
-        createdAt: post.createdAt,
-      })
+      .select(postListColumns)
       .from(post)
       .leftJoin(user, eq(post.authorId, user.id))
       .where(and(...conditions))
