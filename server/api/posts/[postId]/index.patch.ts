@@ -1,17 +1,6 @@
 import { and, eq } from 'drizzle-orm'
-import { z } from 'zod/v4'
 import { post, postSearch } from '#layers/feedlog/server/db/schemas'
-
-// Author update schema (title/content only)
-const authorUpdateSchema = z.object({
-  title: z.string().trim().min(1, 'Title is required').max(200, 'Title must be 200 characters or less').optional(),
-  content: z
-    .string()
-    .trim()
-    .min(1, 'Content is required')
-    .max(10000, 'Content must be 10000 characters or less')
-    .optional(),
-})
+import { authorUpdatePostSchema } from '#layers/feedlog/shared/schemas/post'
 
 // PATCH /api/posts/:id — Edit a post's title/content. Any author can edit
 // their own; moderators can edit anyone's (escalates via feedlog:moderate).
@@ -35,7 +24,7 @@ export default defineEventHandler(async (event) => {
     await requireOrgPermission(event, { feedlog: ['moderate'] })
   }
 
-  const body = await readValidatedBody(event, authorUpdateSchema.parse)
+  const body = await readValidatedBody(event, authorUpdatePostSchema.parse)
 
   const updates: Record<string, unknown> = {}
   if (body.title !== undefined) updates.title = body.title
