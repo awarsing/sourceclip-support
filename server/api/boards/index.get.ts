@@ -24,5 +24,8 @@ export default defineEventHandler(async (event): Promise<{ data: BoardItem[]; to
     db.select({ count: sql<number>`cast(count(*) as int)` }).from(post).where(eq(post.orgId, orgId)),
   ])
 
-  return { data: boards, totalPostCount: totalResult[0]?.count ?? 0 }
+  return {
+    data: boards.map((b) => ({ ...b, createdAt: b.createdAt.toISOString() })),
+    totalPostCount: totalResult[0]?.count ?? 0,
+  }
 })

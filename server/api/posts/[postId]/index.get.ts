@@ -136,8 +136,8 @@ export default defineEventHandler(async (event): Promise<PostDetail> => {
       isAnonymous: !!row.authorIsAnonymous,
       ...(showAuthorEmail ? { email: row.authorEmail } : {}),
     },
-    createdAt: row.createdAt,
-    updatedAt: row.updatedAt,
+    createdAt: row.createdAt.toISOString(),
+    updatedAt: row.updatedAt.toISOString(),
     canonicalPost,
   }
 })

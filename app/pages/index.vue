@@ -210,7 +210,7 @@ function onPostUpdated(updated: { id: string; status?: string; boardId?: string 
 
   // Board changed → the sidebar's per-board counts (served from the board store)
   // are now stale. Compare against the pre-update boardId, then refresh the store.
-  if (updated.boardId !== undefined && updated.boardId !== posts.value[idx].boardId) {
+  if (updated.boardId !== undefined && updated.boardId !== posts.value[idx]!.boardId) {
     void boardStore.fetchBoards()
   }
 
@@ -221,7 +221,7 @@ function onPostUpdated(updated: { id: string; status?: string; boardId?: string 
   }
 
   // Update fields in place
-  Object.assign(posts.value[idx], updated)
+  Object.assign(posts.value[idx]!, updated)
 }
 
 function onPostDeleted(postId: string) {

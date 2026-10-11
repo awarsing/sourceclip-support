@@ -91,8 +91,8 @@ export default defineEventHandler(async (event): Promise<RoadmapResponse> => {
   // Build response
   const response = {} as RoadmapResponse
   for (let i = 0; i < ROADMAP_STATUSES.length; i++) {
-    const status = ROADMAP_STATUSES[i]
-    const rows = results[i]
+    const status = ROADMAP_STATUSES[i]!
+    const rows = results[i]!
     const hasMore = rows.length > PAGE_SIZE
     const items = hasMore ? rows.slice(0, PAGE_SIZE) : rows
 
@@ -108,7 +108,7 @@ export default defineEventHandler(async (event): Promise<RoadmapResponse> => {
       mergedCount: r.mergedCount,
       hasVoted: votedPostIds.has(r.id),
       author: { id: r.authorId, name: r.authorName, image: r.authorImage, isAnonymous: !!r.authorIsAnonymous },
-      createdAt: r.createdAt,
+      createdAt: r.createdAt.toISOString(),
     }))
 
     const lastItem = data[data.length - 1]

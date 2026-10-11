@@ -264,7 +264,7 @@ function onPostUpdated(updated: { id: string; status?: string; boardId?: string 
     return
   }
 
-  Object.assign(list[idx], updated)
+  Object.assign(list[idx]!, updated)
 }
 
 function onPostDeleted(postId: string) {

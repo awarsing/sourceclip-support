@@ -174,7 +174,7 @@ export const usePostDetailStore = defineStore('postDetail', () => {
     const parent = list.find((c) => c.id === parentId)
     if (!parent?.children?.length) return
 
-    const lastChild = parent.children[parent.children.length - 1]
+    const lastChild = parent.children[parent.children.length - 1]!
     const cursor = btoa(
       JSON.stringify({
         s: new Date(lastChild.createdAt).toISOString(),
@@ -282,7 +282,7 @@ export const usePostDetailStore = defineStore('postDetail', () => {
 
     const topIdx = list.findIndex((c) => c.id === commentId)
     if (topIdx !== -1) {
-      const removed = list[topIdx]
+      const removed = list[topIdx]!
       const removedCount = 1 + (removed.replyCount ?? 0)
       list.splice(topIdx, 1)
       p.commentCount -= removedCount
@@ -382,14 +382,17 @@ export const usePostDetailStore = defineStore('postDetail', () => {
     if (!postId) return
     const list = commentsMap.value[postId] ?? []
     for (let i = 0; i < list.length; i++) {
-      if (list[i].id === commentId) {
-        list[i] = { ...list[i], ...updated }
+      const comment = list[i]!
+      if (comment.id === commentId) {
+        list[i] = { ...comment, ...updated }
         return
       }
-      if (list[i].children) {
-        for (let j = 0; j < list[i].children!.length; j++) {
-          if (list[i].children![j].id === commentId) {
-            list[i].children![j] = { ...list[i].children![j], ...updated }
+      const children = comment.children
+      if (children) {
+        for (let j = 0; j < children.length; j++) {
+          const child = children[j]!
+          if (child.id === commentId) {
+            children[j] = { ...child, ...updated }
             return
           }
         }

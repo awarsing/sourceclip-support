@@ -93,7 +93,7 @@ export default defineEventHandler(async (event): Promise<CursorPaginatedList<Pos
     mergedCount: r.mergedCount,
     hasVoted: votedPostIds.has(r.id),
     author: { id: r.authorId, name: r.authorName, image: r.authorImage, isAnonymous: !!r.authorIsAnonymous },
-    createdAt: r.createdAt,
+    createdAt: r.createdAt.toISOString(),
   }))
 
   const lastItem = data[data.length - 1]

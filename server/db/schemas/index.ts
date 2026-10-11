@@ -48,7 +48,7 @@ export {
   conversation,
   message,
 } from './widget'
-export type { WidgetCustomRule } from './widget'
+export type { WidgetCustomRule } from '../../../shared/constants/widget-rules'
 export {
   helpCollection,
   helpArticle,
@@ -64,8 +64,8 @@ const vector = customType<{ data: number[]; driverParam: string }>({
   toDriver(value: number[]): string {
     return `[${value.join(',')}]`
   },
-  fromDriver(value: string): number[] {
-    return value.replace(/[[\]]/g, '').split(',').map(Number)
+  fromDriver(value: unknown): number[] {
+    return String(value).replace(/[[\]]/g, '').split(',').map(Number)
   },
 })
 

@@ -455,7 +455,7 @@ function removeItem(postId: string) {
     <div
       v-for="col in columns"
       :key="col.id"
-      :ref="(el) => setColumnRef(col.id, el)"
+      :ref="(el: Element | ComponentPublicInstance | null) => setColumnRef(col.id, el)"
       :data-status="col.id"
       class="flex-1 flex flex-col min-w-[260px] md:min-w-0 kanban-column transition-all duration-200"
       :class="{
@@ -483,7 +483,7 @@ function removeItem(postId: string) {
       <!-- Card list -->
       <div
         v-if="col.items.length || ghostPreview?.status === col.id || pendingDrop?.toStatus === col.id"
-        :ref="(el) => setScrollableRef(col.id, el)"
+        :ref="(el: Element | ComponentPublicInstance | null) => setScrollableRef(col.id, el)"
         class="kanban-scroll flex-1 overflow-y-auto pr-1"
       >
         <TransitionGroup

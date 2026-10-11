@@ -86,7 +86,7 @@ async function handleDelete() {
 
   submitting.value = true
   try {
-    await $fetch(`/api/admin/help/collections/${props.collection.id}`, { method: 'DELETE' })
+    await $fetch(`/api/admin/help/collections/${props.collection.id}` as string, { method: 'DELETE' })
     open.value = false
     emit('deleted')
   } catch (e) {

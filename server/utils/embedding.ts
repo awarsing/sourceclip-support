@@ -32,7 +32,9 @@ export async function generateEmbedding(text: string): Promise<number[]> {
   }
 
   const data = (await response.json()) as { data: { embedding: number[] }[] }
-  return data.data[0].embedding
+  const [first] = data.data
+  if (!first) throw new Error('OpenAI API error: no embedding returned')
+  return first.embedding
 }
 
 // Generate and store embedding for a post with optimistic lock on content_hash

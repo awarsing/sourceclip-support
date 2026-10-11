@@ -47,7 +47,7 @@ export default defineEventHandler(async (event): Promise<PagePaginatedList<PostL
       mergedCount: r.mergedCount,
       hasVoted: false,
       author: { id: r.authorId, name: r.authorName, image: r.authorImage, isAnonymous: !!r.authorIsAnonymous },
-      createdAt: r.createdAt,
+      createdAt: r.createdAt.toISOString(),
     })),
     pagination: { page: 1, pageSize: rows.length, total: rows.length },
   })

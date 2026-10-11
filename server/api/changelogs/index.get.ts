@@ -60,8 +60,8 @@ export default defineEventHandler(async (event): Promise<CursorPaginatedList<Cha
       .groupBy(changelogReaction.changelogId, changelogReaction.emoji)
 
     for (const r of reactionRows) {
-      if (!reactionCountsMap[r.changelogId]) reactionCountsMap[r.changelogId] = {}
-      reactionCountsMap[r.changelogId][r.emoji] = r.count
+      reactionCountsMap[r.changelogId] ??= {}
+      reactionCountsMap[r.changelogId]![r.emoji] = r.count
     }
 
     // User's own reactions
@@ -75,8 +75,8 @@ export default defineEventHandler(async (event): Promise<CursorPaginatedList<Cha
         .where(and(inArray(changelogReaction.changelogId, changelogIds), eq(changelogReaction.userId, session.user.id)))
 
       for (const r of userReactions) {
-        if (!userReactionsMap[r.changelogId]) userReactionsMap[r.changelogId] = []
-        userReactionsMap[r.changelogId].push(r.emoji)
+        userReactionsMap[r.changelogId] ??= []
+        userReactionsMap[r.changelogId]!.push(r.emoji)
       }
     }
   }

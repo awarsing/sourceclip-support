@@ -194,7 +194,7 @@ export function parseOrgMetadata(metadata: OrgMetadataInput): Record<string, unk
   if (!metadata) return {}
   if (typeof metadata === 'object' && !Array.isArray(metadata)) return metadata
   try {
-    const parsed = JSON.parse(metadata)
+    const parsed = JSON.parse(String(metadata))
     return parsed && typeof parsed === 'object' && !Array.isArray(parsed) ? (parsed as Record<string, unknown>) : {}
   } catch {
     return {}

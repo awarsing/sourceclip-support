@@ -58,17 +58,22 @@ const absoluteSeoUrl = (href?: string) => {
     return href
   }
 }
-const seoLink = computed(() =>
-  (localeHead.value.link ?? []).map((l) =>
-    (l.rel === 'alternate' || l.rel === 'canonical') && typeof l.href === 'string'
-      ? { ...l, href: absoluteSeoUrl(l.href) }
-      : l,
-  ),
+const seoLink = computed(
+  () =>
+    (localeHead.value.link ?? []).map((l) =>
+      (l.rel === 'alternate' || l.rel === 'canonical') && typeof l.href === 'string'
+        ? { ...l, href: absoluteSeoUrl(l.href) }
+        : l,
+    ) as (
+      | { id?: string; key?: string; rel: 'canonical'; href: string }
+      | { id?: string; key?: string; rel: 'alternate'; href: string; hreflang: string }
+    )[],
 )
-const seoMeta = computed(() =>
-  (localeHead.value.meta ?? []).map((m) =>
-    m.property === 'og:url' && typeof m.content === 'string' ? { ...m, content: absoluteSeoUrl(m.content) } : m,
-  ),
+const seoMeta = computed(
+  () =>
+    (localeHead.value.meta ?? []).map((m) =>
+      m.property === 'og:url' && typeof m.content === 'string' ? { ...m, content: absoluteSeoUrl(m.content) } : m,
+    ) as { id?: string; key?: string; property: string; content: string }[],
 )
 
 useHead(() => ({
@@ -84,10 +89,10 @@ useHead(() => ({
     ...seoLink.value,
     ...(portal.value.logo
       ? [
-          { key: 'favicon-svg', rel: 'icon', href: portal.value.logo },
-          { key: 'favicon-png', rel: 'icon', href: portal.value.logo },
-          { key: 'favicon-ico', rel: 'shortcut icon', href: portal.value.logo },
-          { key: 'favicon-apple', rel: 'apple-touch-icon', href: portal.value.logo },
+          { key: 'favicon-svg', rel: 'icon' as const, href: portal.value.logo },
+          { key: 'favicon-png', rel: 'icon' as const, href: portal.value.logo },
+          { key: 'favicon-ico', rel: 'shortcut icon' as const, href: portal.value.logo },
+          { key: 'favicon-apple', rel: 'apple-touch-icon' as const, href: portal.value.logo },
         ]
       : []),
   ],

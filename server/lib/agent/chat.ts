@@ -33,7 +33,7 @@ export async function streamAgentReply(event: H3Event, actor: Actor) {
     // Validate attachment access before committing the input or starting a run.
     await customerMemoryMessage(
       event,
-      { ...parsed.data.message, author_user_id: actor.customerId, conversation_id: id, seq: 0, created_at: new Date() },
+      { ...parsed.data.message, conversation_id: id, seq: 0, created_at: new Date() },
       `${actor.orgId}:${id}`,
       actor.orgId,
     ).catch(() => agentError(422, 'invalid_message', 'An image could not be read'))

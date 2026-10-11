@@ -84,7 +84,7 @@ export default defineEventHandler(async (event) => {
     mergedCount: r.mergedCount,
     hasVoted: votedPostIds.has(r.id),
     author: { id: r.authorId, name: r.authorName, image: r.authorImage, isAnonymous: !!r.authorIsAnonymous },
-    createdAt: r.createdAt,
+    createdAt: r.createdAt.toISOString(),
   }))
 
   return { data }

@@ -89,8 +89,8 @@ const coverPreviewBlob = ref<string | null>(null)
 
 async function handleFileChange(e: Event) {
   const target = e.target as HTMLInputElement
-  if (!target.files || target.files.length === 0) return
-  const file = target.files[0]
+  const file = target.files?.[0]
+  if (!file) return
 
   // Show local blob preview immediately
   coverPreviewBlob.value = URL.createObjectURL(file)

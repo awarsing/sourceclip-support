@@ -173,7 +173,7 @@ async function loadLevel2Comments(postId: string) {
 
             <!-- Lazily loaded comments for this second-level post -->
             <div v-if="level2Comments[sc.mergedPost.post.id]?.data?.length" class="mt-3 space-y-3">
-              <div v-for="l2c in level2Comments[sc.mergedPost.post.id].data" :key="l2c.id" class="flex gap-3">
+              <div v-for="l2c in level2Comments[sc.mergedPost.post.id]?.data" :key="l2c.id" class="flex gap-3">
                 <div class="w-8 h-8 rounded-full shrink-0 flex items-center justify-center shadow-sm">
                   <UserAvatar :author="l2c.author" :size="8" />
                 </div>
@@ -189,7 +189,7 @@ async function loadLevel2Comments(postId: string) {
 
             <!-- Load comments button -->
             <button
-              v-if="sc.mergedPost.post.commentCount > 0 && (!level2Comments[sc.mergedPost.post.id] || level2Comments[sc.mergedPost.post.id].loading || level2Comments[sc.mergedPost.post.id].cursor !== null)"
+              v-if="sc.mergedPost.post.commentCount > 0 && (!level2Comments[sc.mergedPost.post.id] || level2Comments[sc.mergedPost.post.id]?.loading || level2Comments[sc.mergedPost.post.id]?.cursor !== null)"
               class="text-xs font-bold text-muted-foreground hover:text-primary transition-colors mt-2 inline-flex items-center gap-1.5"
               :disabled="level2Comments[sc.mergedPost.post.id]?.loading"
               @click="loadLevel2Comments(sc.mergedPost.post.id)"

@@ -45,8 +45,10 @@ async function refresh() {
       authClient.organization.listMembers({ query: { organizationId: orgId.value, limit: 200 } }),
       authClient.organization.listInvitations({ query: { organizationId: orgId.value } }),
     ])
-    members.value = ((memRes as { data?: { members?: MemberView[] } }).data?.members ?? []) as MemberView[]
-    invitations.value = ((invRes as { data?: InvitationView[] }).data ?? []).filter((i) => i.status === 'pending')
+    members.value = ((memRes as unknown as { data?: { members?: MemberView[] } }).data?.members ?? []) as MemberView[]
+    invitations.value = ((invRes as unknown as { data?: InvitationView[] }).data ?? []).filter(
+      (i) => i.status === 'pending',
+    )
   } finally {
     loading.value = false
   }

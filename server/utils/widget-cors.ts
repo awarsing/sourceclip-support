@@ -8,7 +8,7 @@ export const WIDGET_API_PREFIX = '/api/widget/'
 
 const ALLOWED_HEADERS = 'Content-Type, Authorization'
 const ALLOWED_METHODS = 'GET, POST, OPTIONS'
-const PREFLIGHT_MAX_AGE = '86400'
+const PREFLIGHT_MAX_AGE = 86400
 
 export function isWidgetApiPath(path: string): boolean {
   return path.startsWith(WIDGET_API_PREFIX)

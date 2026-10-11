@@ -43,7 +43,7 @@ export default defineEventHandler(async (event) => {
     mergedTo: null,
     hasVoted: false,
     author: author ?? { id: session.user.id, name: null, image: null },
-    createdAt: created.createdAt,
-    updatedAt: created.updatedAt,
+    createdAt: created.createdAt.toISOString(),
+    updatedAt: created.updatedAt.toISOString(),
   } satisfies PostDetail
 })
