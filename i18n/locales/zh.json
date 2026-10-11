@@ -856,7 +856,7 @@
     "title": "反馈",
     "subtitle": "帮我们把 {product} 做得更好 —— 说说问题和想法",
     "thisProduct": "这个产品",
-    "greeting": "你好 👋 有关于 {product} 的问题或反馈吗？",
+    "greeting": "你好 \uD83D\uDC4B 有关于 {product} 的问题或反馈吗？",
     "placeholder": "说说遇到的问题,或者你的想法……",
     "send": "发送",
     "thinking": "正在处理你的消息……",

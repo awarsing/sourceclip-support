@@ -15,7 +15,7 @@ export const updateChangelogSchema = z.object({
 })
 
 export const reactionSchema = z.object({
-  emoji: z.enum(['👍', '❤️', '🎉', '✨', '👀', '🤔']),
+  emoji: z.enum(['\u{1F44D}', '\u{2764}\u{FE0F}', '\u{1F389}', '\u{2728}', '\u{1F440}', '\u{1F914}']),
 })
 
 export const aiGenerateSchema = z.object({

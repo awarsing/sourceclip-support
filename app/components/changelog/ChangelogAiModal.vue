@@ -39,13 +39,13 @@ const styleOptions = computed(() => [
     id: 'structured' as AiStyle,
     name: t('changelog.ai.styles.structured.name'),
     desc: t('changelog.ai.styles.structured.desc'),
-    example: `<p><strong>v0.3.0 — 🌙 Dark Mode & Performance</strong></p><p class="mt-1.5">This release brings the highly requested Dark Mode and significant performance improvements to the roadmap board.</p><p class="mt-3">💎 <strong>Improvements</strong></p><ul class="mt-1 ml-4 list-disc space-y-0.5"><li>Added a dark mode toggle in personal settings</li><li>Reduced roadmap column repaint lag during drag-and-drop</li><li>Faster skeleton loading for large feedback boards</li></ul><p class="mt-3">🐞 <strong>Fixes</strong></p><ul class="mt-1 ml-4 list-disc space-y-0.5"><li>Fixed an issue where avatars wouldn't load on mobile devices</li><li>Resolved a crash when deleting comments with attachments</li></ul>`,
+    example: `<p><strong>v0.3.0 — \u{1F319} Dark Mode & Performance</strong></p><p class="mt-1.5">This release brings the highly requested Dark Mode and significant performance improvements to the roadmap board.</p><p class="mt-3">\u{1F48E} <strong>Improvements</strong></p><ul class="mt-1 ml-4 list-disc space-y-0.5"><li>Added a dark mode toggle in personal settings</li><li>Reduced roadmap column repaint lag during drag-and-drop</li><li>Faster skeleton loading for large feedback boards</li></ul><p class="mt-3">\u{1F41E} <strong>Fixes</strong></p><ul class="mt-1 ml-4 list-disc space-y-0.5"><li>Fixed an issue where avatars wouldn't load on mobile devices</li><li>Resolved a crash when deleting comments with attachments</li></ul>`,
   },
   {
     id: 'benefit-led' as AiStyle,
     name: t('changelog.ai.styles.benefitLed.name'),
     desc: t('changelog.ai.styles.benefitLed.desc'),
-    example: `<p><strong>Work comfortably at night with Dark Mode 🌙</strong></p><p class="mt-1.5">Stop straining your eyes during late-night triage sessions! You can now switch Feedlog to dark mode, making it easier to read and manage feedback in low-light environments.</p><ul class="mt-2 ml-4 list-disc space-y-0.5"><li>Toggle manually or sync with your system theme</li><li>High-contrast colors designed specifically to reduce eye fatigue</li><li>Available across all boards, roadmaps, and the admin dashboard</li></ul>`,
+    example: `<p><strong>Work comfortably at night with Dark Mode \u{1F319}</strong></p><p class="mt-1.5">Stop straining your eyes during late-night triage sessions! You can now switch Feedlog to dark mode, making it easier to read and manage feedback in low-light environments.</p><ul class="mt-2 ml-4 list-disc space-y-0.5"><li>Toggle manually or sync with your system theme</li><li>High-contrast colors designed specifically to reduce eye fatigue</li><li>Available across all boards, roadmaps, and the admin dashboard</li></ul>`,
   },
   {
     id: 'witty' as AiStyle,

@@ -64,10 +64,10 @@ test('production inputs preserve text, constrain context and reject forged resul
 })
 
 test('SSE parser handles fragmented CRLF, unicode and multiple data events', async () => {
-  const bytes = new TextEncoder().encode('event: text\r\ndata: {"delta":"Hello 👋"}\r\n\r\nevent: finish\ndata: {"lastSeq":2}\n\n')
+  const bytes = new TextEncoder().encode('event: text\r\ndata: {"delta":"Hello \u{1F44B}"}\r\n\r\nevent: finish\ndata: {"lastSeq":2}\n\n')
   const seen: unknown[] = []
   await readAgentEvents(new ReadableStream({ start(c) { for (const byte of bytes) c.enqueue(Uint8Array.of(byte)); c.close() } }), (name, data) => seen.push([name, data]))
-  assert.deepEqual(seen, [['text', { delta: 'Hello 👋' }], ['finish', { lastSeq: 2 }]])
+  assert.deepEqual(seen, [['text', { delta: 'Hello \u{1F44B}' }], ['finish', { lastSeq: 2 }]])
 })
 
 test('first-send concurrency, ownership, unchanged idempotency, retries, sequence and timeout fencing', async () => {

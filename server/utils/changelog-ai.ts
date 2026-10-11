@@ -22,9 +22,9 @@ const STYLE_RULES: Record<AiStyle, string> = {
 - Structure:
   1. A short hero paragraph (1-2 sentences) framing the release. Keep it factual; do not invent motivation.
   2. Then up to three bullet sections, each only present if items actually belong in it:
-     - "✨ **New**" for newly shipped features
-     - "💎 **Improvements**" for changes to existing features
-     - "🐞 **Fixes**" for bug fixes
+     - "\u{2728} **New**" for newly shipped features
+     - "\u{1F48E} **Improvements**" for changes to existing features
+     - "\u{1F41E} **Fixes**" for bug fixes
   3. Inside each section, each bullet uses the format "- Area: short outcome" (one line each). You should aim for 2-3 bullets across all sections combined for small releases, and more for larger releases.
 - Omit a section entirely if no item belongs in it.
 - Title: a short release name or headline, ≤ 60 chars. It may contain one emoji that matches the release theme.

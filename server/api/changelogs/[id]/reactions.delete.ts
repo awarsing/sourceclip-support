@@ -2,7 +2,7 @@ import { eq, and, sql, isNotNull } from 'drizzle-orm'
 import { changelog, changelogReaction } from '#layers/feedlog/server/db/schemas'
 import { reactionSchema } from '#layers/feedlog/shared/schemas/changelog'
 
-// DELETE /api/changelogs/:id/reactions?emoji=👍 — Remove reaction (any authenticated user, idempotent).
+// DELETE /api/changelogs/:id/reactions?emoji=<emoji> — Remove reaction (any authenticated user, idempotent).
 export default defineEventHandler(async (event) => {
   const { session, orgId } = await requireAuthInOrg(event)
   const id = getRouterParam(event, 'id')!

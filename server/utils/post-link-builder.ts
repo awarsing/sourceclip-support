@@ -1,4 +1,4 @@
-// Where a notification email's deep-link points — a layer↔app seam. The link must
+// Where a notification email's deep-link points — a seam between the layer and the app. The link must
 // name the recipient's canonical host, not whichever host triggered the send, so it
 // never reads the request directly; SaaS overrides it to {orgSlug}.{ROOT_DOMAIN}.
 // The caller passes the full path (/p/{slug} or /changelog/{slug}) so one seam
