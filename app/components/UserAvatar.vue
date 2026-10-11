@@ -67,7 +67,7 @@ const hasImage = computed(() => !!imageUrl.value)
     ]"
     :style="hasImage ? undefined : { '--avatar-hue': hue }"
   >
-    <img v-if="hasImage" :src="imageUrl" alt="" class="w-full h-full object-cover" referrerpolicy="no-referrer">
+    <img v-if="hasImage" :src="imageUrl ?? undefined" alt="" class="w-full h-full object-cover" referrerpolicy="no-referrer">
     <Icon v-else-if="isGuest" name="lucide:user-round" :size="dims.icon" />
     <template v-else>{{ authorInitials(author) }}</template>
   </span>
