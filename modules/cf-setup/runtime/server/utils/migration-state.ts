@@ -12,7 +12,7 @@ import { resolveConnectionString } from './connection-string'
 
 type MigrationState = 'unknown' | 'bootstrap' | 'pending' | 'migrated' | 'unreachable'
 
-interface StateSnapshot {
+export interface StateSnapshot {
   state: MigrationState
   expected: number
   applied: number
@@ -35,50 +35,45 @@ function readJournalEntries(): number {
   }
 }
 
+function unreachable(expected: number, error: string): StateSnapshot {
+  return { state: 'unreachable', expected, applied: 0, error }
+}
+
+function stateFor(applied: number, expected: number): MigrationState {
+  if (applied === 0) return 'bootstrap'
+  return applied < expected ? 'pending' : 'migrated'
+}
+
+// Rows in the drizzle tracker; 0 when the tracker table does not exist yet.
+// Hyperdrive caches SELECT queries keyed on the query text; right after
+// migrations run, the tracker count would be served stale and /setup
+// would loop. Wrap the probe in a transaction — Hyperdrive does not
+// cache queries inside transactions.
+function countAppliedMigrations(db: ReturnType<typeof drizzle>): Promise<number> {
+  return db.transaction(async (tx) => {
+    const trackerRows = (await tx.execute(
+      sql`SELECT to_regclass('drizzle.__drizzle_migrations') IS NOT NULL AS exists`,
+    )) as unknown as Array<{ exists: boolean }>
+    if (!trackerRows[0]?.exists) return 0
+
+    const countRows = (await tx.execute(
+      sql`SELECT COUNT(*)::int AS n FROM drizzle.__drizzle_migrations`,
+    )) as unknown as Array<{ n: number }>
+    return countRows[0]?.n ?? 0
+  })
+}
+
 export async function probeDatabaseState(connectionString: string | undefined): Promise<StateSnapshot> {
   const expected = readJournalEntries()
   if (!connectionString) {
-    return {
-      state: 'unreachable',
-      expected,
-      applied: 0,
-      error: 'Database connection not configured — Hyperdrive binding missing',
-    }
+    return unreachable(expected, 'Database connection not configured — Hyperdrive binding missing')
   }
   const client = postgres(connectionString, { max: 1, prepare: false })
-  const db = drizzle(client)
   try {
-    // Hyperdrive caches SELECT queries keyed on the query text; right after
-    // migrations run, the tracker count would be served stale and /setup
-    // would loop. Wrap the probe in a transaction — Hyperdrive does not
-    // cache queries inside transactions.
-    const snapshot = await db.transaction(async (tx) => {
-      const trackerRows = (await tx.execute(
-        sql`SELECT to_regclass('drizzle.__drizzle_migrations') IS NOT NULL AS exists`,
-      )) as unknown as Array<{ exists: boolean }>
-      const trackerExists = !!trackerRows[0]?.exists
-      if (!trackerExists) return { trackerExists: false as const, applied: 0 }
-
-      const countRows = (await tx.execute(
-        sql`SELECT COUNT(*)::int AS n FROM drizzle.__drizzle_migrations`,
-      )) as unknown as Array<{ n: number }>
-      return { trackerExists: true as const, applied: countRows[0]?.n ?? 0 }
-    })
-    if (!snapshot.trackerExists) {
-      return { state: 'bootstrap', expected, applied: 0 }
-    }
-    const applied = snapshot.applied
-
-    if (applied === 0) return { state: 'bootstrap', expected, applied }
-    if (applied < expected) return { state: 'pending', expected, applied }
-    return { state: 'migrated', expected, applied }
+    const applied = await countAppliedMigrations(drizzle(client))
+    return { state: stateFor(applied, expected), expected, applied }
   } catch (err) {
-    return {
-      state: 'unreachable',
-      expected,
-      applied: 0,
-      error: err instanceof Error ? `${err.name}: ${err.message}` : String(err),
-    }
+    return unreachable(expected, err instanceof Error ? `${err.name}: ${err.message}` : String(err))
   } finally {
     await client.end({ timeout: 5 })
   }
