@@ -233,4 +233,3 @@ To get admin access on a fresh install:
 ## Next steps
 
 - **[Docker deploy](./docker.md)** — single-container self-hosting
-- **[Vercel deploy](./vercel.md)** — managed Node.js deploy

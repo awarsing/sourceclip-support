@@ -77,15 +77,15 @@ annotated source. Quick reference:
 
 | Variable | Required? | Purpose |
 |----------|:---------:|---------|
-| `DATABASE_URL` | ✅ | Postgres connection string |
-| `BETTER_AUTH_SECRET` | ✅ | 32+ char session encryption secret |
-| `SYSTEM_ADMIN_EMAILS` | ✅ | Comma-separated — these users get admin role on first sign-up. Without it the install has no admin. |
-| `BETTER_AUTH_URL` | ⬜ | Public URL of the app (no trailing slash). Usually inferred, but set it behind Host-rewriting proxies or when OAuth/email links need a fixed origin. |
-| `S3_ACCESS_KEY_ID` + `S3_SECRET_ACCESS_KEY` + `S3_BUCKET` (+ `S3_ENDPOINT` / `S3_REGION`) | ⬜ for persistent off-host uploads | Enables S3-compatible blob storage at runtime. See [Enabling S3 storage](#enabling-s3-compatible-storage-runtime). |
-| `GOOGLE_CLIENT_ID` / `GOOGLE_CLIENT_SECRET` | ⬜ | Enable Google OAuth |
-| `GITHUB_CLIENT_ID` / `GITHUB_CLIENT_SECRET` | ⬜ | Enable GitHub OAuth |
-| `OPENAI_API_KEY` + `OPENAI_BASE_URL` | ⬜ | Enable similar-idea merge and AI changelog drafting |
-| `EMAIL_PROVIDER` / `RESEND_API_KEY` / `EMAIL_FROM` | ⬜ | Transactional email |
+| `DATABASE_URL` | Yes | Postgres connection string |
+| `BETTER_AUTH_SECRET` | Yes | 32+ char session encryption secret |
+| `SYSTEM_ADMIN_EMAILS` | Yes | Comma-separated — these users get admin role on first sign-up. Without it the install has no admin. |
+| `BETTER_AUTH_URL` | No | Public URL of the app (no trailing slash). Usually inferred, but set it behind Host-rewriting proxies or when OAuth/email links need a fixed origin. |
+| `S3_ACCESS_KEY_ID` + `S3_SECRET_ACCESS_KEY` + `S3_BUCKET` (+ `S3_ENDPOINT` / `S3_REGION`) | Yes, for persistent off-host uploads | Enables S3-compatible blob storage at runtime. See [Enabling S3 storage](#enabling-s3-compatible-storage-runtime). |
+| `GOOGLE_CLIENT_ID` / `GOOGLE_CLIENT_SECRET` | No | Enable Google OAuth |
+| `GITHUB_CLIENT_ID` / `GITHUB_CLIENT_SECRET` | No | Enable GitHub OAuth |
+| `OPENAI_API_KEY` + `OPENAI_BASE_URL` | No | Enable similar-idea merge and AI changelog drafting |
+| `EMAIL_PROVIDER` / `RESEND_API_KEY` / `EMAIL_FROM` | No | Transactional email |
 
 ### Enabling S3-compatible storage (runtime)
 
@@ -194,4 +194,3 @@ docker compose up -d
 ## Next steps
 
 - **[Cloudflare Workers deploy](./cloudflare-workers.md)** — serverless edge deploy
-- **[Vercel deploy](./vercel.md)** — managed Node.js deploy with zero config

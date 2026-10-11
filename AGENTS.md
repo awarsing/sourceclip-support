@@ -12,7 +12,7 @@ This file provides guidance to coding agents (Claude Code, Cursor, Codex, Copilo
 | SEO | **@nuxtjs/seo** |
 | Auth | **better-auth** (email/password + Google OAuth + GitHub OAuth + admin plugin) |
 | Database | **PostgreSQL** (Drizzle ORM, postgres-js driver) |
-| Deployment | CF Workers / Vercel / Docker (Nitro preset switching) |
+| Deployment | CF Workers / Docker (Nitro preset switching) |
 | Package Manager | **pnpm** |
 
 ## Development
