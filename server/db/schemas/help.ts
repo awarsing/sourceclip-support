@@ -11,9 +11,9 @@ import {
   customType,
 } from 'drizzle-orm/pg-core'
 import { relations } from 'drizzle-orm'
-import { uuidv7 } from 'uuidv7'
 import { organization } from './auth'
 import type { HelpArticleStatus, HelpCollectionIcon } from '../../../shared/constants/help'
+import { createdAt, uuidPrimaryKey } from './columns'
 
 const tsvector = customType<{ data: string; driverParam: string }>({
   dataType() {
@@ -24,9 +24,7 @@ const tsvector = customType<{ data: string; driverParam: string }>({
 export const helpCollection = pgTable(
   'help_collection',
   {
-    id: uuid()
-      .primaryKey()
-      .$defaultFn(() => uuidv7()),
+    id: uuidPrimaryKey(),
     orgId: text('org_id').notNull(),
     name: varchar({ length: 100 }).notNull(),
     description: varchar({ length: 200 }),
@@ -40,9 +38,7 @@ export const helpCollection = pgTable(
 export const helpArticle = pgTable(
   'help_article',
   {
-    id: uuid()
-      .primaryKey()
-      .$defaultFn(() => uuidv7()),
+    id: uuidPrimaryKey(),
     orgId: text('org_id').notNull(),
     collectionId: uuid('collection_id').notNull(),
     shortId: varchar('short_id', { length: 6 }).notNull(),
@@ -55,7 +51,7 @@ export const helpArticle = pgTable(
     tsv: tsvector().notNull(),
     position: integer().notNull(),
     publishedAt: timestamp('published_at', { withTimezone: true }),
-    createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
+    createdAt: createdAt(),
     updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow(),
   },
   (t) => [
