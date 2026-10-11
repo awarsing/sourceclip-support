@@ -31,6 +31,11 @@ pnpm migrate                    # Run database migrations
 pnpm build:cf                   # Build with NITRO_PRESET=cloudflare-module
 pnpm deploy:cf                  # Deploy .output to CF Workers via wrangler
 
+# Quality gate (local-quality is the only CI; set TTM_PLATFORM_ROOT)
+pnpm check                      # format, lint, type-check, tests
+pnpm quality                    # full gate: build, Fallow, knip, audit, runtime test
+pnpm test                       # node:test against a throwaway local PostgreSQL + pgvector
+
 # UI components
 pnpm dlx shadcn-vue@latest add <component>  # Add shadcn-vue component (run pnpm install first to ensure .nuxt exists)
 ```

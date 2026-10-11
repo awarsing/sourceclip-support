@@ -1,0 +1,12 @@
+{
+  "$schema": "https://raw.githubusercontent.com/fallow-rs/fallow/main/schema.json",
+  "entry": [
+    "app/assets/css/tailwind.css",
+    "i18n/i18n.config.ts",
+    "server/tasks/**/*.ts",
+    "server/lib/agent/pg-native-unavailable.cjs",
+    "server/lib/inbox/vercel-queue-unavailable.ts"
+  ],
+  "ignorePatterns": [".nuxt/**", ".output/**", "coverage/**"],
+  "ignoreDependencies": ["@nuxthub/blob", "@vercel/blob", "aws4fetch"]
+}
