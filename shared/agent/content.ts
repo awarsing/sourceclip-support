@@ -1,7 +1,7 @@
 import { z } from 'zod'
 import { systemEventPart } from '../inbox/state'
 
-export const textPart = z
+const textPart = z
   .object({
     type: z.literal('text'),
     text: z
@@ -10,7 +10,7 @@ export const textPart = z
       .refine((value) => !!value.trim()),
   })
   .strict()
-export const imagePart = z.object({ type: z.literal('image'), storage_key: z.string().min(1).max(1000) }).strict()
+const imagePart = z.object({ type: z.literal('image'), storage_key: z.string().min(1).max(1000) }).strict()
 const feedbackFields = {
   feedback_id: z.uuid(),
   slug: z.string().min(1),
@@ -22,7 +22,7 @@ const feedbackFields = {
   has_voted: z.boolean(),
 }
 const commentFields = { ...feedbackFields, comment_id: z.uuid(), comment_text: z.string().min(1) }
-export const contentPart = z.discriminatedUnion('type', [
+const contentPart = z.discriminatedUnion('type', [
   systemEventPart,
   textPart,
   imagePart,
@@ -119,13 +119,14 @@ export interface Run {
   deadlineAt: string
   finishedAt: string | null
 }
-export interface Conversation {
+interface Conversation {
   id: string
   title: string | null
   lastSeq: number
   unread: boolean
   handling?: 'ai' | 'human' | 'closed'
 }
+// fallow-ignore-next-line unused-type -- imported by app/components/WidgetEmbed/WidgetEmbedChat.vue through the #layers/feedlog alias, which Fallow does not resolve in Vue SFCs
 export interface Detail {
   conversation: Conversation
   items: Item[]

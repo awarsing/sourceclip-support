@@ -2,7 +2,7 @@ import { pageContext, type Content } from '../../../shared/agent/content'
 
 // Only these application-owned phrases can appear in the email topic. Model
 // output is never copied into mail, even if it echoes private customer details.
-export const emailTopics = {
+const emailTopics = {
   refund: 'your refund request',
   payment: 'a payment issue',
   billing: 'a billing question',

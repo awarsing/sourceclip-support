@@ -2,7 +2,7 @@
 // server/utils/notifications.ts: the first two from post_subscription, the last
 // two from the org's owners/managers.
 
-export const NOTIFICATION_TYPE_KEYS = [
+const NOTIFICATION_TYPE_KEYS = [
   'post.status_changed',
   'post.admin_replied',
   'post.created',

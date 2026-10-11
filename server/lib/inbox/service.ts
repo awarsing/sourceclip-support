@@ -35,7 +35,7 @@ export function conversationResult(row: ConversationRow) {
     previewText: row.preview_text,
   }
 }
-export async function lockInbox(client: PoolClient, id: string, orgId: string) {
+async function lockInbox(client: PoolClient, id: string, orgId: string) {
   const {
     rows: [row],
   } = await client.query<ConversationRow>(
@@ -45,7 +45,7 @@ export async function lockInbox(client: PoolClient, id: string, orgId: string) {
   if (!row) agentError(404, 'conversation_not_found', 'Conversation not found')
   return row
 }
-export async function cancelRun(client: PoolClient, id: string, syncTasks = true) {
+async function cancelRun(client: PoolClient, id: string, syncTasks = true) {
   const { rows } = await client.query(
     "UPDATE agent_run SET status='cancelled',finished_at=clock_timestamp(),error=NULL WHERE conversation_id=$1 AND status='running' RETURNING id",
     [id],
@@ -67,7 +67,7 @@ export async function eventItem(
     ...options,
   })
 }
-export async function handoffLocked(
+async function handoffLocked(
   client: PoolClient,
   row: ConversationRow,
   runId: string,

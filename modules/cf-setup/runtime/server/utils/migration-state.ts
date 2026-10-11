@@ -10,7 +10,7 @@ import { resolveConnectionString } from './connection-string'
 // resets on cold boot. That is intentional: a new isolate re-queries once,
 // which is the cheapest source of truth after a deploy.
 
-export type MigrationState = 'unknown' | 'bootstrap' | 'pending' | 'migrated' | 'unreachable'
+type MigrationState = 'unknown' | 'bootstrap' | 'pending' | 'migrated' | 'unreachable'
 
 interface StateSnapshot {
   state: MigrationState
@@ -20,10 +20,6 @@ interface StateSnapshot {
 }
 
 let cache: StateSnapshot | null = null
-
-export function getCachedState(): StateSnapshot | null {
-  return cache
-}
 
 export function setCachedState(next: StateSnapshot | null): void {
   cache = next

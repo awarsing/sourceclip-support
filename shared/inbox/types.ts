@@ -1,3 +1,4 @@
+// fallow-ignore-file unused-file -- imported by app/pages/dashboard/inbox.vue and app/components/inbox/CustomerDetails.vue through the #layers/feedlog alias, which Fallow does not resolve in Vue SFCs
 import type { Item } from '../agent/content'
 import type { InboxStatus } from './state'
 export interface InboxConversation {
@@ -17,7 +18,7 @@ export interface InboxCustomer {
   isAnonymous: boolean
   email?: string | null
 }
-export interface InboxMessage extends Item {
+interface InboxMessage extends Item {
   author: { id: string; name: string | null; image: string | null; isAnonymous: boolean } | null
 }
 export interface InboxDetail {

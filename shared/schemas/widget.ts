@@ -20,7 +20,7 @@ const customRuleSchema = z.object({
   enabled: z.boolean(),
 })
 
-export const widgetLauncherConfigSchema = z.object({
+const widgetLauncherConfigSchema = z.object({
   alignment: z.enum(WIDGET_LAUNCHER_ALIGNMENTS),
   bottomOffset: z
     .int('Offset must be a whole number of pixels')
