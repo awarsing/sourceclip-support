@@ -2,6 +2,7 @@
 import '~/assets/css/md-editor-preview.css'
 import { preventShadcnDialogClose } from '~/lib/md-editor-helper'
 import { sanitizeAttachmentHtml } from '~/utils/attachment'
+import { apiErrorMessage, similarSearchBody, similarSearchDelay, submitDefaults, submitError } from './-post-logic'
 
 const props = defineProps<{
   defaultBoardId?: string
@@ -57,27 +58,39 @@ function triggerSimilarSearch() {
   // Bump on every trigger so any in-flight request from an older query is
   // invalidated — including when this call early-returns at the 3-char gate.
   const mine = ++similarSeq
-  const t = title.value.trim()
-  if (t.length < 3) {
+  const query = title.value.trim()
+  if (query.length < 3) {
     similarPosts.value = []
     return
   }
-  const delay = content.value.trim() ? 1000 : 500
-  similarDebounce.value = setTimeout(async () => {
-    similarLoading.value = true
-    try {
-      const body: Record<string, string> = { title: t }
-      if (content.value.trim()) body.content = content.value.trim()
-      const result = await useApiFetch<{ data: any[] }>('/api/posts/similar', { method: 'POST', body })
-      // Drop if a newer query superseded us, or the modal has since closed.
-      if (mine !== similarSeq || !open.value) return
-      similarPosts.value = result.data
-    } catch {
-      if (mine === similarSeq) similarPosts.value = []
-    } finally {
-      if (mine === similarSeq) similarLoading.value = false
-    }
-  }, delay)
+  similarDebounce.value = setTimeout(() => runSimilarSearch(mine, query), similarSearchDelay(content.value))
+}
+
+type SimilarResult = { ok: true; data: any[] } | { ok: false }
+
+async function runSimilarSearch(mine: number, query: string) {
+  similarLoading.value = true
+  const result = await fetchSimilar(query)
+  // Drop if a newer query superseded us.
+  if (mine !== similarSeq) return
+  applySimilarResult(result)
+  similarLoading.value = false
+}
+
+async function fetchSimilar(query: string): Promise<SimilarResult> {
+  try {
+    const body = similarSearchBody(query, content.value)
+    const result = await useApiFetch<{ data: any[] }>('/api/posts/similar', { method: 'POST', body })
+    return { ok: true, data: result.data }
+  } catch {
+    return { ok: false }
+  }
+}
+
+function applySimilarResult(result: SimilarResult) {
+  if (!result.ok) similarPosts.value = []
+  // A result that lands after the modal closed is dropped.
+  else if (open.value) similarPosts.value = result.data
 }
 
 watch(title, triggerSimilarSearch)
@@ -100,16 +113,9 @@ function reset() {
 }
 
 async function handleSubmit() {
-  if (!selectedBoardId.value) {
-    error.value = t('post.submit.errors.selectBoard')
-    return
-  }
-  if (!title.value.trim()) {
-    error.value = t('post.submit.errors.titleRequired')
-    return
-  }
-  if (!content.value.trim()) {
-    error.value = t('post.submit.errors.contentRequired')
+  const invalid = submitError(selectedBoardId.value, title.value, content.value)
+  if (invalid) {
+    error.value = t(invalid)
     return
   }
 
@@ -122,7 +128,10 @@ async function handleSubmit() {
     awaitingLogin.value = true
     return
   }
+  await createPost()
+}
 
+async function createPost() {
   submitting.value = true
   error.value = ''
 
@@ -140,8 +149,8 @@ async function handleSubmit() {
     open.value = false
     reset()
     emit('created', result.slug)
-  } catch (e: any) {
-    error.value = e.data?.message || t('post.submit.errors.submitFailed')
+  } catch (e) {
+    error.value = apiErrorMessage(e, t('post.submit.errors.submitFailed'))
   } finally {
     submitting.value = false
   }
@@ -160,14 +169,16 @@ watch(hasAccount, (v) => {
 
 // Set default board when modal opens, reset when it closes
 watch(open, (v) => {
-  if (v) {
-    selectedBoardId.value = props.defaultBoardId ?? boards.value[0]?.id ?? null
-    if (props.prefill?.title) title.value = props.prefill.title
-    if (props.prefill?.body) content.value = props.prefill.body
-  } else {
-    reset()
-  }
+  if (v) applyOpenDefaults()
+  else reset()
 })
+
+function applyOpenDefaults() {
+  const defaults = submitDefaults(props.defaultBoardId, boards.value, props.prefill)
+  selectedBoardId.value = defaults.boardId
+  if (defaults.title) title.value = defaults.title
+  if (defaults.body) content.value = defaults.body
+}
 </script>
 
 <template>
