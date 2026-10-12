@@ -35,7 +35,7 @@ export default defineEventHandler(async (event): Promise<ClaimResponse> => {
   }
 
   const ip = getRequestIP(event, { xForwardedFor: true }) || 'unknown'
-  if (!await checkRateLimit(`claim-anonymous:${ip}`, RATE_LIMIT)) {
+  if (!(await checkRateLimit(`claim-anonymous:${ip}`, RATE_LIMIT))) {
     throw createError({ statusCode: 429, message: 'Too many claims, try again shortly' })
   }
 

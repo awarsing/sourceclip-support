@@ -1,5 +1,4 @@
 <script setup lang="ts">
-
 usePageOg({ kind: 'changelogList' })
 
 const pageSize = 10

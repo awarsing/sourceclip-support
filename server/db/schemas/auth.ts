@@ -1,175 +1,165 @@
-import { relations } from "drizzle-orm";
-import { pgTable, text, timestamp, boolean, index, uniqueIndex } from "drizzle-orm/pg-core";
+import { relations } from 'drizzle-orm'
+import { pgTable, text, timestamp, boolean, index, uniqueIndex } from 'drizzle-orm/pg-core'
 
-export const user = pgTable("user", {
-  id: text("id").primaryKey(),
-  name: text("name").notNull(),
-  email: text("email").notNull().unique(),
-  emailVerified: boolean("email_verified").default(false).notNull(),
-  image: text("image"),
-  createdAt: timestamp("created_at").defaultNow().notNull(),
-  updatedAt: timestamp("updated_at")
+export const user = pgTable('user', {
+  id: text('id').primaryKey(),
+  name: text('name').notNull(),
+  email: text('email').notNull().unique(),
+  emailVerified: boolean('email_verified').default(false).notNull(),
+  image: text('image'),
+  createdAt: timestamp('created_at').defaultNow().notNull(),
+  updatedAt: timestamp('updated_at')
     .defaultNow()
     .$onUpdate(() => /* @__PURE__ */ new Date())
     .notNull(),
-  role: text("role"),
+  role: text('role'),
   // better-auth anonymous plugin field. True = a guest row minted for someone who
   // wrote something without signing in; its email is a reserved-domain placeholder.
   // input:false on the plugin side, so no client can set it through the API.
-  isAnonymous: boolean("is_anonymous").default(false),
-  banned: boolean("banned").default(false),
-  banReason: text("ban_reason"),
-  banExpires: timestamp("ban_expires"),
-});
+  isAnonymous: boolean('is_anonymous').default(false),
+  banned: boolean('banned').default(false),
+  banReason: text('ban_reason'),
+  banExpires: timestamp('ban_expires'),
+})
 
 export const session = pgTable(
-  "session",
+  'session',
   {
-    id: text("id").primaryKey(),
-    expiresAt: timestamp("expires_at").notNull(),
-    token: text("token").notNull().unique(),
-    createdAt: timestamp("created_at").defaultNow().notNull(),
-    updatedAt: timestamp("updated_at")
+    id: text('id').primaryKey(),
+    expiresAt: timestamp('expires_at').notNull(),
+    token: text('token').notNull().unique(),
+    createdAt: timestamp('created_at').defaultNow().notNull(),
+    updatedAt: timestamp('updated_at')
       .$onUpdate(() => /* @__PURE__ */ new Date())
       .notNull(),
-    ipAddress: text("ip_address"),
-    userAgent: text("user_agent"),
-    userId: text("user_id")
+    ipAddress: text('ip_address'),
+    userAgent: text('user_agent'),
+    userId: text('user_id')
       .notNull()
-      .references(() => user.id, { onDelete: "cascade" }),
-    impersonatedBy: text("impersonated_by"),
+      .references(() => user.id, { onDelete: 'cascade' }),
+    impersonatedBy: text('impersonated_by'),
     // organization plugin: tracks "last visited org" — UX convenience only,
     // never used for data isolation. event.context.orgId comes from host.
-    activeOrganizationId: text("active_organization_id"),
+    activeOrganizationId: text('active_organization_id'),
     // Set only on sessions minted by the product-SSO endpoint (/api/sso/jwt).
     // Marks an end-user session whose email was asserted by the org (not
     // verified by FeedLog): host-bound to this org, blocked from credential
     // changes. Null for normal Google/GitHub/password logins. Declared as a
     // better-auth session.additionalField in server/utils/better-auth.ts.
-    ssoOrgId: text("sso_org_id"),
+    ssoOrgId: text('sso_org_id'),
   },
-  (table) => [index("session_userId_idx").on(table.userId)],
-);
+  (table) => [index('session_userId_idx').on(table.userId)],
+)
 
 export const account = pgTable(
-  "account",
+  'account',
   {
-    id: text("id").primaryKey(),
-    accountId: text("account_id").notNull(),
-    providerId: text("provider_id").notNull(),
-    userId: text("user_id")
+    id: text('id').primaryKey(),
+    accountId: text('account_id').notNull(),
+    providerId: text('provider_id').notNull(),
+    userId: text('user_id')
       .notNull()
-      .references(() => user.id, { onDelete: "cascade" }),
-    accessToken: text("access_token"),
-    refreshToken: text("refresh_token"),
-    idToken: text("id_token"),
-    accessTokenExpiresAt: timestamp("access_token_expires_at"),
-    refreshTokenExpiresAt: timestamp("refresh_token_expires_at"),
-    scope: text("scope"),
-    password: text("password"),
-    createdAt: timestamp("created_at").defaultNow().notNull(),
-    updatedAt: timestamp("updated_at")
+      .references(() => user.id, { onDelete: 'cascade' }),
+    accessToken: text('access_token'),
+    refreshToken: text('refresh_token'),
+    idToken: text('id_token'),
+    accessTokenExpiresAt: timestamp('access_token_expires_at'),
+    refreshTokenExpiresAt: timestamp('refresh_token_expires_at'),
+    scope: text('scope'),
+    password: text('password'),
+    createdAt: timestamp('created_at').defaultNow().notNull(),
+    updatedAt: timestamp('updated_at')
       .$onUpdate(() => /* @__PURE__ */ new Date())
       .notNull(),
   },
-  (table) => [index("account_userId_idx").on(table.userId)],
-);
+  (table) => [index('account_userId_idx').on(table.userId)],
+)
 
 export const verification = pgTable(
-  "verification",
+  'verification',
   {
-    id: text("id").primaryKey(),
-    identifier: text("identifier").notNull(),
-    value: text("value").notNull(),
-    expiresAt: timestamp("expires_at").notNull(),
-    createdAt: timestamp("created_at").defaultNow().notNull(),
-    updatedAt: timestamp("updated_at")
+    id: text('id').primaryKey(),
+    identifier: text('identifier').notNull(),
+    value: text('value').notNull(),
+    expiresAt: timestamp('expires_at').notNull(),
+    createdAt: timestamp('created_at').defaultNow().notNull(),
+    updatedAt: timestamp('updated_at')
       .defaultNow()
       .$onUpdate(() => /* @__PURE__ */ new Date())
       .notNull(),
   },
-  (table) => [index("verification_identifier_idx").on(table.identifier)],
-);
+  (table) => [index('verification_identifier_idx').on(table.identifier)],
+)
 
 // Multi-tenant tables managed by better-auth organization plugin.
 // Field shape matches the plugin's expected Drizzle adapter schema.
 
-export const organization = pgTable("organization", {
-  id: text("id").primaryKey(),
-  name: text("name").notNull(),
-  slug: text("slug").notNull().unique(),
-  logo: text("logo"),
-  metadata: text("metadata"),
-  createdAt: timestamp("created_at").defaultNow().notNull(),
-});
+export const organization = pgTable('organization', {
+  id: text('id').primaryKey(),
+  name: text('name').notNull(),
+  slug: text('slug').notNull().unique(),
+  logo: text('logo'),
+  metadata: text('metadata'),
+  createdAt: timestamp('created_at').defaultNow().notNull(),
+})
 
 export const member = pgTable(
-  "member",
+  'member',
   {
-    id: text("id").primaryKey(),
-    organizationId: text("organization_id")
+    id: text('id').primaryKey(),
+    organizationId: text('organization_id')
       .notNull()
-      .references(() => organization.id, { onDelete: "cascade" }),
-    userId: text("user_id")
+      .references(() => organization.id, { onDelete: 'cascade' }),
+    userId: text('user_id')
       .notNull()
-      .references(() => user.id, { onDelete: "cascade" }),
-    role: text("role").notNull(),
-    createdAt: timestamp("created_at").defaultNow().notNull(),
+      .references(() => user.id, { onDelete: 'cascade' }),
+    role: text('role').notNull(),
+    createdAt: timestamp('created_at').defaultNow().notNull(),
   },
   (table) => [
-    index("member_userId_idx").on(table.userId),
-    uniqueIndex("member_org_user_unique").on(table.organizationId, table.userId),
+    index('member_userId_idx').on(table.userId),
+    uniqueIndex('member_org_user_unique').on(table.organizationId, table.userId),
   ],
-);
+)
 
 export const invitation = pgTable(
-  "invitation",
+  'invitation',
   {
-    id: text("id").primaryKey(),
-    organizationId: text("organization_id")
+    id: text('id').primaryKey(),
+    organizationId: text('organization_id')
       .notNull()
-      .references(() => organization.id, { onDelete: "cascade" }),
-    email: text("email").notNull(),
-    role: text("role").notNull(),
-    status: text("status").notNull().default("pending"),
-    teamId: text("team_id"),
-    inviterId: text("inviter_id")
+      .references(() => organization.id, { onDelete: 'cascade' }),
+    email: text('email').notNull(),
+    role: text('role').notNull(),
+    status: text('status').notNull().default('pending'),
+    teamId: text('team_id'),
+    inviterId: text('inviter_id')
       .notNull()
-      .references(() => user.id, { onDelete: "cascade" }),
-    expiresAt: timestamp("expires_at").notNull(),
-    createdAt: timestamp("created_at").defaultNow().notNull(),
+      .references(() => user.id, { onDelete: 'cascade' }),
+    expiresAt: timestamp('expires_at').notNull(),
+    createdAt: timestamp('created_at').defaultNow().notNull(),
   },
-  (table) => [
-    index("invitation_org_idx").on(table.organizationId),
-    index("invitation_email_idx").on(table.email),
-  ],
-);
-
-export const userRelations = relations(user, ({ many }) => ({
-  sessions: many(session),
-  accounts: many(account),
-  members: many(member),
-  invitationsSent: many(invitation),
-}));
+  (table) => [index('invitation_org_idx').on(table.organizationId), index('invitation_email_idx').on(table.email)],
+)
 
 export const sessionRelations = relations(session, ({ one }) => ({
   user: one(user, {
     fields: [session.userId],
     references: [user.id],
   }),
-}));
+}))
 
 export const accountRelations = relations(account, ({ one }) => ({
   user: one(user, {
     fields: [account.userId],
     references: [user.id],
   }),
-}));
+}))
 
 export const organizationRelations = relations(organization, ({ many }) => ({
   members: many(member),
   invitations: many(invitation),
-}));
+}))
 
 export const memberRelations = relations(member, ({ one }) => ({
   organization: one(organization, {
@@ -180,7 +170,7 @@ export const memberRelations = relations(member, ({ one }) => ({
     fields: [member.userId],
     references: [user.id],
   }),
-}));
+}))
 
 export const invitationRelations = relations(invitation, ({ one }) => ({
   organization: one(organization, {
@@ -191,4 +181,4 @@ export const invitationRelations = relations(invitation, ({ one }) => ({
     fields: [invitation.inviterId],
     references: [user.id],
   }),
-}));
+}))

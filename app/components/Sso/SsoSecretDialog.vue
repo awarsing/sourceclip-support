@@ -26,19 +26,21 @@ watch(open, (v) => {
   }
 })
 
-const copy = computed(() => props.mode === 'rename'
-  ? {
-      title: t('dashboard.sso.renameTitle'),
-      desc: t('dashboard.sso.renameDesc'),
-      action: t('common.save'),
-      icon: 'lucide:pencil',
-    }
-  : {
-      title: t('dashboard.sso.createTitle'),
-      desc: t('dashboard.sso.createDesc'),
-      action: t('dashboard.sso.createSecret'),
-      icon: 'lucide:plus',
-    })
+const copy = computed(() =>
+  props.mode === 'rename'
+    ? {
+        title: t('dashboard.sso.renameTitle'),
+        desc: t('dashboard.sso.renameDesc'),
+        action: t('common.save'),
+        icon: 'lucide:pencil',
+      }
+    : {
+        title: t('dashboard.sso.createTitle'),
+        desc: t('dashboard.sso.createDesc'),
+        action: t('dashboard.sso.createSecret'),
+        icon: 'lucide:plus',
+      },
+)
 
 function submit() {
   emit('submit', { label: label.value.trim() })

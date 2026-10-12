@@ -2,13 +2,13 @@ import { and, asc, eq } from 'drizzle-orm'
 import { board, conversation, message, post } from '#layers/feedlog/server/db/schemas'
 import { isConversationId, ownedConversation, withinRetention } from '#layers/feedlog/server/utils/conversation'
 
-export interface WidgetConversationMessage {
+interface WidgetConversationMessage {
   id: string
   role: string
   kind: string | null
   text: string
   images: string[]
-  post: { id: string, slug: string, title: string, board: string | null, status: string } | null
+  post: { id: string; slug: string; title: string; board: string | null; status: string } | null
   createdAt: Date
 }
 
@@ -53,7 +53,7 @@ export default defineEventHandler(async (event): Promise<{ data: WidgetConversat
     .orderBy(asc(message.createdAt), asc(message.id))
 
   return {
-    data: rows.map(r => ({
+    data: rows.map((r) => ({
       id: r.id,
       role: r.role,
       kind: r.kind,

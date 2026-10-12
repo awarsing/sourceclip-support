@@ -4,11 +4,11 @@ import type { H3Event } from 'h3'
 // of. Safe because these endpoints carry no ambient authority — auth is an
 // explicit Bearer header, never a cookie, so credentials stay off.
 
-export const WIDGET_API_PREFIX = '/api/widget/'
+const WIDGET_API_PREFIX = '/api/widget/'
 
 const ALLOWED_HEADERS = 'Content-Type, Authorization'
 const ALLOWED_METHODS = 'GET, POST, OPTIONS'
-const PREFLIGHT_MAX_AGE = '86400'
+const PREFLIGHT_MAX_AGE = 86400
 
 export function isWidgetApiPath(path: string): boolean {
   return path.startsWith(WIDGET_API_PREFIX)
@@ -21,8 +21,7 @@ export function applyWidgetCors(event: H3Event): void {
     // Stops a shared cache (config is cacheable) replaying one customer's
     // Allow-Origin to another.
     appendResponseHeader(event, 'Vary', 'Origin')
-  }
-  else {
+  } else {
     setResponseHeader(event, 'Access-Control-Allow-Origin', '*')
   }
   setResponseHeader(event, 'Access-Control-Allow-Headers', ALLOWED_HEADERS)

@@ -1,10 +1,19 @@
 <script setup lang="ts">
-import { resolveAttachmentUrl } from '#layers/feedlog/app/utils/attachment'
 import { widgetEmbedKey } from '#layers/feedlog/app/composables/useWidgetEmbed'
 import { widgetProtocolKey } from '#layers/feedlog/app/composables/useWidgetProtocol'
 import { widgetResumeSchema, type WidgetChatResume } from '#layers/feedlog/app/composables/useWidgetResume'
 import type { WidgetFeedbackItem } from '#layers/feedlog/server/api/widget/feedback/index.get'
 import type { WidgetConversationItem } from '#layers/feedlog/server/api/widget/conversations/index.get'
+import {
+  canRestore,
+  embedTitleKey,
+  feedbackListUrl,
+  isScrollableBox,
+  restoredConversationId,
+  resumeSnapshot,
+  rootView,
+  shouldContainWheel,
+} from '~/lib/pages/widget-embed'
 
 // /widget/embed — the FeedLog-hosted page the widget SDK loads in its iframe.
 //
@@ -41,14 +50,14 @@ const isDark = computed(() => themeParam.value === 'dark' || (themeParam.value =
 // cannot break out of the declaration. The endpoint already normalises these to
 // hex, but that check lives behind an HTTP boundary in another module, and this
 // is the one page any origin may frame — too much to stake on a distant regex.
-function applyBrand(brand: { primary: string, primaryForeground: string }) {
+function applyBrand(brand: { primary: string; primaryForeground: string }) {
   const root = document.documentElement
   root.style.setProperty('--primary', brand.primary)
   root.style.setProperty('--primary-foreground', brand.primaryForeground)
   root.style.setProperty('--ring', brand.primary)
 }
 
-const org = ref<{ name: string, logo: string | null }>({ name: '', logo: null })
+const org = ref<{ name: string; logo: string | null }>({ name: '', logo: null })
 const orgInitial = computed(() => org.value.name.trim().charAt(0).toUpperCase() || 'F')
 // Mirrors the prompt's own fallback, so greeting and model name an unnamed
 // workspace the same way.
@@ -57,12 +66,16 @@ const productName = computed(() => org.value.name || t('widget.thisProduct'))
 useHead(() => ({
   htmlAttrs: { class: `overflow-hidden overscroll-none${isDark.value ? ' dark' : ''}` },
   bodyAttrs: { class: 'overflow-hidden overscroll-none' },
-  script: themeParam.value === 'auto'
-    ? [{
-        key: 'widget-embed-auto-theme',
-        innerHTML: "try{document.documentElement.classList.toggle('dark',window.matchMedia('(prefers-color-scheme: dark)').matches)}catch(e){}",
-      }]
-    : [],
+  script:
+    themeParam.value === 'auto'
+      ? [
+          {
+            key: 'widget-embed-auto-theme',
+            innerHTML:
+              "try{document.documentElement.classList.toggle('dark',window.matchMedia('(prefers-color-scheme: dark)').matches)}catch(e){}",
+          },
+        ]
+      : [],
 }))
 
 // 'conversations' is the root; the other two both return to it.
@@ -81,61 +94,55 @@ function rememberScroll(event: Event) {
   if (target instanceof HTMLElement && target.clientHeight > 0) scrollTop = target.scrollTop
 }
 
-protocol.onResume(() => ({
-  owner: embed.user.value?.email ?? null,
-  anonymous: !embed.user.value || embed.user.value.isAnonymous === true,
-  view: view.value,
-  conversationId: activeConversationId.value,
-  chat: savedChat.value ? JSON.parse(JSON.stringify(savedChat.value)) : null,
-  scrollTop,
-}), async (state) => {
-  const parsed = widgetResumeSchema.safeParse(state)
-  if (!parsed.success) return
-  const saved = parsed.data
-  // A guest may claim their own draft on login; a different signed-in account
-  // must never inherit the previous account's conversation or composer.
-  if (!saved.anonymous && saved.owner !== embed.user.value?.email) return
-  activeConversationId.value = saved.view === 'chat'
-    ? (saved.chat?.conversationId ?? saved.conversationId)
-    : saved.conversationId
-  restoredChat.value = saved.chat
-  savedChat.value = saved.chat
-  view.value = saved.view
+protocol.onResume(
+  () => resumeSnapshot(embed.user.value, view.value, activeConversationId.value, savedChat.value, scrollTop),
+  async (state) => {
+    const parsed = widgetResumeSchema.safeParse(state)
+    if (!parsed.success) return
+    const saved = parsed.data
+    if (!canRestore(saved, embed.user.value?.email)) return
+    activeConversationId.value = restoredConversationId(saved)
+    restoredChat.value = saved.chat
+    savedChat.value = saved.chat
+    view.value = saved.view
+    await restoreListScroll(saved.view, saved.scrollTop)
+  },
+)
+
+// The chat restores its own scroll; the lists get theirs back once laid out.
+async function restoreListScroll(restored: string, top: number) {
+  if (restored === 'chat') return
   await nextTick()
   await document.fonts.ready
   const body = widgetRoot.value?.querySelector<HTMLElement>('.overflow-y-auto')
-  if (body && saved.view !== 'chat') body.scrollTop = saved.scrollTop
-})
+  if (body) body.scrollTop = top
+}
 
 function panelVisible() {
   return document.body.getBoundingClientRect().height > 0
 }
 
-function containWheel(event: WheelEvent) {
-  if (event.ctrlKey || !event.deltaY) return
-  // Some browsers ignore overscroll containment when iframe content has no scroll range.
-  for (const node of event.composedPath()) {
-    if (node instanceof HTMLElement) {
-      const { overflowY } = getComputedStyle(node)
-      if ((overflowY === 'auto' || overflowY === 'scroll') && node.scrollHeight > node.clientHeight) return
-    }
-    if (node === event.currentTarget) break
-  }
-  event.preventDefault()
+function canScroll(node: unknown) {
+  return (
+    node instanceof HTMLElement &&
+    isScrollableBox(getComputedStyle(node).overflowY, node.scrollHeight, node.clientHeight)
+  )
 }
 
-const headerTitle = computed(() => {
-  if (view.value === 'conversations') return t('widget.messages')
-  if (view.value === 'list') return t('widget.myFeedback')
-  return t('widget.agentTitle', { product: productName.value })
-})
+// Some browsers ignore overscroll containment when iframe content has no scroll range.
+function containWheel(event: WheelEvent) {
+  if (shouldContainWheel(event, event.composedPath(), event.currentTarget, canScroll)) event.preventDefault()
+}
+
+const headerTitle = computed(() => t(embedTitleKey(view.value), { product: productName.value }))
 
 async function loadConversations() {
   try {
     const res = await widgetFetch<{ data: WidgetConversationItem[] }>('/api/widget/conversations')
     conversations.value = res.data
+  } catch {
+    /* leave the list as-is */
   }
-  catch { /* leave the list as-is */ }
 }
 
 // ---- feedback list -------------------------------------------------------
@@ -152,7 +159,10 @@ const totalKnown = ref(false)
 const unreadCount = ref(0)
 const feedbackUnread = ref(0)
 
-interface BadgeCounts { count: number, feedback: number }
+interface BadgeCounts {
+  count: number
+  feedback: number
+}
 
 // The SDK owns the badge; it only learns of it from here.
 function applyBadge(res: BadgeCounts) {
@@ -164,37 +174,40 @@ function applyBadge(res: BadgeCounts) {
 async function loadUnread() {
   try {
     applyBadge(await widgetFetch<BadgeCounts>('/api/widget/unread'))
+  } catch {
+    /* keep the last known count */
   }
-  catch { /* keep the last known count */ }
 }
 
 async function markConversationRead(id: string, lastSeq: number) {
   try {
-    const result = await widgetFetch<BadgeCounts & { cleared: boolean }>(`/api/widget/conversations/${id}/read`, { method: 'POST', body: JSON.stringify({ observed_last_seq: lastSeq }) })
+    const result = await widgetFetch<BadgeCounts & { cleared: boolean }>(`/api/widget/conversations/${id}/read`, {
+      method: 'POST',
+      body: JSON.stringify({ observed_last_seq: lastSeq }),
+    })
     applyBadge(result)
-    const row = conversations.value.find(c => c.id === id)
+    const row = conversations.value.find((c) => c.id === id)
     if (row && result.cleared) row.unread = false
+  } catch {
+    /* the dot stays; a later load will correct it */
   }
-  catch { /* the dot stays; a later load will correct it */ }
 }
 
 async function loadFeedback(append = false) {
   listLoading.value = true
   try {
-    const cursor = append && nextCursor.value ? `&cursor=${encodeURIComponent(nextCursor.value)}` : ''
-    const pageSize = append ? PAGE_SIZE : Math.max(feedback.value.length, PAGE_SIZE)
     const res = await widgetFetch<{
       data: WidgetFeedbackItem[]
       total: number
       pagination: { nextCursor: string | null }
-    }>(`/api/widget/feedback?pageSize=${pageSize}${cursor}`)
+    }>(feedbackListUrl(append, nextCursor.value, feedback.value.length, PAGE_SIZE))
     feedback.value = append ? [...feedback.value, ...res.data] : res.data
     nextCursor.value = res.pagination.nextCursor
     totalCount.value = res.total
     totalKnown.value = true
-  }
-  catch { /* leave the list as-is */ }
-  finally {
+  } catch {
+    /* leave the list as-is */
+  } finally {
     listLoading.value = false
   }
 }
@@ -216,8 +229,9 @@ async function openItem(item: WidgetFeedbackItem) {
     const res = await widgetFetch<BadgeCounts>(`/api/widget/feedback/${item.id}/read`, { method: 'POST' })
     item.unread = false
     applyBadge(res)
+  } catch {
+    /* the dot stays; a later load will correct it */
   }
-  catch { /* the dot stays; a later load will correct it */ }
 }
 
 function onAuthRequired() {
@@ -263,7 +277,7 @@ function onBack() {
 function resetToRoot() {
   chatKey.value++
   activeConversationId.value = null
-  view.value = conversations.value.length || totalCount.value ? 'conversations' : 'chat'
+  view.value = rootView(conversations.value.length, totalCount.value)
 }
 
 async function settleView() {
@@ -307,16 +321,18 @@ watch(status, (now, before) => {
 onMounted(async () => {
   const mq = window.matchMedia('(prefers-color-scheme: dark)')
   systemDark.value = mq.matches
-  mq.addEventListener('change', e => { systemDark.value = e.matches })
+  mq.addEventListener('change', (e) => {
+    systemDark.value = e.matches
+  })
 
   protocol.init()
 
   // Awaited alongside the session because the greeting names the product. A
   // failure costs only the brand colour and the name.
   const config = $fetch<{
-    org: { name: string, logo: string | null }
+    org: { name: string; logo: string | null }
     allowGuest: boolean
-    branding: { primary: string, primaryForeground: string }
+    branding: { primary: string; primaryForeground: string }
   }>('/api/widget/config')
     .then((cfg) => {
       applyBrand(cfg.branding)
@@ -352,47 +368,16 @@ onUnmounted(() => {
   <div ref="widgetRoot" class="relative h-dvh overflow-hidden flex flex-col bg-background text-foreground" @wheel="containWheel" @scroll.capture="rememberScroll">
     <span v-if="probeArmed" class="render-probe" aria-hidden="true" @animationstart="onFirstRender" />
 
-    <!-- Header -->
-    <header class="min-h-16 px-4 pt-[env(safe-area-inset-top)] border-b border-border bg-card flex items-center gap-2.5 shrink-0">
-      <button
-        v-if="view !== 'conversations'"
-        class="w-7 h-7 shrink-0 hover:opacity-70 transition-opacity flex items-center justify-center text-primary"
-        :aria-label="t('widget.back')"
-        @click="onBack"
-      >
-        <Icon name="lucide:arrow-left" size="17" />
-      </button>
-      <img
-        v-if="view === 'chat' && org.logo"
-        :src="resolveAttachmentUrl(org.logo)!"
-        alt=""
-        class="w-7 h-7 rounded-md object-cover shrink-0"
-      >
-      <span
-        v-else-if="view === 'chat'"
-        class="w-7 h-7 rounded-md shrink-0 grid place-items-center bg-primary text-primary-foreground font-heading font-bold text-[13px]"
-      >{{ orgInitial }}</span>
-      <div class="flex-1 min-w-0" :class="view === 'conversations' ? 'text-center' : ''">
-        <p
-          class="font-heading truncate"
-          :class="view === 'conversations' ? 'text-lg font-bold leading-6' : 'font-semibold text-[15.5px]'"
-        >
-          {{ headerTitle }}
-        </p>
-        <p v-if="view === 'list' && totalCount" class="mt-0.5 text-xs text-muted-foreground truncate">
-          {{ t('widget.postCount', { count: totalCount }, totalCount) }}<template v-if="feedbackUnread"> · {{ t('widget.withUpdates', { count: feedbackUnread }, feedbackUnread) }}</template>
-        </p>
-
-      </div>
-      <button
-        class="w-6.5 h-6.5 rounded-full bg-secondary hover:opacity-80 transition-opacity flex items-center justify-center text-primary shrink-0"
-        :aria-label="t('widget.close')"
-        data-fdl-action="widget_panel_close"
-        @click="protocol.requestClose()"
-      >
-        <Icon name="lucide:x" size="13" />
-      </button>
-    </header>
+    <WidgetEmbedPageHeader
+      :view="view"
+      :title="headerTitle"
+      :org="org"
+      :org-initial="orgInitial"
+      :total-count="totalCount"
+      :feedback-unread="feedbackUnread"
+      @back="onBack"
+      @close="protocol.requestClose()"
+    />
 
     <!-- Signed out, and this org does not accept guests -->
     <div v-if="status === 'anonymous'" class="flex-1 flex flex-col items-center justify-center gap-3 px-8 text-center">

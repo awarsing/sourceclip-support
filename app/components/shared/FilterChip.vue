@@ -2,31 +2,34 @@
 // Three-segment filter chip: field | operator | value(s) | ×
 // The `single` kind has no operator segment.
 
-import type { FilterValueOption } from './FilterValuePanel.vue'
+import { extraValueCount, type FilterValueOption, filterValueLabel, isStaleFilter } from '~/lib/filter-values'
 
-const props = withDefaults(defineProps<{
-  label: string
-  icon: string
-  kind: 'enum' | 'date' | 'single'
-  op: string
-  values?: string[]
-  from?: string
-  to?: string
-  options?: FilterValueOption[]
-  searchable?: boolean
-}>(), {
-  values: () => [],
-  options: () => [],
-  from: undefined,
-  to: undefined,
-  searchable: false,
-})
+const props = withDefaults(
+  defineProps<{
+    label: string
+    icon: string
+    kind: 'enum' | 'date' | 'single'
+    op: string
+    values?: string[]
+    from?: string
+    to?: string
+    options?: FilterValueOption[]
+    searchable?: boolean
+  }>(),
+  {
+    values: () => [],
+    options: () => [],
+    from: undefined,
+    to: undefined,
+    searchable: false,
+  },
+)
 
 const emit = defineEmits<{
   'update:op': [op: string]
   'update:values': [values: string[]]
-  'update:range': [range: { from?: string, to?: string }]
-  'remove': []
+  'update:range': [range: { from?: string; to?: string }]
+  remove: []
 }>()
 
 const { t } = useI18n()
@@ -39,25 +42,11 @@ const OPS: Record<string, string[]> = {
 
 const opLabel = (op: string) => t(`dashboard.filter.op.${op}`)
 
-const firstKnown = computed(() => props.values.map(v => props.options.find(o => o.value === v)).find(Boolean))
+const isStale = computed(() => isStaleFilter(props))
 
-// The option-list guard matters: candidates load async, and nothing resolves until they do.
-const isStale = computed(() => props.kind !== 'date'
-  && props.values.length > 0
-  && props.options.length > 0
-  && !firstKnown.value)
+const valueLabel = computed(() => filterValueLabel(props, t))
 
-const valueLabel = computed(() => {
-  if (props.kind === 'date') {
-    if (props.op === 'range') return `${props.from || '…'} – ${props.to || '…'}`
-    return props.from || props.to || t('dashboard.filter.pickDate')
-  }
-  if (!props.values.length) return t('dashboard.filter.pickValue')
-  if (isStale.value) return t('dashboard.filter.staleValue')
-  return firstKnown.value?.label ?? props.values[0]!
-})
-
-const extraCount = computed(() => (props.kind === 'date' ? 0 : Math.max(0, props.values.length - 1)))
+const extraCount = computed(() => extraValueCount(props))
 </script>
 
 <template>

@@ -2,7 +2,7 @@ import { z } from 'zod/v4'
 import type { OrgMetadataInput } from './branding'
 import { parseOrgMetadata } from './branding'
 
-export const portalModulesSchema = z.object({
+const portalModulesSchema = z.object({
   helpCenter: z.boolean().optional(),
 })
 
@@ -12,11 +12,11 @@ export interface ResolvedPortalModules {
   helpCenter: boolean
 }
 
-export const PORTAL_MODULES_DEFAULTS: ResolvedPortalModules = {
+const PORTAL_MODULES_DEFAULTS: ResolvedPortalModules = {
   helpCenter: false,
 }
 
-export function parsePortalModules(metadata: OrgMetadataInput): PortalModules {
+function parsePortalModules(metadata: OrgMetadataInput): PortalModules {
   const result = portalModulesSchema.safeParse(parseOrgMetadata(metadata).portalModules)
   return result.success ? result.data : {}
 }

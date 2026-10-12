@@ -23,6 +23,7 @@ import { uuidv7 } from 'uuidv7'
 // widget-born feedback.created share a `messageId` (the triggering user
 // message, written in the flow's first transaction) so subscribers can join
 // the events of one message flow.
+/** @public Layer extension API for a consuming app's Nitro plugins. */
 export interface FeedLogDomainEventMap {
   'inbox.handoff': { conversationId: string; reason: import('../../shared/inbox/state').HandoffReason }
   'inbox.staff-replied': { conversationId: string; itemId: string }
@@ -85,12 +86,14 @@ export interface DomainEventEnvelope<Name extends DomainEventName = DomainEventN
 }
 
 // The union distributed per name, so `switch (domainEvent.name)` narrows `data`.
+/** @public Layer extension API for a consuming app's Nitro plugins. */
 export type AnyDomainEvent = {
   [Name in DomainEventName]: DomainEventEnvelope<Name>
 }[DomainEventName]
 
 // What in-process delivery can offer beyond the envelope. Every field is
 // optional and a listener must work without any of them.
+/** @public Layer extension API for a consuming app's Nitro plugins. */
 export interface DomainEventDeliveryContext {
   // Origin the triggering request arrived on. Carried for subscribers that
   // build absolute links and fall back to the request origin when no canonical
@@ -124,6 +127,7 @@ export type DomainEventHandler<Name extends DomainEventName = DomainEventName> =
 // callback arrives already typed; there is no single shared hook and no
 // wildcard. The event name (not the hook name) is the transport-independent
 // contract other delivery paths reuse.
+/** @public Layer extension API for a consuming app's Nitro plugins. */
 export type DomainEventHookName<Name extends DomainEventName = DomainEventName> =
   Name extends `${infer Domain}.${infer Fact}` ? `feedlog:${Domain}:${Fact}` : never
 
@@ -133,7 +137,6 @@ type FeedLogDomainEventHooks = {
 
 declare module 'nitropack/types' {
   // Declaration merging into Nitro's hook table — the "empty" interface is the merge.
-  // eslint-disable-next-line @typescript-eslint/no-empty-object-type
   interface NitroRuntimeHooks extends FeedLogDomainEventHooks {}
 }
 
@@ -143,10 +146,7 @@ function toHookName(name: DomainEventName): DomainEventHookName {
   return `feedlog:${name.replace('.', ':')}` as DomainEventHookName
 }
 
-export type DomainEventInput<Name extends DomainEventName> = Omit<
-  DomainEventEnvelope<Name>,
-  'id' | 'occurredAt'
->
+export type DomainEventInput<Name extends DomainEventName> = Omit<DomainEventEnvelope<Name>, 'id' | 'occurredAt'>
 
 // Creation is separate from publication so a caller can persist the event
 // (keeping its id) before publishing, and so occurredAt names the moment the
@@ -211,7 +211,7 @@ async function dispatchDomainEvent(
     async (handlers) => {
       // The async wrapper turns a listener's synchronous throw into a
       // rejection; bare handler(...) would escape allSettled mid-map.
-      const outcomes = await Promise.allSettled(handlers.map(async handler => handler(domainEvent, context)))
+      const outcomes = await Promise.allSettled(handlers.map(async (handler) => handler(domainEvent, context)))
       for (const outcome of outcomes) {
         if (outcome.status === 'rejected') {
           console.error(
@@ -245,6 +245,7 @@ export function onDomainEvent<Name extends DomainEventName>(
 
 // Cross-cutting subscription: registers the handler on every catalog entry,
 // because Hookable has no wildcard and faking one would bypass typed hooks.
+/** @public Layer extension API for a consuming app's Nitro plugins. */
 export function onAnyDomainEvent(
   nitroApp: NitroApp,
   handler: (domainEvent: AnyDomainEvent, context?: DomainEventDeliveryContext) => void | Promise<void>,

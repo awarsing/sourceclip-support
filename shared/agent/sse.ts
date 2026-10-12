@@ -5,7 +5,10 @@ type AgentEvent =
   | [name: 'tool', data: Extract<StreamEvent, { type: 'tool' }>]
   | [name: 'text', data: { delta: string }]
   | [name: 'finish', data: { runId: string; itemId: string; lastSeq: number }]
-  | [name: 'handoff' | 'closed', data: { runId: string; noticeItemId: string; lastSeq: number; handling: 'human' | 'closed' }]
+  | [
+      name: 'handoff' | 'closed',
+      data: { runId: string; noticeItemId: string; lastSeq: number; handling: 'human' | 'closed' },
+    ]
   | [name: 'error', data: { message: string }]
 
 export async function readAgentEvents(stream: ReadableStream<Uint8Array>, onEvent: (...event: AgentEvent) => void) {
@@ -21,11 +24,19 @@ export async function readAgentEvents(stream: ReadableStream<Uint8Array>, onEven
         const block = buffer.slice(0, boundary.index)
         buffer = buffer.slice(boundary.index + boundary[0].length)
         const lines = block.split(/\r?\n/)
-        const name = lines.find(line => line.startsWith('event:'))?.slice(6).trim()
-        const data = lines.filter(line => line.startsWith('data:')).map(line => line.slice(5).trimStart()).join('\n')
-        if (name && data) onEvent(...[name, JSON.parse(data)] as AgentEvent)
+        const name = lines
+          .find((line) => line.startsWith('event:'))
+          ?.slice(6)
+          .trim()
+        const data = lines
+          .filter((line) => line.startsWith('data:'))
+          .map((line) => line.slice(5).trimStart())
+          .join('\n')
+        if (name && data) onEvent(...([name, JSON.parse(data)] as AgentEvent))
       }
       if (done) return
     }
-  } finally { reader.releaseLock() }
+  } finally {
+    reader.releaseLock()
+  }
 }

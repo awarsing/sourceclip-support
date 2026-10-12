@@ -1,25 +1,26 @@
 <script setup lang="ts">
+import { needsStatusUpdate } from '~/lib/pages/posts'
+
 definePageMeta({ layout: 'dashboard', middleware: 'admin' })
 
 const { t } = useI18n()
-const boardStore = useBoardStore()
-const postDetailStore = usePostDetailStore()
-await callOnce(() => boardStore.fetchBoards())
-const { boards } = storeToRefs(boardStore)
+const { boards } = await useLoadedBoards()
 
 const selectedBoard = ref('all')
 const boardOptions = computed(() => [
   { value: 'all', label: t('dashboard.allBoards') },
-  ...boards.value.map(b => ({ value: b.id, label: b.name })),
+  ...boards.value.map((b) => ({ value: b.id, label: b.name })),
 ])
 
-const activeBoardId = computed(() =>
-  selectedBoard.value !== 'all' ? selectedBoard.value : null,
-)
+const activeBoardId = computed(() => (selectedBoard.value !== 'all' ? selectedBoard.value : null))
 
 const showSubmit = ref(false)
 const addStatus = ref<string | null>(null)
-const kanbanRef = ref<{ refresh: () => Promise<void>; updateItem: (post: any) => void; removeItem: (id: string) => void } | null>(null)
+const kanbanRef = ref<{
+  refresh: () => Promise<void>
+  updateItem: (post: any) => void
+  removeItem: (id: string) => void
+} | null>(null)
 
 function handleAdd(status: string) {
   addStatus.value = status
@@ -28,31 +29,25 @@ function handleAdd(status: string) {
 
 async function handleCreated(slug: string) {
   // Set the status for newly created post (created as 'open' by default)
-  if (addStatus.value && addStatus.value !== 'open') {
-    try {
-      const post = await useApiFetch<PostDetail>(`/api/posts/${slug}`)
-      if (post?.id) {
-        await useApiFetch(`/api/admin/posts/${post.id}`, {
-          method: 'PATCH',
-          body: { status: addStatus.value, notify: false },
-        })
-      }
-    } catch {
+  if (needsStatusUpdate(addStatus.value)) {
+    await applyStatus(slug, addStatus.value!).catch(() => {
       // Status update failed, post still created as 'open'
-    }
+    })
   }
   addStatus.value = null
   kanbanRef.value?.refresh()
 }
 
-const showDetail = ref(false)
-const detailSlug = ref<string | null>(null)
-
-function openPostDetail(item: PostListItem) {
-  postDetailStore.prefill(item.slug, item)
-  detailSlug.value = item.slug
-  showDetail.value = true
+async function applyStatus(slug: string, status: string) {
+  const post = await useApiFetch<PostDetail>(`/api/posts/${slug}`)
+  if (!post?.id) return
+  await useApiFetch(`/api/admin/posts/${post.id}`, {
+    method: 'PATCH',
+    body: { status, notify: false },
+  })
 }
+
+const { showDetail, detailSlug, openPostDetail } = usePostDetailModal()
 </script>
 
 <template>

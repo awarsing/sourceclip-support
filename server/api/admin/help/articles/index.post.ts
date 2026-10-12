@@ -1,5 +1,4 @@
-import { and, eq } from 'drizzle-orm'
-import { helpArticle, helpCollection } from '#layers/feedlog/server/db/schemas'
+import { helpArticle } from '#layers/feedlog/server/db/schemas'
 import { createHelpArticleSchema } from '#layers/feedlog/shared/schemas/help'
 
 export default defineEventHandler(async (event) => {
@@ -8,15 +7,7 @@ export default defineEventHandler(async (event) => {
 
   const db = useDB()
 
-  const [collection] = await db
-    .select({ id: helpCollection.id })
-    .from(helpCollection)
-    .where(and(eq(helpCollection.id, body.collectionId), eq(helpCollection.orgId, orgId)))
-    .limit(1)
-
-  if (!collection) {
-    throw createError({ statusCode: 404, message: 'Collection not found' })
-  }
+  await requireHelpCollection(orgId, body.collectionId)
 
   const description = body.description ?? null
   const position = await nextHelpArticlePosition(body.collectionId)

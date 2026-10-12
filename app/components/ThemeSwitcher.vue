@@ -9,7 +9,7 @@ const options = computed(() => [
   { value: 'light' as const, label: t('common.theme.light'), icon: 'lucide:sun' },
   { value: 'dark' as const, label: t('common.theme.dark'), icon: 'lucide:moon' },
 ])
-const currentIcon = computed(() => options.value.find(o => o.value === mode.value)?.icon ?? 'lucide:monitor')
+const currentIcon = computed(() => options.value.find((o) => o.value === mode.value)?.icon ?? 'lucide:monitor')
 </script>
 
 <template>

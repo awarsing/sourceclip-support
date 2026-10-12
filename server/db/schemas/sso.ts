@@ -13,16 +13,22 @@ import { organization } from './auth'
 // `secret` is stored in PLAINTEXT: HMAC verification needs the raw value and the
 // dashboard re-reveals it on demand (unlike a hashed, show-once bearer key).
 // Treat it as a high-value credential at the DB / access-control layer.
-export const organizationSso = pgTable('organization_sso', {
-  id: text('id').primaryKey().$defaultFn(() => uuidv7()),
-  orgId: text('org_id').notNull().references(() => organization.id, { onDelete: 'cascade' }),
-  secret: text('secret').notNull(),
-  label: text('label'),
-  enabled: boolean('enabled').notNull().default(true),
-  createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
-}, (t) => [
-  index('idx_organization_sso_org').on(t.orgId),
-])
+export const organizationSso = pgTable(
+  'organization_sso',
+  {
+    id: text('id')
+      .primaryKey()
+      .$defaultFn(() => uuidv7()),
+    orgId: text('org_id')
+      .notNull()
+      .references(() => organization.id, { onDelete: 'cascade' }),
+    secret: text('secret').notNull(),
+    label: text('label'),
+    enabled: boolean('enabled').notNull().default(true),
+    createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => [index('idx_organization_sso_org').on(t.orgId)],
+)
 
 export const organizationSsoRelations = relations(organizationSso, ({ one }) => ({
   organization: one(organization, { fields: [organizationSso.orgId], references: [organization.id] }),

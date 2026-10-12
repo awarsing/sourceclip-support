@@ -17,7 +17,10 @@ const logger = consola.withTag('auth')
 
 const env = process.env
 
-const systemAdminEmails = env.SYSTEM_ADMIN_EMAILS?.split(',').map(s => s.trim()).filter(Boolean) ?? []
+const systemAdminEmails =
+  env.SYSTEM_ADMIN_EMAILS?.split(',')
+    .map((s) => s.trim())
+    .filter(Boolean) ?? []
 
 const hasGoogle = !!(env.GOOGLE_CLIENT_ID && env.GOOGLE_CLIENT_SECRET)
 const hasGithub = !!(env.GITHUB_CLIENT_ID && env.GITHUB_CLIENT_SECRET)
@@ -41,11 +44,14 @@ if (!hasOAuth && !emailLoginEnabled) {
 // First OAuth signup still copies name / avatar from the provider. Later
 // callbacks must not overwrite them: users can edit both in-app, and a re-login
 // would otherwise discard those edits.
-const socialProviders: Record<string, {
-  clientId: string
-  clientSecret: string
-  overrideUserInfoOnSignIn: boolean
-}> = {}
+const socialProviders: Record<
+  string,
+  {
+    clientId: string
+    clientSecret: string
+    overrideUserInfoOnSignIn: boolean
+  }
+> = {}
 if (hasGoogle) {
   socialProviders.google = {
     clientId: env.GOOGLE_CLIENT_ID!,
@@ -63,34 +69,34 @@ if (hasGithub) {
 
 const emailAndPassword = emailLoginEnabled
   ? {
-    enabled: true,
-    requireEmailVerification,
-    password: { hash: hashPassword, verify: verifyPassword },
-    ...(hasEmailProvider && {
-      sendResetPassword: async ({ user, url }: { user: { email: string; name: string }; url: string }) => {
-        await sendEmail({
-          to: user.email,
-          subject: 'Reset your FeedLog password',
-          html: renderResetPasswordEmail({ url, name: user.name }),
-        })
-      },
-    }),
-  }
+      enabled: true,
+      requireEmailVerification,
+      password: { hash: hashPassword, verify: verifyPassword },
+      ...(hasEmailProvider && {
+        sendResetPassword: async ({ user, url }: { user: { email: string; name: string }; url: string }) => {
+          await sendEmail({
+            to: user.email,
+            subject: 'Reset your FeedLog password',
+            html: renderResetPasswordEmail({ url, name: user.name }),
+          })
+        },
+      }),
+    }
   : { enabled: false }
 
 const emailVerification = hasEmailProvider
   ? {
-    sendOnSignUp: true,
-    autoSignInAfterVerification: true,
-    expiresIn: 3600,
-    sendVerificationEmail: async ({ user, url }: { user: { email: string; name: string }; url: string }) => {
-      await sendEmail({
-        to: user.email,
-        subject: 'Confirm your email to start using FeedLog',
-        html: renderVerificationEmail({ url, name: user.name }),
-      })
-    },
-  }
+      sendOnSignUp: true,
+      autoSignInAfterVerification: true,
+      expiresIn: 3600,
+      sendVerificationEmail: async ({ user, url }: { user: { email: string; name: string }; url: string }) => {
+        await sendEmail({
+          to: user.email,
+          subject: 'Confirm your email to start using FeedLog',
+          html: renderVerificationEmail({ url, name: user.name }),
+        })
+      },
+    }
   : undefined
 
 // Build the orgList shape attached to every session via customSession plugin.
@@ -126,12 +132,15 @@ async function loadOrgList(userId: string, confineToOrgId?: string | null) {
 // invited users sign in and click Accept on /invite?id=... themselves.
 async function bootstrapAfterUserCreate(newUser: { id: string; email: string }) {
   if (!systemAdminEmails.includes(newUser.email)) return
-  await db.insert(member).values({
-    id: uuidv7(),
-    organizationId: DEFAULT_ORG_ID,
-    userId: newUser.id,
-    role: 'owner',
-  }).onConflictDoNothing()
+  await db
+    .insert(member)
+    .values({
+      id: uuidv7(),
+      organizationId: DEFAULT_ORG_ID,
+      userId: newUser.id,
+      role: 'owner',
+    })
+    .onConflictDoNothing()
 }
 
 // The plugin picks the name before the row exists, so the id-derived tag can only
@@ -139,7 +148,8 @@ async function bootstrapAfterUserCreate(newUser: { id: string; email: string }) 
 // guest — worth it so the dashboard and a raw DB query can tell two guests apart
 // without composing the tag themselves.
 async function nameGuestUser(userId: string) {
-  await db.update(userTable)
+  await db
+    .update(userTable)
     .set({ name: `Anonymous ${guestTag(userId)}` })
     .where(eq(userTable.id, userId))
 }
@@ -164,30 +174,31 @@ export function defaultTrustedOrigins(request?: Request): string[] {
   return host ? [`http://${host}`, `https://${host}`] : []
 }
 
-export function buildAuthConfig(overrides: AuthConfigOverrides = {}): BetterAuthOptions {
-  type SendInvite = NonNullable<NonNullable<Parameters<typeof organization>[0]>['sendInvitationEmail']>
-  // Default invite email: `${BETTER_AUTH_URL}/invite?id=...`. No-op when Resend isn't
-  // configured; the Members page "copy invitation link" button is the manual fallback.
-  const layerDefaultSendInvite: SendInvite = async (data) => {
-    if (!hasEmailProvider) return
-    const baseUrl = env.BETTER_AUTH_URL || 'http://localhost:3000'
-    const url = `${baseUrl}/invite?id=${data.id}`
-    await sendEmail({
-      to: data.email,
-      subject: `You're invited to join ${data.organization.name} on FeedLog`,
-      html: renderInvitationEmail({ url, orgName: data.organization.name }),
-    })
-  }
+type SendInvite = NonNullable<NonNullable<Parameters<typeof organization>[0]>['sendInvitationEmail']>
+
+// Default invite email: `${BETTER_AUTH_URL}/invite?id=...`. No-op when Resend isn't
+// configured; the Members page "copy invitation link" button is the manual fallback.
+const layerDefaultSendInvite: SendInvite = async (data) => {
+  if (!hasEmailProvider) return
+  const baseUrl = env.BETTER_AUTH_URL || 'http://localhost:3000'
+  const url = `${baseUrl}/invite?id=${data.id}`
+  await sendEmail({
+    to: data.email,
+    subject: `You're invited to join ${data.organization.name} on FeedLog`,
+    html: renderInvitationEmail({ url, orgName: data.organization.name }),
+  })
+}
+
+function organizationOptions(overrides: AuthConfigOverrides) {
   const rawSendInvite: SendInvite = overrides.organizationExtras?.sendInvitationEmail ?? layerDefaultSendInvite
   const sendInvitationEmail: SendInvite = async (data, request) => {
     try {
       await rawSendInvite(data, request)
-    }
-    catch (e) {
+    } catch (e) {
       logger.warn(`Invitation email failed for ${data.email}: ${(e as Error)?.message ?? e}`)
     }
   }
-  const orgOpts = {
+  return {
     ac,
     roles: { owner, manager, contributor },
     creatorRole: 'owner' as const,
@@ -197,25 +208,42 @@ export function buildAuthConfig(overrides: AuthConfigOverrides = {}): BetterAuth
     // sender (it already delegates to that override via rawSendInvite).
     sendInvitationEmail,
   }
-  const mergedSocial = defu(overrides.socialProviderOverrides ?? {}, socialProviders) as typeof socialProviders
-  // Guests short-circuit ahead of the override so a deployment that swaps in its
-  // own bootstrap (the SaaS layer does) still gets them named — and never runs
-  // org-membership bootstrap for an identity that can't be a member.
+}
+
+// Guests short-circuit ahead of the override so a deployment that swaps in its
+// own bootstrap (the SaaS layer does) still gets them named — and never runs
+// org-membership bootstrap for an identity that can't be a member.
+function userCreateAfterHook(overrides: AuthConfigOverrides) {
   const bootstrap = overrides.userCreateAfter ?? bootstrapAfterUserCreate
-  const afterUserCreate = async (newUser: { id: string; email: string; isAnonymous?: boolean | null }) => {
+  return async (newUser: { id: string; email: string; isAnonymous?: boolean | null }) => {
     if (newUser.isAnonymous) {
       await nameGuestUser(newUser.id)
       return
     }
     await bootstrap(newUser)
   }
+}
+
+// Sections present only when configured.
+function optionalAuthSections(
+  overrides: AuthConfigOverrides,
+): Pick<BetterAuthOptions, 'emailVerification' | 'account'> {
+  return {
+    ...(emailVerification && { emailVerification }),
+    ...(overrides.account && { account: overrides.account }),
+  }
+}
+
+export function buildAuthConfig(overrides: AuthConfigOverrides = {}): BetterAuthOptions {
+  const orgOpts = organizationOptions(overrides)
+  const mergedSocial = defu(overrides.socialProviderOverrides ?? {}, socialProviders) as typeof socialProviders
+  const afterUserCreate = userCreateAfterHook(overrides)
   return {
     database: drizzleAdapter(db, { provider: 'pg' }),
     emailAndPassword,
-    ...(emailVerification && { emailVerification }),
     socialProviders: mergedSocial,
     trustedOrigins: overrides.trustedOrigins ?? defaultTrustedOrigins,
-    ...(overrides.account && { account: overrides.account }),
+    ...optionalAuthSections(overrides),
     plugins: [
       // The widget runs in a cross-site iframe where the session cookie is
       // unreliable (third-party cookie blocking), so endpoints must also accept
@@ -275,6 +303,7 @@ type AuthInstance = ReturnType<typeof betterAuth>
 let _registeredOverrides: AuthConfigOverrides | null = null
 let _authInstance: AuthInstance | null = null
 
+/** @public Layer extension API for a consuming app's Nitro plugins. */
 export function registerAuthOverrides(overrides: AuthConfigOverrides): void {
   if (_authInstance) {
     throw new Error('[auth] registerAuthOverrides called after auth was already built')

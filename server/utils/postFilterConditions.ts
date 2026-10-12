@@ -1,5 +1,5 @@
 import { and, eq, gte, inArray, isNotNull, isNull, lt, notInArray, or, type SQL } from 'drizzle-orm'
-import { post } from '#layers/feedlog/server/db/schemas'
+import { post } from '../db/schemas'
 
 // Filter conditions shared by the three post query paths: the admin list, the
 // keyword-search fallback, and the semantic search.
@@ -21,7 +21,10 @@ export interface PostFilter {
 
 function list(v: unknown): string[] | undefined {
   if (typeof v !== 'string') return undefined
-  const items = v.split(',').map(s => s.trim()).filter(Boolean)
+  const items = v
+    .split(',')
+    .map((s) => s.trim())
+    .filter(Boolean)
   return items.length ? items : undefined
 }
 
@@ -54,7 +57,7 @@ export function parsePostFilter(query: Record<string, unknown>, orgId: string): 
 // NOT IN drops NULL rows, which would hide every unclassified post.
 function boardCondition(f: PostFilter): SQL | undefined {
   if (f.boardId?.length) {
-    const ids = f.boardId.filter(v => v !== NO_BOARD)
+    const ids = f.boardId.filter((v) => v !== NO_BOARD)
     if (!ids.length) return isNull(post.boardId)
     return ids.length === f.boardId.length
       ? inArray(post.boardId, ids)
@@ -62,7 +65,7 @@ function boardCondition(f: PostFilter): SQL | undefined {
   }
 
   if (f.boardIdNot?.length) {
-    const ids = f.boardIdNot.filter(v => v !== NO_BOARD)
+    const ids = f.boardIdNot.filter((v) => v !== NO_BOARD)
     if (!ids.length) return isNotNull(post.boardId)
     return ids.length === f.boardIdNot.length
       ? or(isNull(post.boardId), notInArray(post.boardId, ids))

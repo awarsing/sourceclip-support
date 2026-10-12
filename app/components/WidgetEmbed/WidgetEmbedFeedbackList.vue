@@ -26,17 +26,24 @@ const bodyEl = ref<HTMLElement | null>(null)
 const listSentinel = ref<HTMLElement | null>(null)
 let listObserver: IntersectionObserver | null = null
 
-watch(listSentinel, (el) => {
-  listObserver?.disconnect()
-  listObserver = null
-  if (!el) return
-  listObserver = new IntersectionObserver((entries) => {
-    if (entries.some(e => e.isIntersecting) && props.hasMore && !props.loading) {
-      emit('loadMore')
-    }
-  }, { root: bodyEl.value ?? null, rootMargin: '120px' })
-  listObserver.observe(el)
-}, { flush: 'post' })
+watch(
+  listSentinel,
+  (el) => {
+    listObserver?.disconnect()
+    listObserver = null
+    if (!el) return
+    listObserver = new IntersectionObserver(
+      (entries) => {
+        if (entries.some((e) => e.isIntersecting) && props.hasMore && !props.loading) {
+          emit('loadMore')
+        }
+      },
+      { root: bodyEl.value ?? null, rootMargin: '120px' },
+    )
+    listObserver.observe(el)
+  },
+  { flush: 'post' },
+)
 
 onUnmounted(() => listObserver?.disconnect())
 </script>

@@ -17,6 +17,7 @@ export function resolveMemberNotifications(stored: unknown = {}) {
   return storedNotificationsSchema.parse(stored)
 }
 
+// fallow-ignore-next-line unused-type -- imported by app/pages/dashboard/settings/personal.vue through the #layers/feedlog alias, which Fallow does not resolve in Vue SFCs
 export interface MemberPreferenceResponse {
   notifications: ReturnType<typeof resolveMemberNotifications>
   organization: { id: string; name: string }

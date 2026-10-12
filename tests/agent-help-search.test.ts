@@ -8,7 +8,12 @@ const origin = 'http://example.localhost:3000'
 
 test('article search validates its bounded query list before querying the database', async () => {
   let calls = 0
-  const pool = { query: async () => { calls++; return { rows: [] } } } as unknown as Pool
+  const pool = {
+    query: async () => {
+      calls++
+      return { rows: [] }
+    },
+  } as unknown as Pool
   for (const input of [
     { query: 'legacy input' },
     { queries: [] },
@@ -24,27 +29,43 @@ test('article search validates its bounded query list before querying the databa
 test('article search preserves query order despite completion order and merges shared hits', async () => {
   const calls: string[] = []
   const article = (id: string) => ({
-    article_id: id, title: id, description: null, slug: id, published: true,
+    article_id: id,
+    title: id,
+    description: null,
+    slug: id,
+    published: true,
     content: '# Reference\n\nThe **alpha topic** and beta term explain the behavior.',
   })
   const pool = {
     query: async (_sql: string, params: unknown[]) => {
-      if (_sql.startsWith('SELECT metadata')) return { rows: [{ metadata: JSON.stringify({ portalModules: { helpCenter: true } }) }] }
+      if (_sql.startsWith('SELECT metadata'))
+        return { rows: [{ metadata: JSON.stringify({ portalModules: { helpCenter: true } }) }] }
       const query = params[1] as string
       calls.push(query)
       if (query === 'Alpha topic') {
-        await new Promise(resolve => setTimeout(resolve, 20))
+        await new Promise((resolve) => setTimeout(resolve, 20))
         return { rows: ['a', 'shared', 'c'].map(article) }
       }
       return { rows: ['b', 'shared', 'd'].map(article) }
     },
   } as unknown as Pool
-  const result = await searchHelpArticles(pool, 'test', {
-    queries: ['  Alpha   topic ', 'Beta term', 'alpha topic'],
-  }, origin)
+  const result = await searchHelpArticles(
+    pool,
+    'test',
+    {
+      queries: ['  Alpha   topic ', 'Beta term', 'alpha topic'],
+    },
+    origin,
+  )
   assert.deepEqual(calls, ['Alpha topic', 'Beta term'])
-  assert.deepEqual(result.articles.map(a => a.article_id), ['a', 'b', 'shared', 'c', 'd'])
-  assert.deepEqual(result.articles.find(a => a.article_id === 'shared')?.matched_queries, ['Alpha topic', 'Beta term'])
+  assert.deepEqual(
+    result.articles.map((a) => a.article_id),
+    ['a', 'b', 'shared', 'c', 'd'],
+  )
+  assert.deepEqual(result.articles.find((a) => a.article_id === 'shared')?.matched_queries, [
+    'Alpha topic',
+    'Beta term',
+  ])
   for (const article of result.articles) {
     assert.equal('content' in article, false)
     assert.ok(article.excerpt.includes('alpha topic'))
@@ -70,7 +91,10 @@ test('article search applies tenant and AI visibility filters before each top-th
       [hiddenCollection, orgId, false],
       [otherCollection, otherOrgId, true],
     ]) {
-      await client.query('INSERT INTO help_collection (id,org_id,name,icon,visible,position) VALUES ($1,$2,$3,$4,$5,0)', [id, org, 'Search fixtures', 'book-open', visible])
+      await client.query(
+        'INSERT INTO help_collection (id,org_id,name,icon,visible,position) VALUES ($1,$2,$3,$4,$5,0)',
+        [id, org, 'Search fixtures', 'book-open', visible],
+      )
     }
     let shortId = 0
     async function insert(org: string, collection: string, title: string, status = 'published', aiEnabled = true) {
@@ -94,10 +118,16 @@ test('article search applies tenant and AI visibility filters before each top-th
     await insert(otherOrgId, otherCollection, highRank)
     await insert(orgId, otherCollection, highRank)
     const result = await searchHelpArticles(client, orgId, { queries }, origin)
-    const ordered = [0, 1, 2].flatMap(rank => expected.map(group => group[rank]))
-    assert.deepEqual(result.articles.map(a => a.article_id), ordered)
+    const ordered = [0, 1, 2].flatMap((rank) => expected.map((group) => group[rank]))
+    assert.deepEqual(
+      result.articles.map((a) => a.article_id),
+      ordered,
+    )
     assert.equal(result.articles.length, 12)
-    assert.deepEqual(await searchHelpArticles(client, orgId, { queries: ['missingterm', 'the and of', "' | ! :*"] }, origin), { articles: [] })
+    assert.deepEqual(
+      await searchHelpArticles(client, orgId, { queries: ['missingterm', 'the and of', "' | ! :*"] }, origin),
+      { articles: [] },
+    )
   } finally {
     await client.query('ROLLBACK')
     client.release()

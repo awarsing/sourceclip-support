@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { toast } from 'vue-sonner'
+import { newPasswordProblem, PASSWORD_MIN_LENGTH } from '~/lib/auth-forms'
 
 const { resetPassword } = useAuth()
 const { t } = useI18n()
@@ -20,14 +21,15 @@ const success = ref(false)
 const showNewPassword = ref(false)
 const showConfirmPassword = ref(false)
 
+function reportResetError(error: { message?: string }) {
+  toast.error(error.message || t('auth.errors.resetFailed'))
+}
+
 async function onSubmit() {
   if (!token.value) return
-  if (form.newPassword !== form.confirmPassword) {
-    toast.error(t('auth.errors.passwordsMismatch'))
-    return
-  }
-  if (form.newPassword.length < 8) {
-    toast.error(t('auth.errors.passwordTooShort'))
+  const problem = newPasswordProblem(form.newPassword, form.confirmPassword)
+  if (problem) {
+    toast.error(t(problem))
     return
   }
 
@@ -37,11 +39,8 @@ async function onSubmit() {
       newPassword: form.newPassword,
       token: token.value,
     })
-    if (resetError) {
-      toast.error(resetError.message || t('auth.errors.resetFailed'))
-      return
-    }
-    success.value = true
+    if (resetError) reportResetError(resetError)
+    else success.value = true
   } finally {
     loading.value = false
   }
@@ -96,47 +95,21 @@ async function onSubmit() {
         </CardHeader>
         <CardContent>
           <form class="space-y-4" @submit.prevent="onSubmit">
-            <div class="space-y-2">
-              <label class="text-sm font-medium" for="reset-new-password">{{ $t('auth.fields.new') }}</label>
-              <div class="relative">
-                <Input
-                  id="reset-new-password"
-                  v-model="form.newPassword"
-                  :type="showNewPassword ? 'text' : 'password'"
-                  :placeholder="$t('auth.passwordMinHint')"
-                  required
-                  minlength="8"
-                  class="pr-10"
-                />
-                <button
-                  type="button"
-                  class="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
-                  @click="showNewPassword = !showNewPassword"
-                >
-                  <Icon :name="showNewPassword ? 'lucide:eye-off' : 'lucide:eye'" size="16" />
-                </button>
-              </div>
-            </div>
-            <div class="space-y-2">
-              <label class="text-sm font-medium" for="reset-confirm-password">{{ $t('auth.fields.confirm') }}</label>
-              <div class="relative">
-                <Input
-                  id="reset-confirm-password"
-                  v-model="form.confirmPassword"
-                  :type="showConfirmPassword ? 'text' : 'password'"
-                  required
-                  minlength="8"
-                  class="pr-10"
-                />
-                <button
-                  type="button"
-                  class="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
-                  @click="showConfirmPassword = !showConfirmPassword"
-                >
-                  <Icon :name="showConfirmPassword ? 'lucide:eye-off' : 'lucide:eye'" size="16" />
-                </button>
-              </div>
-            </div>
+            <PasswordField
+              id="reset-new-password"
+              v-model="form.newPassword"
+              v-model:visible="showNewPassword"
+              :label="$t('auth.fields.new')"
+              :placeholder="$t('auth.passwordMinHint')"
+              :minlength="PASSWORD_MIN_LENGTH"
+            />
+            <PasswordField
+              id="reset-confirm-password"
+              v-model="form.confirmPassword"
+              v-model:visible="showConfirmPassword"
+              :label="$t('auth.fields.confirm')"
+              :minlength="PASSWORD_MIN_LENGTH"
+            />
             <Button type="submit" class="w-full" size="lg" :disabled="loading">
               <Spinner v-if="loading" class="mr-2 size-4" />
               {{ $t('auth.resetPage.submit') }}

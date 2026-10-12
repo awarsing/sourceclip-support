@@ -1,5 +1,5 @@
 import { eq, and, sql } from 'drizzle-orm'
-import { post, user, vote, conversation } from '#layers/feedlog/server/db/schemas'
+import { post, user } from '#layers/feedlog/server/db/schemas'
 
 // GET /api/posts/:slug — Get post detail
 export default defineEventHandler(async (event): Promise<PostDetail> => {
@@ -39,48 +39,9 @@ export default defineEventHandler(async (event): Promise<PostDetail> => {
     throw createError({ statusCode: 404, message: 'Post not found' })
   }
 
-  // hasVoted: for canonical posts, check across merge family tree
-  let hasVoted = false
-  if (session) {
-    if (!row.mergedTo && (row.mergedCount as number) > 0) {
-      // Canonical with merged posts: check across family tree
-      const [result] = await db.execute(sql`
-        WITH RECURSIVE family AS (
-          SELECT id FROM post WHERE id = ${row.id}
-          UNION ALL
-          SELECT p.id FROM post p JOIN family f ON p.merged_to = f.id
-        )
-        SELECT EXISTS(
-          SELECT 1 FROM vote WHERE user_id = ${session.user.id} AND post_id IN (SELECT id FROM family)
-        ) as voted
-      `)
-      hasVoted = !!(result as any)?.voted
-    } else {
-      const [v] = await db
-        .select({ postId: vote.postId })
-        .from(vote)
-        .where(and(eq(vote.postId, row.id), eq(vote.userId, session.user.id)))
-        .limit(1)
-      hasVoted = !!v
-    }
-  }
-
-  // subscribed: is the current user on this post's notification list, across
-  // the whole merge family. Drives the sidebar subscribe card's button state.
-  let subscribed = false
-  if (session) {
-    const [result] = await db.execute(sql`
-      WITH RECURSIVE family AS (
-        SELECT id FROM post WHERE id = ${row.id}
-        UNION ALL
-        SELECT p.id FROM post p JOIN family f ON p.merged_to = f.id
-      )
-      SELECT EXISTS(
-        SELECT 1 FROM post_subscription WHERE user_id = ${session.user.id} AND post_id IN (SELECT id FROM family)
-      ) as subscribed
-    `)
-    subscribed = !!(result as any)?.subscribed
-  }
+  const userId = session?.user.id
+  const hasVoted = userId ? await findPostHasVoted(db, row, userId) : false
+  const subscribed = userId ? await findPostSubscribed(db, row.id, userId) : false
 
   // Gates author.email below: shipping it to end users would hand every
   // reporter's address to anyone who opens a post.
@@ -90,31 +51,14 @@ export default defineEventHandler(async (event): Promise<PostDetail> => {
   const role = getOrgMemberRole(session, orgId)
   const canReadInbox = role === 'owner' || role === 'manager'
   setResponseHeader(event, 'Cache-Control', 'private, no-store')
-  const isStaff = !!role
-  const showAuthorEmail = isStaff && !row.authorIsAnonymous
+  const showAuthorEmail = !!role && !row.authorIsAnonymous
 
   // Fetch the display title only after the same permission check as the source ID.
-  let sourceConversationTitle: string | null = null
-  if (canReadInbox && row.sourceConversationId) {
-    const [source] = await db.select({ title: conversation.title }).from(conversation)
-      .where(and(eq(conversation.id, row.sourceConversationId), eq(conversation.orgId, orgId))).limit(1)
-    sourceConversationTitle = source?.title ?? null
-  }
-
-  // If merged, fetch canonical post info
-  let canonicalPost: { slug: string; title: string } | undefined
-  if (row.mergedTo) {
-    const [cp] = await db
-      .select({ slug: post.slug, title: post.title })
-      .from(post)
-      .where(eq(post.id, row.mergedTo))
-      .limit(1)
-    if (cp) canonicalPost = cp
-  }
+  const source = canReadInbox ? await findSourceConversation(db, orgId, row.sourceConversationId) : {}
 
   return {
     id: row.id,
-    ...(canReadInbox ? { sourceConversationId: row.sourceConversationId, sourceConversationTitle } : {}),
+    ...source,
     slug: row.slug,
     title: row.title,
     content: row.content,
@@ -133,8 +77,9 @@ export default defineEventHandler(async (event): Promise<PostDetail> => {
       isAnonymous: !!row.authorIsAnonymous,
       ...(showAuthorEmail ? { email: row.authorEmail } : {}),
     },
-    createdAt: row.createdAt,
-    updatedAt: row.updatedAt,
-    canonicalPost,
+    createdAt: row.createdAt.toISOString(),
+    updatedAt: row.updatedAt.toISOString(),
+    // If merged, the canonical post's slug and title
+    canonicalPost: await findCanonicalPost(db, row.mergedTo),
   }
 })

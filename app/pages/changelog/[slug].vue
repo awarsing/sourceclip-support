@@ -1,20 +1,9 @@
 <script setup lang="ts">
 import { resolveAttachmentUrl } from '~/utils/attachment'
+import { categoryBadgeClass as badgeClass } from '~/lib/pages/changelog'
 
-const { t } = useI18n()
 const localePath = useLocalePath()
-
-const CATEGORY_LABEL = computed<Record<string, string>>(() => ({
-  new: t('changelog.category.new'),
-  improved: t('changelog.category.improved'),
-  fixed: t('changelog.category.fixed'),
-}))
-
-const CATEGORY_CLASS: Record<string, string> = {
-  new: 'bg-primary/10 text-primary border-primary/25',
-  improved: 'bg-chart-2/15 text-chart-2 border-chart-2/25',
-  fixed: 'bg-success/10 text-success border-success/30',
-}
+const CATEGORY_LABEL = useChangelogCategoryLabels()
 
 const route = useRoute()
 const slug = route.params.slug as string
@@ -32,10 +21,6 @@ usePageOg({
   content: () => entry.value?.content,
   publishedAt: () => entry.value?.publishedAt,
 })
-
-function badgeClass(cat: string) {
-  return `inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-bold border ${CATEGORY_CLASS[cat] ?? 'bg-secondary text-secondary-foreground border-border'}`
-}
 </script>
 
 <template>

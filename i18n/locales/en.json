@@ -856,7 +856,7 @@
     "title": "Feedback",
     "subtitle": "Help us make {product} better — share problems and ideas",
     "thisProduct": "this product",
-    "greeting": "Hi 👋 Have a question or feedback about {product}?",
+    "greeting": "Hi \uD83D\uDC4B Have a question or feedback about {product}?",
     "placeholder": "Describe a problem or share an idea…",
     "send": "Send",
     "thinking": "Working on your message…",

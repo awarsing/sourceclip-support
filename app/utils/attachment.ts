@@ -18,11 +18,7 @@ const ATTACHMENT_HTML_RE = /(src=["'])attachment:([^"']+)(["'])/g
 // encodeURI leaves # ? ( ) alone, and each ends the link early: # and ? start a
 // fragment or query, ) closes the markdown destination.
 function encodeKey(key: string): string {
-  return encodeURI(key)
-    .replace(/#/g, '%23')
-    .replace(/\?/g, '%3F')
-    .replace(/\(/g, '%28')
-    .replace(/\)/g, '%29')
+  return encodeURI(key).replace(/#/g, '%23').replace(/\?/g, '%3F').replace(/\(/g, '%28').replace(/\)/g, '%29')
 }
 
 /**

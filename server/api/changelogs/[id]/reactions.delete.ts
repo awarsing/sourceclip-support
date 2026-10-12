@@ -1,66 +1,29 @@
-import { eq, and, sql, isNotNull } from 'drizzle-orm'
-import { changelog, changelogReaction } from '#layers/feedlog/server/db/schemas'
+import { eq, and } from 'drizzle-orm'
+import { changelogReaction } from '#layers/feedlog/server/db/schemas'
 import { reactionSchema } from '#layers/feedlog/shared/schemas/changelog'
 
-// DELETE /api/changelogs/:id/reactions?emoji=👍 — Remove reaction (any authenticated user, idempotent).
+// DELETE /api/changelogs/:id/reactions?emoji=<emoji> — Remove reaction (any authenticated user, idempotent).
 export default defineEventHandler(async (event) => {
   const { session, orgId } = await requireAuthInOrg(event)
   const id = getRouterParam(event, 'id')!
-  const query = getQuery(event)
-  const parsed = reactionSchema.safeParse({ emoji: query.emoji })
+  const parsed = reactionSchema.safeParse({ emoji: getQuery(event).emoji })
   if (!parsed.success) {
     throw createError({ statusCode: 400, message: 'Invalid emoji' })
   }
-  const { emoji } = parsed.data
 
   const db = useDB()
-
-  // Verify changelog exists, is published, belongs to this org.
-  const [entry] = await db
-    .select({ id: changelog.id })
-    .from(changelog)
-    .where(and(eq(changelog.id, id), eq(changelog.orgId, orgId), isNotNull(changelog.publishedAt)))
-    .limit(1)
-
-  if (!entry) {
-    throw createError({ statusCode: 404, message: 'Changelog not found' })
-  }
+  await requirePublishedChangelog(db, orgId, id)
 
   // Idempotent delete
   await db
     .delete(changelogReaction)
-    .where(and(
-      eq(changelogReaction.changelogId, id),
-      eq(changelogReaction.userId, session.user.id),
-      eq(changelogReaction.emoji, emoji),
-    ))
+    .where(
+      and(
+        eq(changelogReaction.changelogId, id),
+        eq(changelogReaction.userId, session.user.id),
+        eq(changelogReaction.emoji, parsed.data.emoji),
+      ),
+    )
 
-  // Return current state
-  const reactionRows = await db
-    .select({
-      emoji: changelogReaction.emoji,
-      count: sql<number>`cast(count(*) as int)`,
-    })
-    .from(changelogReaction)
-    .where(eq(changelogReaction.changelogId, id))
-    .groupBy(changelogReaction.emoji)
-
-  const reactionCounts: Record<string, number> = {}
-  for (const r of reactionRows) {
-    reactionCounts[r.emoji] = r.count
-  }
-
-  const userRows = await db
-    .select({ emoji: changelogReaction.emoji })
-    .from(changelogReaction)
-    .where(and(
-      eq(changelogReaction.changelogId, id),
-      eq(changelogReaction.userId, session.user.id),
-    ))
-
-  return {
-    reacted: false,
-    reactionCounts,
-    userReactions: userRows.map(r => r.emoji),
-  }
+  return await changelogReactionState(db, id, session.user.id, false)
 })

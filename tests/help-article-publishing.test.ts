@@ -17,7 +17,11 @@ test('single article saves reject missing or blank content in drafts and publica
 })
 
 test('valid Markdown keeps its whitespace and metadata-only updates remain valid', () => {
-  for (const content of ['    indented code\n', '![Diagram](https://example.com/diagram.png)', '```sh\npnpm install\n```']) {
+  for (const content of [
+    '    indented code\n',
+    '![Diagram](https://example.com/diagram.png)',
+    '```sh\npnpm install\n```',
+  ]) {
     assert.equal(createHelpArticleSchema.parse({ ...article, content }).content, content)
     assert.equal(updateHelpArticleSchema.parse({ content }).content, content)
   }

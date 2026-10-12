@@ -1,3 +1,5 @@
+import { extractErrorCode } from '../lib/error-code'
+
 // `reason` holds an i18n key rather than rendered text: the modal is mounted
 // elsewhere and may render in a different locale than the caller.
 export function useLoginModal() {
@@ -14,20 +16,6 @@ export function useLoginModal() {
 }
 
 export const LOCAL_AUTH_REASON = 'auth.localAuthRequired'
-
-// better-auth's fetch wrapper and plain $fetch nest the h3 error body
-// differently, and both reach here.
-function extractErrorCode(payload: unknown): string | undefined {
-  const at = (o: unknown, ...path: string[]) => path.reduce<unknown>(
-    (v, k) => (v && typeof v === 'object') ? (v as Record<string, unknown>)[k] : undefined,
-    o,
-  )
-  const code = at(payload, 'data', 'code')
-    ?? at(payload, 'code')
-    ?? at(payload, '_data', 'data', 'code')
-    ?? at(payload, 'response', '_data', 'data', 'code')
-  return typeof code === 'string' ? code : undefined
-}
 
 // Returns whether it handled the error, so callers can skip their own toast.
 export function promptLocalAuthIfRequired(payload: unknown): boolean {

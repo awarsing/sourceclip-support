@@ -35,7 +35,7 @@ export function conversationResult(row: ConversationRow) {
     previewText: row.preview_text,
   }
 }
-export async function lockInbox(client: PoolClient, id: string, orgId: string) {
+async function lockInbox(client: PoolClient, id: string, orgId: string) {
   const {
     rows: [row],
   } = await client.query<ConversationRow>(
@@ -45,7 +45,7 @@ export async function lockInbox(client: PoolClient, id: string, orgId: string) {
   if (!row) agentError(404, 'conversation_not_found', 'Conversation not found')
   return row
 }
-export async function cancelRun(client: PoolClient, id: string, syncTasks = true) {
+async function cancelRun(client: PoolClient, id: string, syncTasks = true) {
   const { rows } = await client.query(
     "UPDATE agent_run SET status='cancelled',finished_at=clock_timestamp(),error=NULL WHERE conversation_id=$1 AND status='running' RETURNING id",
     [id],
@@ -67,7 +67,7 @@ export async function eventItem(
     ...options,
   })
 }
-export async function handoffLocked(
+async function handoffLocked(
   client: PoolClient,
   row: ConversationRow,
   runId: string,
@@ -88,10 +88,14 @@ export async function handoffLocked(
   )
   if (!rowCount) return null
   // Successful business actions survive cancellation, including their visible receipts.
-  if (feedbackResults.length) await appendItem(client, {
-    id: `handoff-results:${runId}`, conversationId: row.id, author: 'agent',
-    content: { parts: feedbackResults }, runId,
-  })
+  if (feedbackResults.length)
+    await appendItem(client, {
+      id: `handoff-results:${runId}`,
+      conversationId: row.id,
+      author: 'agent',
+      content: { parts: feedbackResults },
+      runId,
+    })
   const cancelled = await cancelRun(client, row.id, false)
   await client.query("UPDATE conversation SET status='open',priority=$2,state_due_at=NULL WHERE id=$1", [
     row.id,
@@ -113,7 +117,18 @@ export async function handoffLocked(
     userId: null,
     data: { conversationId: row.id, reason },
   })
-  return eventItem(client, row.id, { kind: 'handoff', reason, ...(reason === 'support_rule' && rule ? { rule } : {}), fromStatus: row.status, toStatus: 'open' }, { id })
+  return eventItem(
+    client,
+    row.id,
+    {
+      kind: 'handoff',
+      reason,
+      ...(reason === 'support_rule' && rule ? { rule } : {}),
+      fromStatus: row.status,
+      toStatus: 'open',
+    },
+    { id },
+  )
 }
 export async function handoff(
   runtime: InboxRuntime,
@@ -125,11 +140,13 @@ export async function handoff(
   rule?: HandoffRule,
   feedbackResults: FeedbackPart[] = [],
 ) {
-  const save = (expired: boolean) => transaction(runtime, async (client) =>
-    handoffLocked(client, await lockInbox(client, id, orgId), runId, reason, expired, rule, feedbackResults),
-  )
-  try { return await save(allowExpired) }
-  catch {
+  const save = (expired: boolean) =>
+    transaction(runtime, async (client) =>
+      handoffLocked(client, await lockInbox(client, id, orgId), runId, reason, expired, rule, feedbackResults),
+    )
+  try {
+    return await save(allowExpired)
+  } catch {
     // A fresh transaction recovers transient write failures without involving the customer.
     // The conversation/run locks still fence closed conversations and later AI rounds.
     console.warn('[inbox] Retrying handoff with human handling fallback', { conversationId: id, runId })
@@ -158,6 +175,119 @@ function canonical(value: unknown): string {
   return JSON.stringify(value)
 }
 const hash = (value: unknown) => createHash('sha256').update(canonical(value)).digest('hex')
+type ReplyCommand = Extract<StaffCommand, { action: 'reply' }>
+type StateCommand = Exclude<StaffCommand, ReplyCommand>
+interface StaffContext {
+  client: PoolClient
+  id: string
+  orgId: string
+  userId: string
+  itemId: string
+  fingerprint: string
+  row: ConversationRow
+}
+interface StaffResult {
+  status: InboxStatus
+  priority: number
+  due: Date | null
+  item: { id: string; seq: string | number; created_at: Date }
+}
+
+async function staffReply(ctx: StaffContext, input: ReplyCommand): Promise<StaffResult> {
+  const { client, id, orgId, userId, itemId, row } = ctx
+  if (!['open', 'pending'].includes(row.status))
+    agentError(409, 'state_conflict', 'Restore this conversation before replying')
+  const {
+    rows: [round],
+  } = await client.query(
+    `SELECT EXISTS(SELECT 1 FROM conversation_item WHERE conversation_id=$1 AND author_type='staff'
+    AND seq>coalesce((SELECT max(seq) FROM conversation_item WHERE conversation_id=$1 AND author_type='system' AND content->'parts' @> '[{"type":"system_event","kind":"reopened"}]'::jsonb),0)) AS handled`,
+    [id],
+  )
+  if (!round.handled)
+    queueInboxEvent(client, { name: 'inbox.staff-replied', orgId, userId, data: { conversationId: id, itemId } })
+  const item = await appendItem(client, {
+    id: itemId,
+    conversationId: id,
+    author: 'staff',
+    userId,
+    content: input.content as Content,
+    requestHash: ctx.fingerprint,
+  })
+  await scheduleReplyEmail(client, id, item.id, input.notifyByEmail)
+  return {
+    status: 'pending',
+    priority: row.priority,
+    due: new Date(new Date(item.created_at).getTime() + replyCloseDelayMs()),
+    item,
+  }
+}
+
+type StateChange = Pick<StaffResult, 'status' | 'priority' | 'due'> & {
+  event: Pick<SystemEventPart, 'kind'> & Partial<Pick<SystemEventPart, 'dueAt' | 'fromPriority' | 'toPriority'>>
+}
+
+async function snoozeChange(ctx: StaffContext, wakeAt: string): Promise<StateChange> {
+  if (!['open', 'pending'].includes(ctx.row.status))
+    agentError(409, 'state_conflict', 'This conversation cannot be snoozed')
+  const due = new Date(wakeAt)
+  const {
+    rows: [clock],
+  } = await ctx.client.query('SELECT clock_timestamp() AS now')
+  const delta = due.getTime() - new Date(clock.now).getTime()
+  if (delta <= 0 || delta > 35 * 86400000) agentError(422, 'invalid_input', 'Choose a future time within 35 days')
+  return { status: 'snoozed', priority: ctx.row.priority, due, event: { kind: 'snoozed', dueAt: due.toISOString() } }
+}
+
+function resumeChange(row: ConversationRow): StateChange {
+  if (row.status !== 'snoozed') agentError(409, 'state_conflict', 'Only snoozed conversations can be restored')
+  return { status: 'open', priority: row.priority, due: null, event: { kind: 'resumed' } }
+}
+
+async function closeChange(ctx: StaffContext): Promise<StateChange> {
+  const { client, id, orgId, userId, row } = ctx
+  if (row.status === 'closed') agentError(409, 'no_change', 'Conversation is already closed')
+  await cancelRun(client, id)
+  queueInboxEvent(client, { name: 'inbox.closed', orgId, userId, data: { conversationId: id, fromStatus: row.status } })
+  return { status: 'closed', priority: row.priority, due: null, event: { kind: 'closed' } }
+}
+
+function priorityChange(row: ConversationRow, priorityName: 'normal' | 'high'): StateChange {
+  const priority = priorityName === 'high' ? 1 : 0
+  if (priority === row.priority) agentError(409, 'no_change', 'Priority is unchanged')
+  return {
+    status: row.status,
+    priority,
+    due: row.state_due_at,
+    event: { kind: 'priority_changed', fromPriority: row.priority ? 'high' : 'normal', toPriority: priorityName },
+  }
+}
+
+function stateChange(ctx: StaffContext, input: StateCommand): StateChange | Promise<StateChange> {
+  if (input.action === 'snooze') return snoozeChange(ctx, input.wakeAt)
+  if (input.action === 'resume') return resumeChange(ctx.row)
+  if (input.action === 'close') return closeChange(ctx)
+  return priorityChange(ctx.row, input.priority)
+}
+
+async function staffStateChange(ctx: StaffContext, input: StateCommand): Promise<StaffResult> {
+  const { status, priority, due, event } = await stateChange(ctx, input)
+  const { kind, ...details } = event
+  const part: Omit<SystemEventPart, 'type'> = {
+    kind,
+    reason: 'manual',
+    fromStatus: ctx.row.status,
+    toStatus: status,
+    ...details,
+  }
+  const item = await eventItem(ctx.client, ctx.id, part, {
+    id: ctx.itemId,
+    userId: ctx.userId,
+    requestHash: ctx.fingerprint,
+  })
+  return { status, priority, due, item }
+}
+
 export async function staffCommand(
   runtime: InboxRuntime,
   id: string,
@@ -167,7 +297,9 @@ export async function staffCommand(
 ) {
   const itemId = `cmd:${hash([id, userId, input.requestId])}`
   const { expectedLastSeq, requestId, ...payload } = input
-  const fingerprint = hash(input.action === 'reply' ? { ...payload, notifyByEmail: input.notifyByEmail ?? false } : payload)
+  const fingerprint = hash(
+    input.action === 'reply' ? { ...payload, notifyByEmail: input.notifyByEmail ?? false } : payload,
+  )
   return transaction(runtime, async (client) => {
     const row = await lockInbox(client, id, orgId)
     const {
@@ -180,77 +312,9 @@ export async function staffCommand(
     }
     if (Number(row.last_seq) !== expectedLastSeq)
       agentError(409, 'revision_conflict', 'Conversation changed. Review the latest messages before retrying.')
-    let status = row.status
-    let priority = row.priority
-    let due: Date | null = null
-    let item
-    if (input.action === 'reply') {
-      if (!['open', 'pending'].includes(status))
-        agentError(409, 'state_conflict', 'Restore this conversation before replying')
-      const {
-        rows: [round],
-      } = await client.query(
-        `SELECT EXISTS(SELECT 1 FROM conversation_item WHERE conversation_id=$1 AND author_type='staff'
-        AND seq>coalesce((SELECT max(seq) FROM conversation_item WHERE conversation_id=$1 AND author_type='system' AND content->'parts' @> '[{"type":"system_event","kind":"reopened"}]'::jsonb),0)) AS handled`,
-        [id],
-      )
-      if (!round.handled)
-        queueInboxEvent(client, { name: 'inbox.staff-replied', orgId, userId, data: { conversationId: id, itemId } })
-      item = await appendItem(client, {
-        id: itemId,
-        conversationId: id,
-        author: 'staff',
-        userId,
-        content: input.content as Content,
-        requestHash: fingerprint,
-      })
-      status = 'pending'
-      due = new Date(new Date(item.created_at).getTime() + replyCloseDelayMs())
-      await scheduleReplyEmail(client, id, item.id, input.notifyByEmail)
-    } else {
-      const part: Omit<SystemEventPart, 'type'> = {
-        kind: 'closed',
-        reason: 'manual',
-        fromStatus: row.status,
-        toStatus: status,
-      }
-      if (input.action === 'snooze') {
-        if (!['open', 'pending'].includes(status))
-          agentError(409, 'state_conflict', 'This conversation cannot be snoozed')
-        due = new Date(input.wakeAt)
-        const {
-          rows: [clock],
-        } = await client.query('SELECT clock_timestamp() AS now')
-        const delta = due.getTime() - new Date(clock.now).getTime()
-        if (delta <= 0 || delta > 35 * 86400000) agentError(422, 'invalid_input', 'Choose a future time within 35 days')
-        status = 'snoozed'
-        part.kind = 'snoozed'
-        part.dueAt = due.toISOString()
-      } else if (input.action === 'resume') {
-        if (status !== 'snoozed') agentError(409, 'state_conflict', 'Only snoozed conversations can be restored')
-        status = 'open'
-        part.kind = 'resumed'
-      } else if (input.action === 'close') {
-        if (status === 'closed') agentError(409, 'no_change', 'Conversation is already closed')
-        status = 'closed'
-        await cancelRun(client, id)
-        queueInboxEvent(client, {
-          name: 'inbox.closed',
-          orgId,
-          userId,
-          data: { conversationId: id, fromStatus: row.status },
-        })
-      } else {
-        priority = input.priority === 'high' ? 1 : 0
-        if (priority === row.priority) agentError(409, 'no_change', 'Priority is unchanged')
-        due = row.state_due_at
-        part.kind = 'priority_changed'
-        part.fromPriority = row.priority ? 'high' : 'normal'
-        part.toPriority = input.priority
-      }
-      part.toStatus = status
-      item = await eventItem(client, id, part, { id: itemId, userId, requestHash: fingerprint })
-    }
+    const ctx: StaffContext = { client, id, orgId, userId, itemId, fingerprint, row }
+    const { status, priority, due, item } =
+      input.action === 'reply' ? await staffReply(ctx, input) : await staffStateChange(ctx, input)
     const {
       rows: [updated],
     } = await client.query<ConversationRow>(

@@ -11,8 +11,8 @@ export default defineEventHandler(async (event) => {
   const query = getQuery(event)
   const status = query.status as string | undefined
   const search = (query.search as string)?.trim()
-  const page = Math.max(Number(query.page) || 1, 1)
-  const pageSize = Math.min(Number(query.pageSize) || 10, 100)
+  const page = readPageNumber(query.page)
+  const pageSize = readPageSize(query.pageSize, 10, 100)
   const offset = (page - 1) * pageSize
 
   const db = useDB()
@@ -56,14 +56,16 @@ export default defineEventHandler(async (event) => {
     .where(whereClause)
     .orderBy(
       ...(search
-        ? [sql`LEAST(${search} <<-> ${changelog.title}, ${search} <<-> ${changelog.content}, ${search} <<-> ${changelog.publishedTitle}, ${search} <<-> ${changelog.publishedContent})`]
+        ? [
+            sql`LEAST(${search} <<-> ${changelog.title}, ${search} <<-> ${changelog.content}, ${search} <<-> ${changelog.publishedTitle}, ${search} <<-> ${changelog.publishedContent})`,
+          ]
         : [desc(changelog.updatedAt), desc(changelog.id)]),
     )
     .limit(pageSize)
     .offset(offset)
 
   return {
-    data: rows.map(r => ({
+    data: rows.map((r) => ({
       id: r.id,
       slug: r.slug,
       title: r.title,

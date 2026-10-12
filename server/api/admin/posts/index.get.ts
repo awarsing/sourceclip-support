@@ -1,4 +1,5 @@
 import { z } from 'zod'
+import type { H3Event } from 'h3'
 import { eq, and, asc, desc, sql } from 'drizzle-orm'
 import { conversation, post, user } from '#layers/feedlog/server/db/schemas'
 
@@ -10,73 +11,53 @@ export default defineEventHandler(async (event): Promise<PagePaginatedList<PostL
   const { orgId } = await requireOrgMember(event)
 
   const query = getQuery(event)
-  const sort = (query.sort as string) || 'createdAt'
-  const order = query.order === 'asc' ? 'asc' : 'desc'
-  const page = Math.max(Number(query.page) || 1, 1)
-  const pageSize = Math.min(Number(query.pageSize) || 10, 100)
-  const offset = (page - 1) * pageSize
+  const page = readPageNumber(query.page)
+  const pageSize = readPageSize(query.pageSize, 10, 100)
 
   const db = useDB()
 
   const filters = postFilterConditions(parsePostFilter(query, orgId))
   if (query.sourceConversationId !== undefined) {
-    await requireOrgPermission(event, { feedlog: ['moderate'] })
-    const parsed = z.uuid().safeParse(query.sourceConversationId)
-    if (!parsed.success) throw createError({ statusCode: 422, message: 'Invalid source conversation' })
-    const [source] = await db.select({ id: conversation.id }).from(conversation).where(and(eq(conversation.id, parsed.data), eq(conversation.orgId, orgId))).limit(1)
-    if (!source) throw createError({ statusCode: 404, message: 'Conversation not found' })
-    filters.push(eq(post.sourceConversationId, parsed.data))
+    filters.push(await sourceConversationFilter(event, orgId, query.sourceConversationId))
   }
   const whereClause = and(...filters)
 
-  const sortCol = sort === 'votes' ? post.voteCount : sort === 'comments' ? post.commentCount : post.createdAt
   // The id tiebreaker follows the same direction, or equal-value rows shift between pages.
-  const orderFn = order === 'asc' ? asc : desc
+  const orderFn = query.order === 'asc' ? asc : desc
 
-  const [countResult] = await db
-    .select({ total: sql<number>`cast(count(*) as int)` })
-    .from(post)
-    .where(whereClause)
+  const [countResult] = await db.select({ total: sql<number>`cast(count(*) as int)` }).from(post).where(whereClause)
 
   const rows = await db
-    .select({
-      id: post.id,
-      slug: post.slug,
-      title: post.title,
-      excerpt: post.excerpt,
-      status: post.status,
-      boardId: post.boardId,
-      voteCount: post.voteCount,
-      commentCount: post.commentCount,
-      mergedCount: sql<number>`(SELECT count(*)::int FROM post p2 WHERE p2.merged_to = ${post.id})`,
-      authorId: post.authorId,
-      authorName: user.name,
-      authorImage: user.image,
-      authorIsAnonymous: user.isAnonymous,
-      createdAt: post.createdAt,
-    })
+    .select(postListColumns)
     .from(post)
     .leftJoin(user, eq(post.authorId, user.id))
     .where(whereClause)
-    .orderBy(orderFn(sortCol), orderFn(post.id))
+    .orderBy(orderFn(adminPostSortColumn(query.sort)), orderFn(post.id))
     .limit(pageSize)
-    .offset(offset)
+    .offset((page - 1) * pageSize)
 
   return {
-    data: rows.map(r => ({
-      id: r.id,
-      slug: r.slug,
-      title: r.title,
-      excerpt: r.excerpt,
-      status: r.status,
-      boardId: r.boardId,
-      voteCount: r.voteCount,
-      commentCount: r.commentCount,
-      mergedCount: r.mergedCount,
-      hasVoted: false,
-      author: { id: r.authorId, name: r.authorName, image: r.authorImage, isAnonymous: !!r.authorIsAnonymous },
-      createdAt: r.createdAt,
-    })),
+    data: rows.map((r) => toPostListItem(r, NO_VOTED_POSTS)),
     pagination: { page, pageSize, total: countResult?.total ?? 0 },
   }
 })
+
+function adminPostSortColumn(sort: unknown) {
+  if (sort === 'votes') return post.voteCount
+  return sort === 'comments' ? post.commentCount : post.createdAt
+}
+
+// Posts filed from one inbox conversation: moderators only, and the
+// conversation must belong to this org.
+async function sourceConversationFilter(event: H3Event, orgId: string, value: unknown) {
+  await requireOrgPermission(event, { feedlog: ['moderate'] })
+  const parsed = z.uuid().safeParse(value)
+  if (!parsed.success) throw createError({ statusCode: 422, message: 'Invalid source conversation' })
+  const [source] = await useDB()
+    .select({ id: conversation.id })
+    .from(conversation)
+    .where(and(eq(conversation.id, parsed.data), eq(conversation.orgId, orgId)))
+    .limit(1)
+  if (!source) throw createError({ statusCode: 404, message: 'Conversation not found' })
+  return eq(post.sourceConversationId, parsed.data)
+}

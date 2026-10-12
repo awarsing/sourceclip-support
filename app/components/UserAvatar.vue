@@ -19,11 +19,14 @@ interface AvatarAuthor extends DisplayableAuthor {
   image?: string | null
 }
 
-const props = withDefaults(defineProps<{
-  author?: AvatarAuthor | null
-  size?: 4 | 5 | 6 | 8 | 9 | 10
-  shadow?: boolean
-}>(), { author: null, size: 8, shadow: false })
+const props = withDefaults(
+  defineProps<{
+    author?: AvatarAuthor | null
+    size?: 4 | 5 | 6 | 8 | 9 | 10
+    shadow?: boolean
+  }>(),
+  { author: null, size: 8, shadow: false },
+)
 
 // Callers pass `shadow` rather than a class: a fallthrough class gets merged with
 // the internal one in a different order on the server than in the browser, which
@@ -64,7 +67,7 @@ const hasImage = computed(() => !!imageUrl.value)
     ]"
     :style="hasImage ? undefined : { '--avatar-hue': hue }"
   >
-    <img v-if="hasImage" :src="imageUrl" alt="" class="w-full h-full object-cover" referrerpolicy="no-referrer">
+    <img v-if="hasImage" :src="imageUrl ?? undefined" alt="" class="w-full h-full object-cover" referrerpolicy="no-referrer">
     <Icon v-else-if="isGuest" name="lucide:user-round" :size="dims.icon" />
     <template v-else>{{ authorInitials(author) }}</template>
   </span>

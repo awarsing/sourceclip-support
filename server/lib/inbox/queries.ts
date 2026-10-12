@@ -3,6 +3,7 @@ import { z } from 'zod'
 import { agentError, transaction } from '../agent/runtime'
 import type { listInput, pageInput } from '../../../shared/inbox/schemas'
 import { conversationResult, type InboxRuntime, type ConversationRow } from './service'
+import { readItemPage } from './item-page'
 
 export async function listConversations(runtime: InboxRuntime, orgId: string, input: z.infer<typeof listInput>) {
   const signature = createHash('sha256')
@@ -37,7 +38,12 @@ export async function listConversations(runtime: InboxRuntime, orgId: string, in
     )
   }
   const { rows } = await runtime.pool.query<
-    ConversationRow & { cursor_time: string; customer_name: string | null; customer_image: string | null; customer_is_anonymous: boolean | null }
+    ConversationRow & {
+      cursor_time: string
+      customer_name: string | null
+      customer_image: string | null
+      customer_is_anonymous: boolean | null
+    }
   >(
     `SELECT c.*,to_char(c.last_message_at AT TIME ZONE 'UTC','YYYY-MM-DD"T"HH24:MI:SS.US"Z"') AS cursor_time,u.name AS customer_name,u.image AS customer_image,u.is_anonymous AS customer_is_anonymous FROM conversation c LEFT JOIN "user" u ON u.id=c.user_id WHERE ${conditions.join(' AND ')} ORDER BY c.last_message_at ${desc ? 'DESC' : 'ASC'},c.id ${desc ? 'DESC' : 'ASC'} LIMIT ${bind(input.limit + 1)}`,
     values,
@@ -47,7 +53,12 @@ export async function listConversations(runtime: InboxRuntime, orgId: string, in
   return {
     items: items.map((row) => ({
       ...conversationResult(row),
-      customer: { id: row.user_id, name: row.customer_name, image: row.customer_image, isAnonymous: row.customer_is_anonymous ?? false },
+      customer: {
+        id: row.user_id,
+        name: row.customer_name,
+        image: row.customer_image,
+        isAnonymous: row.customer_is_anonymous ?? false,
+      },
     })),
     nextCursor:
       rows.length > input.limit && last
@@ -72,21 +83,32 @@ export async function readInbox(runtime: InboxRuntime, orgId: string, id: string
         'SELECT id,name,image,coalesce(is_anonymous,false) AS "isAnonymous",CASE WHEN is_anonymous IS TRUE THEN NULL ELSE email END AS email FROM "user" WHERE id=$1',
         [row.user_id],
       )
-      const ascending = page.afterSeq !== undefined
-      const { rows } = await client.query(
-        `SELECT i.*,u.name AS author_name,u.image AS author_image,u.is_anonymous AS author_is_anonymous FROM conversation_item i LEFT JOIN "user" u ON u.id=i.author_user_id WHERE i.conversation_id=$1 AND ($2::bigint IS NULL OR i.seq${ascending ? '>' : '<'}$2) ORDER BY i.seq ${ascending ? 'ASC' : 'DESC'} LIMIT $3`,
-        [id, page.afterSeq ?? page.beforeSeq ?? null, page.limit + 1],
+      const { items, nextBeforeSeq, nextAfterSeq, hasMore } = await readItemPage(
+        client,
+        id,
+        page,
+        {
+          columns: 'u.name AS author_name,u.image AS author_image,u.is_anonymous AS author_is_anonymous',
+          on: 'u.id=i.author_user_id',
+        },
+        Number(row.last_seq),
       )
-      const items = rows.slice(0, page.limit)
-      if (!ascending) items.reverse()
-      const { rows: emailTasks } = await client.query(`SELECT item_id,status,result,manual_retry,delivery_mode FROM scheduled_task
-        WHERE kind='inbox_email' AND ref_id=$1`, [id])
+      const { rows: emailTasks } = await client.query(
+        `SELECT item_id,status,result,manual_retry,delivery_mode FROM scheduled_task
+        WHERE kind='inbox_email' AND ref_id=$1`,
+        [id],
+      )
       return {
-        emails: Object.fromEntries(emailTasks.map(task => [task.item_id, {
-          deliveryMode: task.delivery_mode,
-          status: task.result ?? (task.status === 'cancelled' ? 'skipped' : 'pending'),
-          canRetry: task.status === 'done' && task.result === 'failed' && !task.manual_retry,
-        }])),
+        emails: Object.fromEntries(
+          emailTasks.map((task) => [
+            task.item_id,
+            {
+              deliveryMode: task.delivery_mode,
+              status: task.result ?? (task.status === 'cancelled' ? 'skipped' : 'pending'),
+              canRetry: task.status === 'done' && task.result === 'failed' && !task.manual_retry,
+            },
+          ]),
+        ),
         conversation: conversationResult(row),
         customer,
         items: items.map((item) => ({
@@ -94,16 +116,21 @@ export async function readInbox(runtime: InboxRuntime, orgId: string, id: string
           seq: Number(item.seq),
           authorType: item.author_type,
           author: item.author_user_id
-            ? { id: item.author_user_id, name: item.author_name, image: item.author_image, isAnonymous: item.author_is_anonymous ?? false }
+            ? {
+                id: item.author_user_id,
+                name: item.author_name,
+                image: item.author_image,
+                isAnonymous: item.author_is_anonymous ?? false,
+              }
             : null,
           content: item.content,
           context: item.context,
           agentRunId: item.agent_run_id,
           createdAt: item.created_at,
         })),
-        nextBeforeSeq: !ascending && rows.length > page.limit ? Number(items[0].seq) : null,
-        nextAfterSeq: items.length ? Number(items.at(-1).seq) : (page.afterSeq ?? Number(row.last_seq)),
-        hasMore: rows.length > page.limit,
+        nextBeforeSeq,
+        nextAfterSeq,
+        hasMore,
       }
     },
     true,

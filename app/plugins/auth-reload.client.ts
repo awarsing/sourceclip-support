@@ -3,7 +3,10 @@
 export default defineNuxtPlugin(() => {
   if (/\/widget\/embed\/?$/.test(window.location.pathname)) return
   const { data: session } = useAuthSession()
-  watch(() => session.value?.user?.id, (id, prev) => {
-    if (id && id !== prev) reloadNuxtApp()
-  })
+  watch(
+    () => session.value?.user?.id,
+    (id, prev) => {
+      if (id && id !== prev) reloadNuxtApp()
+    },
+  )
 })

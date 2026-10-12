@@ -1,7 +1,10 @@
 <script setup lang="ts">
 import { HELP_COLLECTION_ICONS, HELP_COLLECTION_ICON_DEFAULT } from '#layers/feedlog/shared/constants/help'
 import type { HelpCollectionIcon } from '#layers/feedlog/shared/constants/help'
+import { apiErrorMessage } from '~/lib/form-errors'
+import { collectionBody, collectionFormValues } from './-help-logic'
 
+// fallow-ignore-next-line unused-type -- imported by app/pages/dashboard/help/index.vue through the #layers/feedlog alias, which Fallow does not resolve for .vue type imports
 export interface HelpCollectionFormValue {
   id: string
   name: string
@@ -27,16 +30,38 @@ const visible = ref(true)
 const error = ref('')
 const submitting = ref(false)
 
-watch(open, (value) => {
-  if (!value) return
-  icon.value = props.collection?.icon ?? HELP_COLLECTION_ICON_DEFAULT
-  name.value = props.collection?.name ?? ''
-  description.value = props.collection?.description ?? ''
-  visible.value = props.collection?.visible ?? true
+function resetForm() {
+  const values = collectionFormValues(props.collection, HELP_COLLECTION_ICON_DEFAULT)
+  icon.value = values.icon
+  name.value = values.name
+  description.value = values.description
+  visible.value = values.visible
   error.value = ''
-}, { immediate: true })
+}
 
-watch([name, description], () => { error.value = '' })
+watch(
+  open,
+  (value) => {
+    if (value) resetForm()
+  },
+  { immediate: true },
+)
+
+watch([name, description], () => {
+  error.value = ''
+})
+
+function persistCollection() {
+  const body = collectionBody({
+    icon: icon.value,
+    name: name.value,
+    description: description.value,
+    visible: visible.value,
+  })
+  return props.collection
+    ? $fetch(`/api/admin/help/collections/${props.collection.id}`, { method: 'PATCH', body })
+    : $fetch('/api/admin/help/collections', { method: 'POST', body })
+}
 
 async function handleSave() {
   if (!name.value.trim()) {
@@ -47,22 +72,12 @@ async function handleSave() {
   submitting.value = true
   error.value = ''
   try {
-    const body = {
-      name: name.value.trim(),
-      description: description.value.trim() || null,
-      icon: icon.value,
-      visible: visible.value,
-    }
-    if (props.collection) await $fetch(`/api/admin/help/collections/${props.collection.id}`, { method: 'PATCH', body })
-    else await $fetch('/api/admin/help/collections', { method: 'POST', body })
-
+    await persistCollection()
     open.value = false
     emit('saved')
-  }
-  catch (e) {
-    error.value = (e as { data?: { message?: string } }).data?.message || t('help.admin.collection.saveFailed')
-  }
-  finally {
+  } catch (e) {
+    error.value = apiErrorMessage(e, t('help.admin.collection.saveFailed'))
+  } finally {
     submitting.value = false
   }
 }
@@ -78,20 +93,26 @@ async function handleDelete() {
     cancelText: t('common.cancel'),
     variant: 'destructive',
   })
-  if (!ok) return
+  if (ok) await deleteCollection(props.collection.id)
+}
 
+async function deleteCollection(collectionId: string) {
   submitting.value = true
   try {
-    await $fetch(`/api/admin/help/collections/${props.collection.id}`, { method: 'DELETE' })
+    await $fetch(`/api/admin/help/collections/${collectionId}` as string, { method: 'DELETE' })
     open.value = false
     emit('deleted')
-  }
-  catch (e) {
-    error.value = (e as { data?: { message?: string } }).data?.message || t('help.admin.collection.saveFailed')
-  }
-  finally {
+  } catch (e) {
+    error.value = apiErrorMessage(e, t('help.admin.collection.saveFailed'))
+  } finally {
     submitting.value = false
   }
+}
+
+function iconClass(option: HelpCollectionIcon) {
+  return icon.value === option
+    ? 'border-primary bg-primary text-primary-foreground'
+    : 'border-border text-muted-foreground hover:bg-secondary'
 }
 </script>
 
@@ -117,9 +138,7 @@ async function handleDelete() {
             :key="option"
             type="button"
             class="flex h-9 w-9 items-center justify-center rounded-md border transition-colors"
-            :class="icon === option
-              ? 'border-primary bg-primary text-primary-foreground'
-              : 'border-border text-muted-foreground hover:bg-secondary'"
+            :class="iconClass(option)"
             @click="icon = option"
           >
             <Icon :name="`lucide:${option}`" size="16" />

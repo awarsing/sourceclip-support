@@ -1,4 +1,6 @@
-import { resolveState } from '../utils/migration-state'
+import type { H3Event } from 'h3'
+import { resolveState, type StateSnapshot } from '../utils/migration-state'
+import { isCloudflare } from '../utils/preset'
 
 // Bypass list: paths that must NOT be intercepted even when DB is unmigrated.
 // - /setup: the bootstrap page itself
@@ -18,28 +20,17 @@ const BYPASS_PREFIXES = [
 
 function shouldBypass(path: string): boolean {
   return BYPASS_PREFIXES.some((prefix) =>
-    prefix.endsWith('/') ? path.startsWith(prefix) : path === prefix || path.startsWith(prefix + '/') || path === prefix,
+    prefix.endsWith('/')
+      ? path.startsWith(prefix)
+      : path === prefix || path.startsWith(prefix + '/') || path === prefix,
   )
 }
 
-function isCloudflare(): boolean {
-  const p = import.meta.preset
-  return p === 'cloudflare-module' || p === 'cloudflare-pages'
-}
-
-export default defineEventHandler(async (event) => {
-  if (!isCloudflare()) return
-
-  const path = getRequestURL(event).pathname
-
-  if (shouldBypass(path)) return
-
-  const snapshot = await resolveState()
-
-  if (snapshot.state === 'migrated') return
-
-  // API requests get a machine-readable 503 instead of an HTML redirect,
-  // so fetch() callers don't follow the redirect and parse HTML as JSON.
+// API requests get a machine-readable 503 instead of an HTML redirect,
+// so fetch() callers don't follow the redirect and parse HTML as JSON.
+// HTML requests go to setup, preserving the original path so the setup page
+// can bounce back after migration completes.
+function redirectToSetup(event: H3Event, path: string, snapshot: StateSnapshot) {
   if (path.startsWith('/api/')) {
     throw createError({
       statusCode: 503,
@@ -52,9 +43,17 @@ export default defineEventHandler(async (event) => {
       },
     })
   }
+  return sendRedirect(event, `/setup?redirect=${encodeURIComponent(path)}`, 302)
+}
 
-  // HTML request → redirect to setup, preserving the original path so the
-  // setup page can bounce back after migration completes.
-  const redirectTo = `/setup?redirect=${encodeURIComponent(path)}`
-  return sendRedirect(event, redirectTo, 302)
+export default defineEventHandler(async (event) => {
+  if (!isCloudflare()) return
+
+  const path = getRequestURL(event).pathname
+
+  if (shouldBypass(path)) return
+
+  const snapshot = await resolveState()
+
+  if (snapshot.state !== 'migrated') return redirectToSetup(event, path, snapshot)
 })

@@ -6,6 +6,7 @@ export interface InviteLinkInput {
   organization: { slug: string }
 }
 
+/** @public Layer extension API for a consuming app's Nitro plugins. */
 export type InviteLinkBuilder = (invitation: InviteLinkInput, event: H3Event) => string
 
 const defaultBuilder: InviteLinkBuilder = (invitation, event) => {
@@ -16,6 +17,7 @@ const defaultBuilder: InviteLinkBuilder = (invitation, event) => {
 
 let _builder: InviteLinkBuilder = defaultBuilder
 
+/** @public Layer extension API for a consuming app's Nitro plugins. */
 export function registerInviteLinkBuilder(builder: InviteLinkBuilder): void {
   _builder = builder
 }

@@ -9,6 +9,7 @@ export interface OrgContext {
 // Resolver returns null when a request has no tenant binding (auth-only
 // routes like /register, /login, /api/auth/*). The middleware skips
 // setting context.orgId in that case so those routes aren't blocked.
+/** @public Layer extension API for a consuming app's Nitro plugins. */
 export type OrgContextResolver = (event: H3Event) => Promise<OrgContext | null>
 
 const defaultResolver: OrgContextResolver = async () => ({
@@ -20,6 +21,7 @@ const defaultResolver: OrgContextResolver = async () => ({
 // logic (e.g. parse the tenant slug from the request subdomain).
 let _resolver: OrgContextResolver = defaultResolver
 
+/** @public Layer extension API for a consuming app's Nitro plugins. */
 export function registerOrgContextResolver(resolver: OrgContextResolver): void {
   _resolver = resolver
 }

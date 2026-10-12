@@ -12,7 +12,7 @@ export function isGuestSession(session: { user: object }): boolean {
   return !!(session.user as { isAnonymous?: boolean | null }).isAnonymous
 }
 
-export async function getGuestAccess(event: H3Event): Promise<ResolvedGuestAccess> {
+async function getGuestAccess(event: H3Event): Promise<ResolvedGuestAccess> {
   const slug = event.context.orgSlug
   const info = slug ? await getOrgInfo(slug) : null
   return resolveGuestAccess(info?.metadata)
@@ -29,11 +29,7 @@ const DENIAL: Record<GuestAction, string> = {
 //
 // 403 with a stable message so the portal can turn a refusal into the sign-in
 // prompt rather than a generic failure toast.
-export async function assertGuestMay(
-  event: H3Event,
-  session: { user: object },
-  action: GuestAction,
-): Promise<void> {
+export async function assertGuestMay(event: H3Event, session: { user: object }, action: GuestAction): Promise<void> {
   if (!isGuestSession(session)) return
   const access = await getGuestAccess(event)
   if (!access[action]) {

@@ -26,9 +26,7 @@ export interface MigrationResult {
   durationMs: number
 }
 
-export async function runRuntimeMigration(
-  connectionString: string,
-): Promise<MigrationResult> {
+export async function runRuntimeMigration(connectionString: string): Promise<MigrationResult> {
   const start = Date.now()
   const client = postgres(connectionString, { max: 1, prepare: false })
   const db = drizzle(client) as PostgresJsDatabase<Record<string, unknown>>

@@ -50,10 +50,7 @@ export default defineEventHandler(async (event) => {
   // Transaction: set merge relation → recalculate vote_count → insert merge comment
   await db.transaction(async (tx) => {
     // 1. Set merged_to
-    await tx
-      .update(post)
-      .set({ mergedTo: body.canonicalPostId })
-      .where(eq(post.id, body.mergedPostId))
+    await tx.update(post).set({ mergedTo: body.canonicalPostId }).where(eq(post.id, body.mergedPostId))
 
     // 2. Recalculate canonical vote_count using recursive CTE (DISTINCT user_id)
     await tx.execute(sql`
@@ -69,15 +66,13 @@ export default defineEventHandler(async (event) => {
     `)
 
     // 4. Insert merge comment record (org-scoped via canonical post)
-    await tx
-      .insert(comment)
-      .values({
-        postId: body.canonicalPostId,
-        authorId: session.user.id,
-        content: '',
-        type: 'mergedPost',
-        metadata: { merged_post_id: body.mergedPostId },
-      })
+    await tx.insert(comment).values({
+      postId: body.canonicalPostId,
+      authorId: session.user.id,
+      content: '',
+      type: 'mergedPost',
+      metadata: { merged_post_id: body.mergedPostId },
+    })
 
     // 5. Increment canonical's commentCount
     await tx

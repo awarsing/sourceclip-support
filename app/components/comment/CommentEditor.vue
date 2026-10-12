@@ -1,17 +1,20 @@
 <script setup lang="ts">
 import { sanitizeAttachmentHtml } from '~/utils/attachment'
 
-const props = withDefaults(defineProps<{
-  parentId?: string
-  replyToId?: string
-  placeholder?: string
-  initialContent?: string
-  loading?: boolean
-  canNotify?: boolean
-}>(), {
-  loading: false,
-  canNotify: false,
-})
+const props = withDefaults(
+  defineProps<{
+    parentId?: string
+    replyToId?: string
+    placeholder?: string
+    initialContent?: string
+    loading?: boolean
+    canNotify?: boolean
+  }>(),
+  {
+    loading: false,
+    canNotify: false,
+  },
+)
 
 const emit = defineEmits<{
   submit: [content: string, notify: boolean]
@@ -26,6 +29,25 @@ const isReply = computed(() => !!props.parentId)
 const isEditing = computed(() => !!props.initialContent)
 const showNotify = computed(() => props.canNotify && !isReply.value && !isEditing.value)
 const submitDisabled = computed(() => !content.value.trim() || props.loading)
+const showCancel = computed(() => isReply.value || isEditing.value)
+const { t } = useI18n()
+const placeholderText = computed(
+  () => props.placeholder || (isReply.value ? t('post.comment.replyPlaceholder') : t('post.comment.addPlaceholder')),
+)
+const editorStyle = computed(() => ({ height: 'auto', minHeight: isReply.value ? '120px' : '160px' }))
+const submitClass = computed(() => (showNotify.value ? 'rounded-r-none' : ''))
+// Absent while editing: saving an edit is a different action, and this one button serves both.
+const fdlAction = computed(() => (isEditing.value ? undefined : 'comment_submit'))
+const fdlSource = computed(() => {
+  if (isEditing.value) return undefined
+  return isReply.value ? 'reply' : 'post'
+})
+const submitLabel = computed(() => {
+  if (isEditing.value) return t('common.save')
+  return isReply.value ? t('post.comment.reply') : t('post.comment.comment')
+})
+const trackClass = computed(() => (notify.value ? 'bg-primary' : 'bg-muted'))
+const knobClass = computed(() => (notify.value ? 'translate-x-4' : ''))
 
 const { onUploadImg } = useUploadImg()
 
@@ -52,13 +74,13 @@ defineExpose({ clear })
     <ThemedMdEditor
       v-model="content"
       language="en-US"
-      :placeholder="placeholder || (isReply ? $t('post.comment.replyPlaceholder') : $t('post.comment.addPlaceholder'))"
+      :placeholder="placeholderText"
       :preview="false"
       :max-length="5000"
       :toolbars="['bold', 'italic', '-', 'link', 'unorderedList', 'code', 'codeRow', 'image']"
       :sanitize="sanitizeAttachmentHtml"
       :footers="footers"
-      :style="{ height: 'auto', minHeight: isReply ? '120px' : '160px' }"
+      :style="editorStyle"
       @on-upload-img="onUploadImg"
     >
       <template #defFooters>
@@ -66,24 +88,22 @@ defineExpose({ clear })
           <Button
             variant="ghost"
             size="sm"
-            v-if="isReply || isEditing"
+            v-if="showCancel"
             @click="$emit('cancel')"
           >
             {{ $t('common.cancel') }}
           </Button>
           <div class="flex items-center">
-            <!-- Absent while editing: saving an edit is a different action, and
-                 this one button serves both. -->
             <Button
               variant="default"
               size="sm"
-              :class="showNotify ? 'rounded-r-none' : ''"
+              :class="submitClass"
               :disabled="submitDisabled"
-              :data-fdl-action="isEditing ? undefined : 'comment_submit'"
-              :data-fdl-source="isEditing ? undefined : (isReply ? 'reply' : 'post')"
+              :data-fdl-action="fdlAction"
+              :data-fdl-source="fdlSource"
               @click="handleSubmit"
             >
-              {{ isEditing ? $t('common.save') : (isReply ? $t('post.comment.reply') : $t('post.comment.comment')) }}
+              {{ submitLabel }}
             </Button>
             <DropdownMenu v-if="showNotify">
               <DropdownMenuTrigger as-child>
@@ -111,11 +131,11 @@ defineExpose({ clear })
                        otherwise swallow the primary "on" track. -->
                   <span
                     class="relative h-5 w-9 shrink-0 rounded-full ring-1 ring-inset ring-foreground/20 transition-colors"
-                    :class="notify ? 'bg-primary' : 'bg-muted'"
+                    :class="trackClass"
                   >
                     <span
                       class="absolute left-0.5 top-0.5 flex h-4 w-4 items-center justify-center rounded-full bg-white shadow transition-transform"
-                      :class="notify ? 'translate-x-4' : ''"
+                      :class="knobClass"
                     >
                       <Icon name="lucide:bell" size="10" class="text-muted-foreground" />
                     </span>

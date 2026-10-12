@@ -15,14 +15,15 @@ export const updateChangelogSchema = z.object({
 })
 
 export const reactionSchema = z.object({
-  emoji: z.enum(['👍', '❤️', '🎉', '✨', '👀', '🤔']),
+  emoji: z.enum(['\u{1F44D}', '\u{2764}\u{FE0F}', '\u{1F389}', '\u{2728}', '\u{1F440}', '\u{1F914}']),
 })
 
-export const aiGenerateSchema = z.object({
-  feedbackIds: z.array(z.string()).max(10).default([]),
-  changeContent: z.string().max(2000).default(''),
-  style: z.enum(['concise', 'structured', 'benefit-led', 'witty']),
-}).refine(
-  data => data.feedbackIds.length > 0 || data.changeContent.trim().length > 0,
-  { message: 'Either feedbackIds or changeContent must be provided' },
-)
+export const aiGenerateSchema = z
+  .object({
+    feedbackIds: z.array(z.string()).max(10).default([]),
+    changeContent: z.string().max(2000).default(''),
+    style: z.enum(['concise', 'structured', 'benefit-led', 'witty']),
+  })
+  .refine((data) => data.feedbackIds.length > 0 || data.changeContent.trim().length > 0, {
+    message: 'Either feedbackIds or changeContent must be provided',
+  })

@@ -5,13 +5,15 @@ const sortBy = defineModel<'top' | 'recent'>('sort', { default: 'recent' })
 const emit = defineEmits<{ 'new-request': [] }>()
 
 const searchOpen = ref(false)
-const searchInput = ref<HTMLInputElement | null>(null)
+const searchInput = ref<{ focus: () => void } | null>(null)
 const rawQuery = ref('')
 
 const isMobile = useMediaQuery('(max-width: 639.98px)')
 const searchOpenDesktop = computed(() => searchOpen.value && !isMobile.value)
 const searchOpenMobile = computed(() => searchOpen.value && isMobile.value)
 const searchActive = computed(() => rawQuery.value.trim().length > 0)
+const { t } = useI18n()
+const clearLabel = computed(() => (searchActive.value ? t('board.clearSearch') : t('board.closeSearch')))
 let searchTimer: ReturnType<typeof setTimeout> | null = null
 
 const searchTrigger = ref<HTMLElement | null>(null)
@@ -24,8 +26,13 @@ const mobileClip = computed(() => ({ '--fl-clip-left': clipLeft.value, '--fl-cli
 // page's single q-watch restores the board list — no double-fetch, no programmaticClear.
 watch(rawQuery, () => {
   if (searchTimer) clearTimeout(searchTimer)
-  if (!rawQuery.value.trim()) { q.value = ''; return }
-  searchTimer = setTimeout(() => { q.value = rawQuery.value.trim() }, 250)
+  if (!rawQuery.value.trim()) {
+    q.value = ''
+    return
+  }
+  searchTimer = setTimeout(() => {
+    q.value = rawQuery.value.trim()
+  }, 250)
 })
 
 function openSearch() {
@@ -73,26 +80,16 @@ defineExpose({ reset })
       <h2 v-if="!searchOpenDesktop" class="font-heading text-2xl font-bold">
         {{ sortBy === 'top' ? $t('board.topRequests') : $t('board.recentRequests') }}
       </h2>
-      <div v-else class="fl-search">
-        <Icon name="lucide:search" size="18" class="fl-search__icon" />
-        <input
-          ref="searchInput"
-          v-model="rawQuery"
-          type="text"
-          :placeholder="$t('board.searchPlaceholder')"
-          autocomplete="off"
-          class="fl-search__input"
-          @keydown.esc="closeSearch"
-        >
-        <button
-          type="button"
-          class="fl-search__clear"
-          :aria-label="searchActive ? $t('board.clearSearch') : $t('board.closeSearch')"
-          @click="clearOrClose"
-        >
-          <Icon name="lucide:x" size="16" />
-        </button>
-      </div>
+      <SearchField
+        v-else
+        ref="searchInput"
+        v-model="rawQuery"
+        size="lg"
+        :placeholder="$t('board.searchPlaceholder')"
+        :clear-label="clearLabel"
+        @escape="closeSearch"
+        @clear="clearOrClose"
+      />
     </Transition>
 
     <div ref="controlsRow" class="fl-rightbar flex items-center relative">
@@ -144,26 +141,18 @@ defineExpose({ reset })
       </Transition>
 
       <Transition name="fl-msearch" @after-enter="onSearchRevealed">
-        <div v-if="searchOpenMobile" class="fl-search fl-search--mobile" :style="mobileClip">
-          <Icon name="lucide:search" size="18" class="fl-search__icon" />
-          <input
-            ref="searchInput"
-            v-model="rawQuery"
-            type="text"
-            :placeholder="$t('board.searchPlaceholder')"
-            autocomplete="off"
-            class="fl-search__input"
-            @keydown.esc="closeSearch"
-          >
-          <button
-            type="button"
-            class="fl-search__clear"
-            :aria-label="searchActive ? $t('board.clearSearch') : $t('board.closeSearch')"
-            @click="clearOrClose"
-          >
-            <Icon name="lucide:x" size="16" />
-          </button>
-        </div>
+        <SearchField
+          v-if="searchOpenMobile"
+          ref="searchInput"
+          v-model="rawQuery"
+          size="lg"
+          class="fl-search--mobile"
+          :style="mobileClip"
+          :placeholder="$t('board.searchPlaceholder')"
+          :clear-label="clearLabel"
+          @escape="closeSearch"
+          @clear="clearOrClose"
+        />
       </Transition>
     </div>
   </div>
@@ -190,7 +179,6 @@ defineExpose({ reset })
 }
 
 .fl-search {
-  position: relative;
   /* Grow to fill the toolbar row up to New Request — no max-width, otherwise the
      parent's justify-between dumps the slack as a gap between field and button. */
   flex: 1 1 auto;
@@ -202,55 +190,6 @@ defineExpose({ reset })
      this auto margin eats the slack on the left and parks it at the right; at full
      width the slack is zero, so it resolves to 0 and nothing shifts. */
   margin-left: auto;
-}
-.fl-search__icon {
-  position: absolute;
-  left: 14px;
-  top: 50%;
-  transform: translateY(-50%);
-  color: var(--muted-foreground);
-  pointer-events: none;
-  transition: color 0.15s ease;
-}
-.fl-search:focus-within .fl-search__icon {
-  color: var(--primary);
-}
-.fl-search__input {
-  height: 40px;
-  width: 100%;
-  padding: 0 38px 0 42px;
-  font-size: 15px;
-  color: var(--foreground);
-  background: var(--card);
-  border: 1px solid var(--border);
-  border-radius: 12px;
-  outline: none;
-  transition: border-color 0.15s ease, box-shadow 0.15s ease;
-}
-.fl-search__input::placeholder {
-  color: var(--muted-foreground);
-}
-.fl-search__input:focus {
-  border-color: var(--primary);
-  box-shadow: 0 0 0 3px color-mix(in oklab, var(--primary) 15%, transparent);
-}
-.fl-search__clear {
-  position: absolute;
-  right: 7px;
-  top: 50%;
-  transform: translateY(-50%);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  width: 26px;
-  height: 26px;
-  border-radius: 8px;
-  color: var(--muted-foreground);
-  transition: background-color 0.15s ease, color 0.15s ease;
-}
-.fl-search__clear:hover {
-  background: var(--secondary);
-  color: var(--foreground);
 }
 
 .fl-left-enter-active.fl-search,
@@ -366,9 +305,6 @@ defineExpose({ reset })
 
 @media (prefers-reduced-motion: reduce) {
   .fl-toolbtn,
-  .fl-search__icon,
-  .fl-search__input,
-  .fl-search__clear,
   .fl-left-enter-active,
   .fl-left-leave-active,
   .fl-left-enter-active.fl-search,

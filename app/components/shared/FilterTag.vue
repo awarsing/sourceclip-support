@@ -1,21 +1,24 @@
 <script setup lang="ts">
 const modelValue = defineModel<string>({ required: true })
 
-const props = withDefaults(defineProps<{
-  label: string
-  icon: string
-  options: { value: string; label: string }[]
-  removable?: boolean
-}>(), {
-  removable: true,
-})
+const props = withDefaults(
+  defineProps<{
+    label: string
+    icon: string
+    options: { value: string; label: string }[]
+    removable?: boolean
+  }>(),
+  {
+    removable: true,
+  },
+)
 
 defineEmits<{
   remove: []
 }>()
 
 const selectedLabel = computed(() => {
-  const opt = props.options.find(o => o.value === modelValue.value)
+  const opt = props.options.find((o) => o.value === modelValue.value)
   return opt?.label ?? modelValue.value
 })
 </script>

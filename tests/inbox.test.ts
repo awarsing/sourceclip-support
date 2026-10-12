@@ -56,7 +56,10 @@ async function fixture() {
       notifyByEmail: false,
     })
   const clean = async () => {
-    await pool.query('DELETE FROM scheduled_task WHERE ref_id=$1 OR ref_id IN (SELECT id FROM agent_run WHERE conversation_id=$1)', [id])
+    await pool.query(
+      'DELETE FROM scheduled_task WHERE ref_id=$1 OR ref_id IN (SELECT id FROM agent_run WHERE conversation_id=$1)',
+      [id],
+    )
     await pool.query('DELETE FROM post WHERE org_id=$1', [orgId])
     await pool.query("DELETE FROM conversation_item WHERE conversation_id=$1 AND author_type='agent'", [id])
     await pool.query('DELETE FROM agent_run WHERE conversation_id=$1', [id])
@@ -145,7 +148,7 @@ test('real scheduler closes AI/pending, wakes snoozed, recovers abandoned runs a
       "UPDATE agent_run SET started_at=now()-interval '3 minutes',deadline_at=now()-interval '1 minute' WHERE id=$1",
       [f.first.run!.id],
     )
-    await transaction(runtime, client => syncRunTask(client, f.first.run!.id))
+    await transaction(runtime, (client) => syncRunTask(client, f.first.run!.id))
     assert.equal((await inboxTick(runtime)).recoveredRuns, 1)
     assert.equal((await f.row()).status, 'open')
     for (const state of ['pending', 'snoozed', 'ai_handling']) {
@@ -153,7 +156,7 @@ test('real scheduler closes AI/pending, wakes snoozed, recovers abandoned runs a
         f.id,
         state,
       ])
-      await transaction(runtime, client => syncConversationTask(client, f.id))
+      await transaction(runtime, (client) => syncConversationTask(client, f.id))
       const before = Number((await f.row()).last_seq)
       await Promise.all([inboxTick(runtime), inboxTick(runtime)])
       const row = await f.row()
@@ -170,16 +173,33 @@ test('scheduled runtime uses its invocation binding, publishes committed handoff
   const f = await fixture()
   const events: import('../server/lib/inbox/events').InboxEvent[] = []
   try {
-    await pool.query("UPDATE agent_run SET started_at=now()-interval '3 minutes',deadline_at=now()-interval '1 minute' WHERE id=$1", [f.first.run!.id])
-    await transaction(runtime, client => syncRunTask(client, f.first.run!.id))
-    await runScheduledInbox({ cloudflare: { env: { POSTGRES: { connectionString: process.env.DATABASE_URL! } } } }, event => events.push(event))
+    await pool.query(
+      "UPDATE agent_run SET started_at=now()-interval '3 minutes',deadline_at=now()-interval '1 minute' WHERE id=$1",
+      [f.first.run!.id],
+    )
+    await transaction(runtime, (client) => syncRunTask(client, f.first.run!.id))
+    await runScheduledInbox(
+      { cloudflare: { env: { POSTGRES: { connectionString: process.env.DATABASE_URL! } } } },
+      (event) => events.push(event),
+    )
     assert.equal((await f.row()).status, 'open')
-    assert.ok(events.some(event => event.name === 'inbox.handoff' && event.data.conversationId === f.id && event.data.reason === 'ai_error'))
-    await pool.query("UPDATE conversation SET status='pending',state_due_at=now()-interval '1 second' WHERE id=$1", [f.id])
-    await transaction(runtime, client => syncConversationTask(client, f.id))
+    assert.ok(
+      events.some(
+        (event) =>
+          event.name === 'inbox.handoff' && event.data.conversationId === f.id && event.data.reason === 'ai_error',
+      ),
+    )
+    await pool.query("UPDATE conversation SET status='pending',state_due_at=now()-interval '1 second' WHERE id=$1", [
+      f.id,
+    ])
+    await transaction(runtime, (client) => syncConversationTask(client, f.id))
     await runScheduledInbox()
     assert.equal((await f.row()).status, 'closed')
-    const { rows: [active] } = await pool.query("SELECT count(*)::int AS count FROM pg_stat_activity WHERE application_name='feedlog-inbox-task'")
+    const {
+      rows: [active],
+    } = await pool.query(
+      "SELECT count(*)::int AS count FROM pg_stat_activity WHERE application_name='feedlog-inbox-task'",
+    )
     assert.equal(active.count, 0)
     // Workers must not fall back to a Node DATABASE_URL when a binding is missing.
     await assert.rejects(runScheduledInbox({ cloudflare: { env: {} } }), /database is not configured/)
@@ -347,8 +367,11 @@ test('replaying a saved reply never writes another item or restarts its close de
   try {
     await handoff(runtime, f.id, f.orgId, f.first.run!.id, 'knowledge_gap')
     const input = {
-      action: 'reply' as const, requestId: uuidv7(), expectedLastSeq: Number((await f.row()).last_seq),
-      content: { parts: [{ type: 'text' as const, text: 'One saved reply' }] }, notifyByEmail: true,
+      action: 'reply' as const,
+      requestId: uuidv7(),
+      expectedLastSeq: Number((await f.row()).last_seq),
+      content: { parts: [{ type: 'text' as const, text: 'One saved reply' }] },
+      notifyByEmail: true,
     }
     const saved = await staffCommand(runtime, f.id, f.orgId, f.staffId, input)
     const row = await f.row()
@@ -357,5 +380,7 @@ test('replaying a saved reply never writes another item or restarts its close de
     assert.deepEqual(replay.item, saved.item)
     assert.equal(Number((await f.row()).last_seq), Number(row.last_seq))
     assert.equal(+(await f.row()).state_due_at, +row.state_due_at)
-  } finally { await f.clean() }
+  } finally {
+    await f.clean()
+  }
 })

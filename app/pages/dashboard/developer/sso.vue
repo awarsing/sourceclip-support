@@ -2,6 +2,7 @@
 import { toast } from 'vue-sonner'
 import type { SsoSecret } from '~/composables/useSsoSecrets'
 import { SSO_SECRET_LIMIT } from '~~/shared/constants/sso'
+import { apiErrorMessage } from '~/lib/form-errors'
 
 // /dashboard/settings/sso — manage product-SSO signing secrets + integration
 // guide. Owner-only (the API enforces it too); other staff see a notice.
@@ -15,12 +16,17 @@ const isOwner = computed(() => ctx.value.role === 'owner')
 const { secrets, loading, refresh, create, update, remove } = useSsoSecrets()
 
 const view = ref<'secrets' | 'guide'>('secrets')
-const used = computed(() => secrets.value.length)
-const canCreate = computed(() => used.value < SSO_SECRET_LIMIT)
+const canCreate = computed(() => secrets.value.length < SSO_SECRET_LIMIT)
+const tabs = computed(() => [
+  { k: 'secrets' as const, label: t('dashboard.sso.signingSecrets') },
+  { k: 'guide' as const, label: t('dashboard.sso.integrationGuide') },
+])
 
 // Defer to onMounted: the list endpoint needs the session cookie, simplest to
 // fetch client-side after mount (mirrors the Members page).
-onMounted(() => { if (isOwner.value) void refresh() })
+onMounted(() => {
+  if (isOwner.value) void refresh()
+})
 
 // Create + rename share one dialog (SsoSecretDialog). dialogMode picks the copy;
 // renameTarget is set only in rename mode.
@@ -40,31 +46,35 @@ function openRename(s: SsoSecret) {
   dialogOpen.value = true
 }
 
+async function createSecret(label: string) {
+  const s = await create(label)
+  justCreatedId.value = s.id
+  setTimeout(() => {
+    if (justCreatedId.value === s.id) justCreatedId.value = null
+  }, 6000)
+}
+
+async function submitDialog(mode: 'create' | 'rename', target: SsoSecret | null, label: string) {
+  if (mode === 'create') await createSecret(label)
+  else if (target) await update(target.id, { label })
+}
+
 async function onDialogSubmit(payload: { label: string }) {
   const mode = dialogMode.value
+  const failedKey = mode === 'create' ? 'dashboard.sso.createFailed' : 'dashboard.sso.renameFailed'
   const target = renameTarget.value
   dialogOpen.value = false
   try {
-    if (mode === 'create') {
-      const s = await create(payload.label)
-      justCreatedId.value = s.id
-      setTimeout(() => { if (justCreatedId.value === s.id) justCreatedId.value = null }, 6000)
-    }
-    else if (target) {
-      await update(target.id, { label: payload.label })
-    }
-  }
-  catch (e) {
-    toast.error((e as { data?: { message?: string } })?.data?.message
-      || (mode === 'create' ? t('dashboard.sso.createFailed') : t('dashboard.sso.renameFailed')))
+    await submitDialog(mode, target, payload.label)
+  } catch (e) {
+    toast.error(apiErrorMessage(e, t(failedKey)))
   }
 }
 
 async function onToggle(s: SsoSecret) {
   try {
     await update(s.id, { enabled: !s.enabled })
-  }
-  catch {
+  } catch {
     toast.error(t('dashboard.sso.updateFailed'))
   }
 }
@@ -85,8 +95,7 @@ async function confirmDelete() {
   if (!target) return
   try {
     await remove(target.id)
-  }
-  catch {
+  } catch {
     toast.error(t('dashboard.sso.deleteFailed'))
   }
 }
@@ -116,11 +125,11 @@ async function confirmDelete() {
     <div class="px-6 pt-4 border-b border-border bg-card shrink-0">
       <div class="flex gap-6">
         <button
-          v-for="tab in [{ k: 'secrets', label: $t('dashboard.sso.signingSecrets') }, { k: 'guide', label: $t('dashboard.sso.integrationGuide') }]"
+          v-for="tab in tabs"
           :key="tab.k"
           class="pb-3 -mb-px text-sm font-semibold border-b-2 transition-colors"
           :class="view === tab.k ? 'border-primary text-primary' : 'border-transparent text-muted-foreground hover:text-foreground'"
-          @click="view = tab.k as 'secrets' | 'guide'"
+          @click="view = tab.k"
         >
           {{ tab.label }}
         </button>
@@ -142,57 +151,16 @@ async function confirmDelete() {
         </div>
 
         <!-- Secrets -->
-        <template v-else-if="view === 'secrets'">
-          <section class="rounded-xl border border-border bg-card overflow-hidden">
-            <div class="px-5 py-3 border-b border-border flex items-center justify-between">
-              <div>
-                <h3 class="font-heading font-bold text-sm">{{ $t('dashboard.sso.signingSecrets') }}</h3>
-                <p class="text-[11px] text-muted-foreground mt-0.5">{{ $t('dashboard.sso.secretsDesc') }}</p>
-              </div>
-              <span class="text-[11px] font-semibold text-muted-foreground tabular-nums">{{ $t('dashboard.sso.usedCount', { used, limit: SSO_SECRET_LIMIT }) }}</span>
-            </div>
-
-            <!-- Loading -->
-            <div v-if="loading" class="px-6 py-14 text-center text-sm text-muted-foreground">{{ $t('dashboard.sso.loading') }}</div>
-
-            <!-- Empty state -->
-            <div v-else-if="!secrets.length" class="px-6 py-14 flex flex-col items-center text-center">
-              <div class="w-12 h-12 rounded-xl bg-secondary flex items-center justify-center mb-3">
-                <Icon name="lucide:key-round" size="22" class="text-primary" />
-              </div>
-              <p class="font-heading font-bold text-sm">{{ $t('dashboard.sso.empty') }}</p>
-              <p class="text-xs text-muted-foreground mt-1 max-w-xs leading-relaxed">
-                {{ $t('dashboard.sso.emptyHint') }}
-              </p>
-              <button
-                class="mt-4 h-9 px-4 rounded-lg bg-primary text-primary-foreground text-xs font-heading font-bold hover:opacity-90 transition-all flex items-center gap-2"
-                @click="openCreate"
-              >
-                <Icon name="lucide:plus" size="14" />
-                {{ $t('dashboard.sso.createSecret') }}
-              </button>
-            </div>
-
-            <!-- List -->
-            <div v-else class="divide-y divide-border">
-              <SsoSecretRow
-                v-for="s in secrets"
-                :key="s.id"
-                :secret="s"
-                :just-created="s.id === justCreatedId"
-                @toggle="onToggle(s)"
-                @rename="openRename(s)"
-                @delete="askDelete(s)"
-              />
-            </div>
-          </section>
-
-          <!-- Rotation hint -->
-          <p class="text-[11px] text-muted-foreground leading-relaxed mt-4">
-            <Icon name="lucide:refresh-cw" size="11" class="inline mr-1" />
-            <span class="font-semibold">{{ $t('dashboard.sso.rotationLabel') }}</span>{{ $t('dashboard.sso.rotationMid') }}<span class="font-semibold">{{ $t('dashboard.sso.rotationDisable') }}</span>{{ $t('dashboard.sso.rotationEnd') }}
-          </p>
-        </template>
+        <SsoSecretsPanel
+          v-else-if="view === 'secrets'"
+          :secrets="secrets"
+          :loading="loading"
+          :just-created-id="justCreatedId"
+          @create="openCreate"
+          @toggle="onToggle"
+          @rename="openRename"
+          @delete="askDelete"
+        />
 
         <!-- Integration guide -->
         <SsoIntegrationGuide v-else />

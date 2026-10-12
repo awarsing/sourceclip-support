@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { toast } from 'vue-sonner'
-import { CJK_RANGE } from '#layers/feedlog/shared/constants/help'
+import { activeHeading, createAnchorIds } from '~/lib/pages/help-article'
 import '~/assets/css/help-article.css'
 
 interface ArticlePage {
@@ -35,27 +35,15 @@ if (import.meta.server && error.value) {
 const article = computed(() => data.value)
 
 if (article.value && segment !== `${article.value.shortId}-${article.value.canonicalSlug}`) {
-  await navigateTo(localePath(`/help/${article.value.shortId}-${article.value.canonicalSlug}`), { redirectCode: 301, replace: true })
+  await navigateTo(localePath(`/help/${article.value.shortId}-${article.value.canonicalSlug}`), {
+    redirectCode: 301,
+    replace: true,
+  })
 }
 
 const editorId = 'help-article-preview'
 
-const anchorSeen = new Map<string, number>()
-let anchorLastIndex = Number.POSITIVE_INFINITY
-
-const anchorId = (heading: { text?: string; index?: number }) => {
-  const index = heading?.index ?? 0
-  if (index <= anchorLastIndex) anchorSeen.clear()
-  anchorLastIndex = index
-
-  const base = String(heading?.text ?? '').toLowerCase()
-    .replace(new RegExp(`[^a-z0-9${CJK_RANGE}]+`, 'g'), '-')
-    .replace(/^-|-$/g, '')
-    || `section-${index}`
-  const seen = anchorSeen.get(base) ?? 0
-  anchorSeen.set(base, seen + 1)
-  return seen ? `${base}-${seen + 1}` : base
-}
+const anchorId = createAnchorIds()
 
 const formatDate = useFormatDate()
 
@@ -75,7 +63,7 @@ function scrollOffset() {
 
 function readHeadings() {
   headingEls = [...(bodyRoot.value?.querySelectorAll<HTMLElement>('h2[id], h3[id]') ?? [])]
-  toc.value = headingEls.map(node => ({
+  toc.value = headingEls.map((node) => ({
     id: node.id,
     text: node.textContent?.replace(/#$/, '').trim() ?? '',
     level: Number(node.tagName[1]),
@@ -92,17 +80,8 @@ function syncActive() {
   if (navLock) return
 
   const atBottom = window.innerHeight + window.scrollY >= document.documentElement.scrollHeight - 2
-  if (atBottom && toc.value.length) {
-    activeId.value = toc.value[toc.value.length - 1]!.id
-    return
-  }
-
-  const offset = scrollOffset()
-  let current = headingEls[0]?.id ?? ''
-  for (const el of headingEls) {
-    if (el.getBoundingClientRect().top <= offset + 1) current = el.id
-  }
-  activeId.value = current
+  const headings = headingEls.map((el) => ({ id: el.id, top: el.getBoundingClientRect().top }))
+  activeId.value = activeHeading(headings, scrollOffset(), atBottom)
 }
 
 function queueSync() {
@@ -152,7 +131,10 @@ onBeforeUnmount(() => {
   window.removeEventListener('scrollend', releaseNavLock)
   clearTimeout(navLockTimer)
 })
-watch(() => article.value?.content, () => nextTick(mountAnchors))
+watch(
+  () => article.value?.content,
+  () => nextTick(mountAnchors),
+)
 
 usePageOg({
   kind: 'helpArticle',
@@ -162,7 +144,6 @@ usePageOg({
   publishedAt: () => article.value?.publishedAt ?? undefined,
 })
 useRobotsRule(computed(() => (article.value ? 'index, follow' : 'noindex')))
-
 </script>
 
 <template>
@@ -189,45 +170,10 @@ useRobotsRule(computed(() => (article.value ? 'index, follow' : 'noindex')))
             <ThemedMdPreview :editor-id="editorId" :model-value="article.content" :md-heading-id="anchorId" />
           </div>
 
-          <div v-if="article.siblings.length" class="mt-6">
-            <p class="mb-2.5 text-[13px] font-bold leading-[18px] text-muted-foreground">
-              {{ $t('help.portal.moreIn', { name: article.collection.name }) }}
-            </p>
-            <NuxtLink
-              v-for="sibling in article.siblings"
-              :key="sibling.shortId"
-              :to="localePath(`/help/${sibling.shortId}-${sibling.slug}`)"
-              class="mb-2 flex cursor-pointer items-center gap-3 rounded-2xl border border-border bg-card px-[18px] py-3.5 transition-colors hover:border-primary/40"
-            >
-              <span class="min-w-0 flex-1">
-                <span class="block text-[15px] font-bold leading-[22px]">{{ sibling.title }}</span>
-                <span v-if="sibling.description" class="mt-0.5 block truncate text-[13px] leading-[19px] text-muted-foreground">{{ sibling.description }}</span>
-              </span>
-              <Icon name="lucide:chevron-right" size="16" class="shrink-0 text-muted-foreground" />
-            </NuxtLink>
-          </div>
+          <HelpArticleSiblings :collection-name="article.collection.name" :siblings="article.siblings" />
         </div>
 
-        <aside v-show="toc.length >= 2" class="sticky top-[105px] hidden lg:block">
-          <p class="mb-3 flex items-center gap-2 text-[13px] font-bold leading-[18px] text-muted-foreground">
-            <Icon name="lucide:list" size="15" />
-            {{ $t('help.portal.onThisPage') }}
-          </p>
-          <button
-            v-for="item in toc"
-            :key="item.id"
-            type="button"
-            class="block w-full border-l-2 py-[7px] text-left leading-[19px] transition-colors"
-            :class="[
-              item.level === 3 ? 'pl-7 text-[12.5px]' : 'pl-3.5 text-[13px]',
-              item.id === activeId ? 'font-semibold' : item.level === 3 ? 'font-medium' : '',
-              item.id === activeId ? 'border-primary text-primary' : 'border-border text-muted-foreground hover:text-foreground',
-            ]"
-            @click="goToHeading(item.id)"
-          >
-            {{ item.text }}
-          </button>
-        </aside>
+        <HelpArticleToc :items="toc" :active-id="activeId" @go="goToHeading" />
       </div>
     </div>
 

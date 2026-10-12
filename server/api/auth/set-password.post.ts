@@ -1,7 +1,7 @@
 // `auth` auto-imported from server/utils/better-auth.ts.
 
 export default defineEventHandler(async (event) => {
-  const session = await auth.api.getSession({ headers: getHeaders(event) })
+  const session = await auth.api.getSession({ headers: event.headers })
   if (!session) {
     throw createError({ statusCode: 401, message: 'Unauthorized' })
   }
@@ -17,17 +17,15 @@ export default defineEventHandler(async (event) => {
     throw createError({ statusCode: 400, message: 'Password must be at most 128 characters' })
   }
 
-  const accounts = await auth.api.listUserAccounts({ headers: getHeaders(event) })
-  const hasCredential = accounts?.some(
-    (acc: { providerId: string }) => acc.providerId === 'credential',
-  )
+  const accounts = await auth.api.listUserAccounts({ headers: event.headers })
+  const hasCredential = accounts?.some((acc: { providerId: string }) => acc.providerId === 'credential')
   if (hasCredential) {
     throw createError({ statusCode: 400, message: 'Password already set. Use change-password instead.' })
   }
 
   const result = await auth.api.setPassword({
     body: { newPassword: body.newPassword },
-    headers: getHeaders(event),
+    headers: event.headers,
   })
 
   // Notify user that a password was added (security measure)

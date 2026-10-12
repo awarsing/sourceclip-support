@@ -6,11 +6,28 @@ import { normalizeBrandHex, pickBrandForegroundHex } from '../../shared/utils/br
 const BRAND_COLOR = '#C45A46'
 const FONT_STACK = `-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif`
 
-export function renderInboxReplyEmail({ reply, productName, topic, url }: { reply: string; productName: string; topic: string; url?: string }) {
+export function renderInboxReplyEmail({
+  reply,
+  productName,
+  topic,
+  url,
+}: {
+  reply: string
+  productName: string
+  topic: string
+  url?: string
+}) {
   const intro = topic ? `You have a reply about ${topic} from ${productName}.` : `You have a reply from ${productName}.`
   const hint = `Open the support chat in ${productName} to reply.`
   const text = [intro, reply, url ? `Continue conversation: ${url}` : '', hint].filter(Boolean).join('\n\n')
-  return { text, html: layout({ brandName: productName, preheader: intro, content: `<p>${escapeHtml(intro)}</p><p style="white-space:pre-wrap">${escapeHtml(reply)}</p>${url ? actionButton(escapeHtml(url), 'Continue conversation') : ''}<p>${escapeHtml(hint)}</p>` }) }
+  return {
+    text,
+    html: layout({
+      brandName: productName,
+      preheader: intro,
+      content: `<p>${escapeHtml(intro)}</p><p style="white-space:pre-wrap">${escapeHtml(reply)}</p>${url ? actionButton(escapeHtml(url), 'Continue conversation') : ''}<p>${escapeHtml(hint)}</p>`,
+    }),
+  }
 }
 
 function layout({ preheader, content, brandName }: { preheader: string; content: string; brandName?: string }): string {
@@ -71,7 +88,7 @@ export function renderVerificationEmail({ url, name }: { url: string; name: stri
 </ul>
 ${actionButton(url, 'Confirm Email')}
 ${fallbackLink(url)}
-${expiryNote('This link expires in 1 hour. If you didn\'t sign up for FeedLog, you can safely ignore this email.')}
+${expiryNote("This link expires in 1 hour. If you didn't sign up for FeedLog, you can safely ignore this email.")}
 `,
   })
 }
@@ -84,14 +101,14 @@ export function renderInvitationEmail({ url, orgName }: { url: string; orgName: 
 <p style="margin: 0 0 12px;">You've been invited to collaborate. Click below to accept and get started:</p>
 ${actionButton(url, 'Accept invitation')}
 ${fallbackLink(url)}
-${expiryNote('This invitation link is tied to your email. If you weren\'t expecting it, you can safely ignore this message.')}
+${expiryNote("This invitation link is tied to your email. If you weren't expecting it, you can safely ignore this message.")}
 `,
   })
 }
 
 export function renderResetPasswordEmail({ url, name }: { url: string; name: string }): string {
   return layout({
-    preheader: 'A password reset was requested for your account. If it wasn\'t you, ignore this email.',
+    preheader: "A password reset was requested for your account. If it wasn't you, ignore this email.",
     content: `
 <h2 style="margin: 0 0 16px; font-size: 20px; font-weight: 600;">Reset your password</h2>
 <p style="margin: 0 0 12px;">Hi ${escapeHtml(name)},</p>
@@ -110,7 +127,7 @@ ${expiryNote('This link expires in 1 hour and can only be used once.')}
 export function renderPasswordSetEmail({ name }: { name: string }): string {
   const contact = `<a href="mailto:feedlog.oss@outlook.com" style="color: ${BRAND_COLOR}; text-decoration: underline;">feedlog.oss@outlook.com</a>`
   return layout({
-    preheader: 'If this wasn\'t you, reset your password immediately.',
+    preheader: "If this wasn't you, reset your password immediately.",
     content: `
 <h2 style="margin: 0 0 16px; font-size: 20px; font-weight: 600;">A password was added to your account</h2>
 <p style="margin: 0 0 16px;">Hi ${escapeHtml(name)},</p>
@@ -125,7 +142,12 @@ export function renderPasswordSetEmail({ name }: { name: string }): string {
 // User-authored text (titles, notes, comment snippets) enters the HTML body
 // here, so every interpolation is escaped.
 function escapeHtml(s: string): string {
-  return s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;').replace(/'/g, '&#39;')
+  return s
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#39;')
 }
 
 export interface NotificationEmailContent {
@@ -134,11 +156,16 @@ export interface NotificationEmailContent {
   text: string
 }
 
-const FOOTER_REASON = 'You\'re receiving this because of your activity on this FeedLog board.'
-const ADMIN_FOOTER_REASON = 'You\'re receiving this because you manage this FeedLog board.'
+const FOOTER_REASON = "You're receiving this because of your activity on this FeedLog board."
+const ADMIN_FOOTER_REASON = "You're receiving this because you manage this FeedLog board."
 
 // Gray page → centered FeedLog wordmark → white rounded card → centered footer.
-function notificationShell(cardInner: string, preheader: string, footerReason: string, preferencesUrl?: string): string {
+function notificationShell(
+  cardInner: string,
+  preheader: string,
+  footerReason: string,
+  preferencesUrl?: string,
+): string {
   return `
 <div style="background: #f6f7fb; padding: 40px 16px; font-family: ${FONT_STACK};">
   <div style="display: none; max-height: 0; overflow: hidden; mso-hide: all;">${escapeHtml(preheader)}</div>
@@ -179,7 +206,13 @@ function statusChangeCard(title: string, to: string, note?: string): Notificatio
   }
 }
 
-function personCard(title: string, actorName: string, actorImage: string | null | undefined, snippet: string, buttonLabel: string): string {
+function personCard(
+  title: string,
+  actorName: string,
+  actorImage: string | null | undefined,
+  snippet: string,
+  buttonLabel: string,
+): string {
   const initial = (actorName || '?').charAt(0).toUpperCase()
   // Only trust an http(s) URL as a src; anything else falls back to the initial avatar.
   const safeImage = actorImage && /^https?:\/\//i.test(actorImage) ? actorImage : null
@@ -198,7 +231,12 @@ function personCard(title: string, actorName: string, actorImage: string | null 
       ${pillButton('{{postUrl}}', buttonLabel)}`
 }
 
-function adminReplyCard(title: string, actorName: string, actorImage: string | null | undefined, snippet: string): NotificationEmailContent {
+function adminReplyCard(
+  title: string,
+  actorName: string,
+  actorImage: string | null | undefined,
+  snippet: string,
+): NotificationEmailContent {
   return {
     subject: `New comment for "${title}"`,
     html: personCard(title, actorName, actorImage, snippet, 'View comment'),
@@ -206,7 +244,12 @@ function adminReplyCard(title: string, actorName: string, actorImage: string | n
   }
 }
 
-function newFeedbackCard(title: string, actorName: string, actorImage: string | null | undefined, snippet: string): NotificationEmailContent {
+function newFeedbackCard(
+  title: string,
+  actorName: string,
+  actorImage: string | null | undefined,
+  snippet: string,
+): NotificationEmailContent {
   return {
     subject: `New feedback: "${title}"`,
     html: personCard(title, actorName, actorImage, snippet, 'View feedback'),
@@ -214,7 +257,12 @@ function newFeedbackCard(title: string, actorName: string, actorImage: string | 
   }
 }
 
-function userCommentCard(title: string, actorName: string, actorImage: string | null | undefined, snippet: string): NotificationEmailContent {
+function userCommentCard(
+  title: string,
+  actorName: string,
+  actorImage: string | null | undefined,
+  snippet: string,
+): NotificationEmailContent {
   return {
     subject: `New reply on "${title}"`,
     html: personCard(title, actorName, actorImage, snippet, 'View comment'),
@@ -267,9 +315,14 @@ export function renderNotificationEmail(input: {
   }
 
   const brand = normalizeBrandHex(input.brandColor)
-  const preferencesUrl = input.typeKey === 'post.created' || input.typeKey === 'post.user_commented'
-    ? input.preferencesUrl : undefined
-  const html = notificationShell(card.html.replaceAll('{{postUrl}}', escapeHtml(input.postUrl)), preheader, footerReason, preferencesUrl)
+  const preferencesUrl =
+    input.typeKey === 'post.created' || input.typeKey === 'post.user_commented' ? input.preferencesUrl : undefined
+  const html = notificationShell(
+    card.html.replaceAll('{{postUrl}}', escapeHtml(input.postUrl)),
+    preheader,
+    footerReason,
+    preferencesUrl,
+  )
     .replaceAll('{{brand}}', brand)
     .replaceAll('{{brandFg}}', pickBrandForegroundHex(brand))
   const text = `${card.text}\n\nView: ${input.postUrl}\n\n—\n${footerReason}${preferencesUrl ? `\nManage email notifications: ${preferencesUrl}` : ''}`

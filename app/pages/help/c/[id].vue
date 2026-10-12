@@ -18,7 +18,11 @@ if (error.value) {
 const collection = computed(() => data.value?.collection)
 const articles = computed(() => data.value?.articles ?? [])
 
-usePageOg({ kind: 'helpCollection', title: () => collection.value?.name, description: () => collection.value?.description })
+usePageOg({
+  kind: 'helpCollection',
+  title: () => collection.value?.name,
+  description: () => collection.value?.description,
+})
 
 const formatDate = useFormatDate()
 </script>

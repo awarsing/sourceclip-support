@@ -1,5 +1,5 @@
 import { eq, and } from 'drizzle-orm'
-import { postEmbedding } from '#layers/feedlog/server/db/schemas'
+import { postEmbedding } from '../db/schemas'
 
 const EMBEDDING_MODEL = 'text-embedding-3-large'
 const EMBEDDING_DIMENSIONS = 768
@@ -16,7 +16,7 @@ export async function generateEmbedding(text: string): Promise<number[]> {
   const response = await fetch(`${baseUrl}/embeddings`, {
     method: 'POST',
     headers: {
-      'Authorization': `Bearer ${apiKey}`,
+      Authorization: `Bearer ${apiKey}`,
       'Content-Type': 'application/json',
     },
     body: JSON.stringify({
@@ -31,8 +31,10 @@ export async function generateEmbedding(text: string): Promise<number[]> {
     throw new Error(`OpenAI API error: ${response.status} ${error}`)
   }
 
-  const data = await response.json() as { data: { embedding: number[] }[] }
-  return data.data[0].embedding
+  const data = (await response.json()) as { data: { embedding: number[] }[] }
+  const [first] = data.data
+  if (!first) throw new Error('OpenAI API error: no embedding returned')
+  return first.embedding
 }
 
 // Generate and store embedding for a post with optimistic lock on content_hash
@@ -68,10 +70,7 @@ export async function generatePostEmbedding(
           contentHash,
           createdAt: new Date(),
         })
-        .where(and(
-          eq(postEmbedding.postId, postId),
-          eq(postEmbedding.contentHash, existing.contentHash),
-        ))
+        .where(and(eq(postEmbedding.postId, postId), eq(postEmbedding.contentHash, existing.contentHash)))
     } else {
       // Insert new embedding
       await db

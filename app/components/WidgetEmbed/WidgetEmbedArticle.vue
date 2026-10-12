@@ -2,49 +2,63 @@
 import { ArrowLeft, ArrowUpRight } from 'lucide-vue-next'
 import { widgetEmbedKey } from '#layers/feedlog/app/composables/useWidgetEmbed'
 import '#layers/feedlog/app/assets/css/help-article.css'
+import { articleApiPath, articleLinkTarget } from './-article-logic'
 const props = defineProps<{ slug: string; productName: string; initialScrollTop?: number }>()
 const emit = defineEmits<{ close: []; article: [slug: string]; scroll: [top: number] }>()
 const { widgetFetch } = inject(widgetEmbedKey)!
 const article = ref<{
-  title: string; description: string | null; content: string
-  shortId: string; canonicalSlug: string; collection: { id: string; name: string }
+  title: string
+  description: string | null
+  content: string
+  shortId: string
+  canonicalSlug: string
+  collection: { id: string; name: string }
 } | null>(null)
 const loading = ref(false)
 const failed = ref(false)
 const bodyEl = ref<HTMLElement | null>(null)
-const articlePath = computed(() => `/help/${article.value ? `${article.value.shortId}-${article.value.canonicalSlug}` : props.slug}`)
+const articlePath = computed(
+  () => `/help/${article.value ? `${article.value.shortId}-${article.value.canonicalSlug}` : props.slug}`,
+)
 let request = 0
 function followLink(event: MouseEvent) {
   const link = (event.target as Element).closest<HTMLAnchorElement>('a[href]')
   if (!link) return
-  const target = new URL(link.href, window.location.origin)
-  const match = target.pathname.match(/^\/help\/([a-zA-Z0-9]{6}-.+)$/)
-  if (target.origin === window.location.origin && match) {
+  const target = articleLinkTarget(link.href, window.location.origin)
+  if (target.kind === 'article') {
     event.preventDefault()
-    emit('article', match[1]!)
-  } else if (['http:', 'https:'].includes(target.protocol)) {
+    emit('article', target.slug)
+  } else if (target.kind === 'external') {
     link.target = '_blank'
     link.rel = 'noopener noreferrer'
   }
 }
-watch(() => props.slug, async slug => {
-  const version = ++request
-  loading.value = true
-  failed.value = false
-  bodyEl.value?.scrollTo({ top: 0 })
+async function fetchArticle(slug: string, version: number) {
   try {
-    const result = await widgetFetch<NonNullable<typeof article.value>>(`/api/help/articles/${encodeURIComponent(slug.split('-')[0]!)}`)
+    const result = await widgetFetch<NonNullable<typeof article.value>>(articleApiPath(slug))
     if (version === request) article.value = result
-  } catch { if (version === request) failed.value = true }
-  finally {
-    if (version === request) {
-      loading.value = false
-      await nextTick()
-      await document.fonts.ready
-      if (version === request && bodyEl.value) bodyEl.value.scrollTop = props.initialScrollTop ?? 0
-    }
+  } catch {
+    if (version === request) failed.value = true
   }
-}, { immediate: true })
+}
+async function finishLoading(version: number) {
+  loading.value = false
+  await nextTick()
+  await document.fonts.ready
+  if (version === request && bodyEl.value) bodyEl.value.scrollTop = props.initialScrollTop ?? 0
+}
+watch(
+  () => props.slug,
+  async (slug) => {
+    const version = ++request
+    loading.value = true
+    failed.value = false
+    bodyEl.value?.scrollTo({ top: 0 })
+    await fetchArticle(slug, version)
+    if (version === request) await finishLoading(version)
+  },
+  { immediate: true },
+)
 </script>
 
 <template>

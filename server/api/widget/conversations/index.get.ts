@@ -3,6 +3,7 @@ import { and, desc, eq, gt, sql } from 'drizzle-orm'
 import { conversation, conversationItem } from '#layers/feedlog/server/db/schemas'
 import { withinRetention } from '#layers/feedlog/server/utils/conversation'
 
+// fallow-ignore-next-line unused-type -- imported by app/pages/widget/embed.vue and WidgetEmbedConversationList.vue through the #layers/feedlog alias, which Fallow does not resolve from .vue files
 export interface WidgetConversationItem {
   id: string
   title: string | null
@@ -36,12 +37,14 @@ export default defineEventHandler(async (event): Promise<{ data: WidgetConversat
       )`,
     })
     .from(conversation)
-    .where(and(
-      eq(conversation.orgId, orgId),
-      eq(conversation.userId, session.user.id),
-      withinRetention(orgId),
-      gt(conversation.lastSeq, 0),
-    ))
+    .where(
+      and(
+        eq(conversation.orgId, orgId),
+        eq(conversation.userId, session.user.id),
+        withinRetention(orgId),
+        gt(conversation.lastSeq, 0),
+      ),
+    )
     .orderBy(desc(conversation.lastMessageAt), desc(conversation.id))
 
   return { data: rows.map(({ status, ...row }) => ({ ...row, handling: handling(status) })) }

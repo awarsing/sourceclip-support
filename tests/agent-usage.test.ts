@@ -22,15 +22,40 @@ test('missing usage remains unknown and zero is a valid reported count', () => {
   assert.equal(hasCompleteUsage({ id: 'partial', status: 'completed', usage: partial }), false)
   assert.equal(totalTokens(partial), 50)
   assert.deepEqual(addTokenUsage(null, { inputTokens: NaN, outputTokens: -1 }), unavailable)
-  assert.equal(hasCompleteUsage({ id: 'zero', status: 'completed', usage: addTokenUsage(null, { inputTokens: 0, outputTokens: 0 }) }), true)
+  assert.equal(
+    hasCompleteUsage({
+      id: 'zero',
+      status: 'completed',
+      usage: addTokenUsage(null, { inputTokens: 0, outputTokens: 0 }),
+    }),
+    true,
+  )
 })
 
 test('conversation totals include failed attempts and retries, with missing history marked incomplete', () => {
-  const failed = { id: 'first', status: 'failed' as const, usage: addTokenUsage(null, { inputTokens: 100, outputTokens: 20 }) }
-  const retried = { id: 'retry', status: 'completed' as const, usage: addTokenUsage(null, { inputTokens: 150, outputTokens: 30 }) }
+  const failed = {
+    id: 'first',
+    status: 'failed' as const,
+    usage: addTokenUsage(null, { inputTokens: 100, outputTokens: 20 }),
+  }
+  const retried = {
+    id: 'retry',
+    status: 'completed' as const,
+    usage: addTokenUsage(null, { inputTokens: 150, outputTokens: 30 }),
+  }
   const old = { id: 'old', status: 'completed' as const, usage: null }
-  assert.deepEqual(summarizeTokenUsage([failed, retried, old]), { inputTokens: 250, outputTokens: 50, recordedRuns: 2, complete: false })
-  assert.deepEqual(summarizeTokenUsage([old]), { inputTokens: null, outputTokens: null, recordedRuns: 0, complete: false })
+  assert.deepEqual(summarizeTokenUsage([failed, retried, old]), {
+    inputTokens: 250,
+    outputTokens: 50,
+    recordedRuns: 2,
+    complete: false,
+  })
+  assert.deepEqual(summarizeTokenUsage([old]), {
+    inputTokens: null,
+    outputTokens: null,
+    recordedRuns: 0,
+    complete: false,
+  })
   assert.equal(summarizeTokenUsage([retried]).complete, true)
   assert.equal(summarizeTokenUsage([]).complete, false)
 })

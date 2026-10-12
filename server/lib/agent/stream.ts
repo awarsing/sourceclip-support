@@ -9,16 +9,23 @@ export async function collectConversationReply(
   let message: UIMessage | undefined
   let finish: Extract<UIMessageChunk, { type: 'finish' }> | undefined
   let failure: unknown
-  const observed = stream.pipeThrough(new TransformStream<UIMessageChunk, UIMessageChunk>({
-    transform(chunk, controller) {
-      const next = chunk.type === 'start' ? { ...chunk, messageId } : chunk
-      if (next.type === 'finish') finish = next
-      else if (next.type === 'abort' || next.type === 'error') failure = new Error('Response did not complete.')
-      else write(next)
-      controller.enqueue(next)
+  const observed = stream.pipeThrough(
+    new TransformStream<UIMessageChunk, UIMessageChunk>({
+      transform(chunk, controller) {
+        const next = chunk.type === 'start' ? { ...chunk, messageId } : chunk
+        if (next.type === 'finish') finish = next
+        else if (next.type === 'abort' || next.type === 'error') failure = new Error('Response did not complete.')
+        else write(next)
+        controller.enqueue(next)
+      },
+    }),
+  )
+  for await (const snapshot of readUIMessageStream({
+    stream: observed,
+    onError: (error) => {
+      failure = error
     },
-  }))
-  for await (const snapshot of readUIMessageStream({ stream: observed, onError: error => { failure = error } })) {
+  })) {
     message = snapshot
   }
   if (failure) throw failure

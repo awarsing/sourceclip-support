@@ -32,7 +32,9 @@ const defaultBackend: OrgCacheBackend = {
       .limit(1)
     return rows[0] ?? null
   },
-  async invalidate() { /* no-op — default backend reads live from DB */ },
+  async invalidate() {
+    /* no-op — default backend reads live from DB */
+  },
 }
 
 let _backend: OrgCacheBackend = defaultBackend
@@ -45,6 +47,7 @@ export function getOrgInfo(slug: string): Promise<OrgInfo | null> {
   return _backend.get(slug)
 }
 
+/** @public Layer extension API for a consuming app's Nitro plugins. */
 export function invalidateOrgInfo(slug: string): Promise<void> {
   return _backend.invalidate(slug)
 }

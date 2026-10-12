@@ -31,12 +31,16 @@ test('shared feedback search falls back for missing vectors and preserves semant
     },
   })
   try {
-    for (const id of [orgId, otherOrgId]) await pool.query('INSERT INTO organization (id,name,slug) VALUES ($1,$1,$1)', [id])
+    for (const id of [orgId, otherOrgId])
+      await pool.query('INSERT INTO organization (id,name,slug) VALUES ($1,$1,$1)', [id])
     await pool.query('INSERT INTO "user" (id,name,email) VALUES ($1,$1,$2)', [userId, `${userId}@example.invalid`])
     for (const [index, id] of ids.entries()) {
       const tenant = index === 3 ? otherOrgId : orgId
       const title = index === 1 ? 'Export reports' : 'Add dark mode support'
-      await pool.query('INSERT INTO post (id,org_id,author_id,title,content,slug,merged_to) VALUES ($1::uuid,$2,$3,$4::text,$4::text,$1::text,$5::uuid)', [id, tenant, userId, title, index === 2 ? ids[0] : null])
+      await pool.query(
+        'INSERT INTO post (id,org_id,author_id,title,content,slug,merged_to) VALUES ($1::uuid,$2,$3,$4::text,$4::text,$1::text,$5::uuid)',
+        [id, tenant, userId, title, index === 2 ? ids[0] : null],
+      )
       await pool.query('INSERT INTO post_search (post_id,org_id,search_text) VALUES ($1,$2,$3)', [id, tenant, title])
     }
     const query = '**dark mode night mode theme support**'
@@ -44,28 +48,52 @@ test('shared feedback search falls back for missing vectors and preserves semant
 
     await t.test('an empty vector index still returns text candidates', async () => {
       const hits = await searchSimilarByText(query, options)
-      assert.deepEqual(hits.map(hit => hit.id), ids.slice(0, 2))
+      assert.deepEqual(
+        hits.map((hit) => hit.id),
+        ids.slice(0, 2),
+      )
       assert.deepEqual(inputs, ['dark mode night mode theme support'])
     })
 
     for (const [index, id] of ids.entries()) {
-      await pool.query('INSERT INTO post_embedding (post_id,org_id,embedding,model,content_hash) VALUES ($1,$2,$3::vector,$4,$5)', [id, index === 3 ? otherOrgId : orgId, JSON.stringify(index === 0 ? vector(0, 1) : queryVector), 'test-model', 'test-hash'])
+      await pool.query(
+        'INSERT INTO post_embedding (post_id,org_id,embedding,model,content_hash) VALUES ($1,$2,$3::vector,$4,$5)',
+        [
+          id,
+          index === 3 ? otherOrgId : orgId,
+          JSON.stringify(index === 0 ? vector(0, 1) : queryVector),
+          'test-model',
+          'test-hash',
+        ],
+      )
     }
     await t.test('vectors determine order and exclude merged and other-tenant feedback', async () => {
       const hits = await searchSimilarByText(query, options)
-      assert.deepEqual(hits.map(hit => hit.id), [ids[1], ids[0]])
-      assert.deepEqual((await searchSimilarByText(query, { ...options, limit: 1 })).map(hit => hit.id), [ids[1]])
+      assert.deepEqual(
+        hits.map((hit) => hit.id),
+        [ids[1], ids[0]],
+      )
+      assert.deepEqual(
+        (await searchSimilarByText(query, { ...options, limit: 1 })).map((hit) => hit.id),
+        [ids[1]],
+      )
     })
 
     await t.test('a provider failure falls back to text similarity', async () => {
       providerFails = true
-      assert.deepEqual((await searchSimilarByText(query, options)).map(hit => hit.id), ids.slice(0, 2))
+      assert.deepEqual(
+        (await searchSimilarByText(query, options)).map((hit) => hit.id),
+        ids.slice(0, 2),
+      )
     })
 
     await t.test('an unconfigured provider is skipped', async () => {
       enabled = false
       const count = inputs.length
-      assert.deepEqual((await searchSimilarByText(query, options)).map(hit => hit.id), ids.slice(0, 2))
+      assert.deepEqual(
+        (await searchSimilarByText(query, options)).map((hit) => hit.id),
+        ids.slice(0, 2),
+      )
       assert.equal(inputs.length, count)
     })
   } finally {

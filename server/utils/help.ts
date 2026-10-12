@@ -3,21 +3,21 @@ import { customAlphabet } from 'nanoid'
 import pinyin from 'pinyinlite'
 import { and, eq, sql } from 'drizzle-orm'
 import type { SQL } from 'drizzle-orm'
-import { helpArticle, helpCollection } from '#layers/feedlog/server/db/schemas'
-import { CJK_RANGE, HELP_SHORT_ID_ALPHABET, HELP_SHORT_ID_LENGTH } from '#layers/feedlog/shared/constants/help'
+import { helpArticle, helpCollection } from '../db/schemas'
+import { CJK_RANGE, HELP_SHORT_ID_ALPHABET, HELP_SHORT_ID_LENGTH } from '../../shared/constants/help'
 
 const CJK = new RegExp(`[${CJK_RANGE}]`)
 
 const shortId = customAlphabet(HELP_SHORT_ID_ALPHABET, HELP_SHORT_ID_LENGTH)
 
-export function generateHelpShortId(): string {
+function generateHelpShortId(): string {
   return shortId()
 }
 
 export function generateHelpSlug(title: string): string {
   // Keep non-Chinese runs intact so product names and version numbers stay readable.
   const latin = pinyin(title, { keepUnrecognized: true })
-    .map(([reading], index) => reading === title[index] ? reading : ` ${reading} `)
+    .map(([reading], index) => (reading === title[index] ? reading : ` ${reading} `))
     .join('')
   return slugify(latin, { lower: true, strict: true }).slice(0, 80)
 }
@@ -44,8 +44,7 @@ export async function withHelpShortId<T>(insert: (shortId: string) => Promise<T>
   for (let i = 0; i < maxRetries; i++) {
     try {
       return await insert(generateHelpShortId())
-    }
-    catch (err) {
+    } catch (err) {
       if ((err as { code?: string })?.code !== '23505') throw err
     }
   }

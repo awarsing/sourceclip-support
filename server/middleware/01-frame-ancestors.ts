@@ -19,9 +19,5 @@ export default defineEventHandler((event) => {
   if (path.startsWith('/api/')) return
 
   const framable = path === EMBED_PATH || path.startsWith(`${EMBED_PATH}/`)
-  setResponseHeader(
-    event,
-    'Content-Security-Policy',
-    framable ? 'frame-ancestors *' : 'frame-ancestors \'none\'',
-  )
+  setResponseHeader(event, 'Content-Security-Policy', framable ? 'frame-ancestors *' : "frame-ancestors 'none'")
 })

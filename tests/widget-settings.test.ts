@@ -16,7 +16,11 @@ test('launcher settings require a complete valid object while other sections rem
   assert.deepEqual(updateWidgetSettingsSchema.parse({ supportEmail: '' }), { supportEmail: '' })
 
   for (const invalid of [
-    null, [], 'left', {}, { alignment: 'left' },
+    null,
+    [],
+    'left',
+    {},
+    { alignment: 'left' },
     { ...launcherConfig, alignment: 'center' },
     { ...launcherConfig, closeBehavior: 'hidden' },
     { ...launcherConfig, bottomOffset: -1 },
@@ -36,7 +40,9 @@ test('launcher migration adds one JSONB column and preserves existing widget set
   try {
     await db.exec((await migration('0007_giant_post')).split('--> statement-breakpoint')[0]!)
     await db.exec(await migration('0010_careful_firebird'))
-    await db.exec("INSERT INTO organization_widget (org_id, enabled, support_email, conversation_retention_days) VALUES ('existing-org', false, 'support@example.com', 30)")
+    await db.exec(
+      "INSERT INTO organization_widget (org_id, enabled, support_email, conversation_retention_days) VALUES ('existing-org', false, 'support@example.com', 30)",
+    )
     const before = await db.query<Record<string, unknown>>('SELECT * FROM organization_widget')
 
     await db.exec(await migration('0015_widget_launcher_config'))
@@ -45,12 +51,15 @@ test('launcher migration adds one JSONB column and preserves existing widget set
     assert.equal(Object.keys(after.rows[0]!).length, 9)
 
     await db.exec("INSERT INTO organization_widget (org_id) VALUES ('new-org')")
-    const inserted = await db.query<{ launcher_config: unknown }>("SELECT launcher_config FROM organization_widget WHERE org_id = 'new-org'")
+    const inserted = await db.query<{ launcher_config: unknown }>(
+      "SELECT launcher_config FROM organization_widget WHERE org_id = 'new-org'",
+    )
     assert.deepEqual(inserted.rows[0]!.launcher_config, WIDGET_LAUNCHER_CONFIG_DEFAULT)
-    const constraints = await db.query("SELECT 1 FROM pg_constraint WHERE conrelid = 'organization_widget'::regclass AND contype = 'c'")
+    const constraints = await db.query(
+      "SELECT 1 FROM pg_constraint WHERE conrelid = 'organization_widget'::regclass AND contype = 'c'",
+    )
     assert.equal(constraints.rows.length, 0)
-  }
-  finally {
+  } finally {
     await db.close()
   }
 })

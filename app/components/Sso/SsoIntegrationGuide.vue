@@ -21,7 +21,8 @@ const payloadFields = computed(() => [
   { name: 'exp', required: true, desc: t('dashboard.sso.guidePayloadExp') },
 ])
 
-const snippet = computed(() => `import jwt from 'jsonwebtoken'
+const snippet = computed(
+  () => `import jwt from 'jsonwebtoken'
 
 // Pre-sign at render time (page load / widget init), NOT on click —
 // this avoids a network round-trip when the user follows the link.
@@ -39,13 +40,16 @@ function buildFeedbackUrl(user, returnTo = '/') {
 
   const base = '${endpoint.value}'
   return \`\${base}?jwt=\${token}&return_to=\${encodeURIComponent(returnTo)}\`
-}`)
+}`,
+)
 
 const copiedKey = ref<string | null>(null)
 function copy(key: string, text: string) {
   navigator.clipboard?.writeText(text)
   copiedKey.value = key
-  setTimeout(() => { copiedKey.value = null }, 1500)
+  setTimeout(() => {
+    copiedKey.value = null
+  }, 1500)
 }
 </script>
 

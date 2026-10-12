@@ -11,8 +11,8 @@ export interface OrgListSession {
 // A comment author is an admin (→ official reply) when their session role in
 // this org is owner or manager — read straight from the session, no DB query.
 // Portal SSO sessions carry no orgList, so they are never admins.
-export function isActorAdmin(session: OrgListSession, orgId: string): boolean {
-  const role = session.orgList?.find(o => o.orgId === orgId)?.role
+export function isActorAdmin(session: object, orgId: string): boolean {
+  const role = (session as OrgListSession).orgList?.find((o) => o.orgId === orgId)?.role
   return role === 'owner' || role === 'manager'
 }
 

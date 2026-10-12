@@ -1,4 +1,3 @@
-
 interface FeedbackItem {
   title: string
   content: string
@@ -22,9 +21,9 @@ const STYLE_RULES: Record<AiStyle, string> = {
 - Structure:
   1. A short hero paragraph (1-2 sentences) framing the release. Keep it factual; do not invent motivation.
   2. Then up to three bullet sections, each only present if items actually belong in it:
-     - "✨ **New**" for newly shipped features
-     - "💎 **Improvements**" for changes to existing features
-     - "🐞 **Fixes**" for bug fixes
+     - "\u{2728} **New**" for newly shipped features
+     - "\u{1F48E} **Improvements**" for changes to existing features
+     - "\u{1F41E} **Fixes**" for bug fixes
   3. Inside each section, each bullet uses the format "- Area: short outcome" (one line each). You should aim for 2-3 bullets across all sections combined for small releases, and more for larger releases.
 - Omit a section entirely if no item belongs in it.
 - Title: a short release name or headline, ≤ 60 chars. It may contain one emoji that matches the release theme.
@@ -112,11 +111,7 @@ export function buildSystemPrompt(style: AiStyle): string {
   return SYSTEM_PROMPT_TEMPLATE.replace('{{STYLE_RULES}}', STYLE_RULES[style])
 }
 
-export function buildUserPrompt(
-  style: AiStyle,
-  feedback: FeedbackItem[],
-  changeContent: string,
-): string {
+export function buildUserPrompt(style: AiStyle, feedback: FeedbackItem[], changeContent: string): string {
   const parts: string[] = []
 
   parts.push(`Style: ${style}`)
@@ -152,33 +147,31 @@ interface AiOutput {
   suggested_tags: string[]
 }
 
-export function parseAiResponse(raw: string): AiOutput {
-  // Layer 1: direct parse
+function tryParseAiOutput(text: string | undefined): AiOutput | null {
+  if (!text) return null
   try {
-    const obj = JSON.parse(raw) as AiOutput
-    if (validateAiOutput(obj)) return obj
-  } catch { /* fall through */ }
-
-  // Layer 2: strip ```json fence
-  const fenceMatch = raw.match(/```(?:json)?\s*([\s\S]*?)\s*```/)
-  if (fenceMatch?.[1]) {
-    try {
-      const obj = JSON.parse(fenceMatch[1]) as AiOutput
-      if (validateAiOutput(obj)) return obj
-    } catch { /* fall through */ }
+    const obj: unknown = JSON.parse(text)
+    return validateAiOutput(obj) ? obj : null
+  } catch {
+    return null
   }
+}
 
-  // Layer 3: first '{' to last '}'
+// The text from the first '{' to the last '}', if there is one.
+function outermostBraces(raw: string): string | undefined {
   const firstBrace = raw.indexOf('{')
   const lastBrace = raw.lastIndexOf('}')
-  if (firstBrace !== -1 && lastBrace > firstBrace) {
-    const sub = raw.slice(firstBrace, lastBrace + 1)
-    try {
-      const obj = JSON.parse(sub) as AiOutput
-      if (validateAiOutput(obj)) return obj
-    } catch { /* fall through */ }
-  }
+  return firstBrace !== -1 && lastBrace > firstBrace ? raw.slice(firstBrace, lastBrace + 1) : undefined
+}
 
+// Tries the raw text, then the inside of a ```json fence, then the outermost
+// braces.
+export function parseAiResponse(raw: string): AiOutput {
+  const candidates = [raw, raw.match(/```(?:json)?\s*([\s\S]*?)\s*```/)?.[1], outermostBraces(raw)]
+  for (const candidate of candidates) {
+    const output = tryParseAiOutput(candidate)
+    if (output) return output
+  }
   throw createError({ statusCode: 502, message: 'AI returned invalid response format' })
 }
 

@@ -1,6 +1,4 @@
 <script setup lang="ts">
-import { resolveAttachmentUrl } from '~/utils/attachment'
-
 const { signOut } = useAuth()
 const { data: session } = await useAuthSession()
 const localePath = useLocalePath()
@@ -8,7 +6,7 @@ const localePath = useLocalePath()
 const { isGuest, hasAccount, claimIfPending } = useGuestSession()
 // A guest is not an account. The header keeps offering sign-in and shows no
 // avatar or sign-out, because the visitor never created the identity behind it.
-const user = computed(() => isGuest.value ? undefined : session.value?.user)
+const user = computed(() => (isGuest.value ? undefined : session.value?.user))
 
 // Fold in anything the visitor wrote as a guest. Silent — from their side
 // nothing happened, their feedback is simply still theirs.
@@ -20,58 +18,21 @@ const user = computed(() => isGuest.value ? undefined : session.value?.user)
 // next claims all over again. Claiming on load puts it in the realm that lives
 // long enough to finish, and every sign-in path ends in one.
 if (hasAccount.value) claimIfPending()
-// An SSO session carries its real member role inside its org, but may not change
-// the global user record — hence the password entry re-prompts.
-const isSsoSession = computed(
-  () => !!(session.value as { session?: { ssoOrgId?: string | null } } | null)?.session?.ssoOrgId,
-)
 const orgCtx = useOrgContext()
 // Matches the /dashboard middleware: any org member gets in, SSO included — its
 // orgList holds only the minting org, so a role here can only mean a role there.
 // Do NOT gate on `user.role === 'admin'`: legacy better-auth admin plugin field.
 const canEnterDashboard = computed(() => !!user.value && !!orgCtx.value.role)
 
-// User initials as avatar fallback
-const initials = computed(() => {
-  const name = user.value?.name || ''
-  return name.slice(0, 2).toUpperCase()
-})
-
-// Fall back to initials when avatar image fails to load
-const avatarError = ref(false)
-const avatarUrl = computed(() => resolveAttachmentUrl(user.value?.image))
-watch(user, () => { avatarError.value = false })
-
-const { isOpen: showLoginModal, open: openLoginModal } = useLoginModal()
-const showChangePassword = ref(false)
-const showEditProfile = ref(false)
-
-// Kept visible and asking for a direct sign-in when used: hiding them reads as a
-// broken page to the people most likely to arrive this way.
-function onChangePassword() {
-  if (isSsoSession.value) {
-    openLoginModal(LOCAL_AUTH_REASON)
-    return
-  }
-  showChangePassword.value = true
-}
-
-function onEditProfile() {
-  if (isSsoSession.value) {
-    openLoginModal(LOCAL_AUTH_REASON)
-    return
-  }
-  showEditProfile.value = true
-}
+const { showLoginModal, showChangePassword, showEditProfile, onChangePassword, onEditProfile } =
+  useAccountDialogs(session)
 
 const portalOrg = usePortalOrg()
 const navItems = computed(() => [
   { key: 'nav.feedback', to: '/', icon: 'lucide:message-square' },
   { key: 'nav.roadmap', to: '/roadmap', icon: 'lucide:map' },
   { key: 'nav.changelog', to: '/changelog', icon: 'lucide:newspaper' },
-  ...(portalOrg.value.modules.helpCenter
-    ? [{ key: 'nav.helpCenter', to: '/help', icon: 'lucide:book-open' }]
-    : []),
+  ...(portalOrg.value.modules.helpCenter ? [{ key: 'nav.helpCenter', to: '/help', icon: 'lucide:book-open' }] : []),
 ])
 
 async function handleSignOut() {
@@ -82,7 +43,12 @@ async function handleSignOut() {
 // Mobile expandable nav
 const mobileNavOpen = ref(false)
 const route = useRoute()
-watch(() => route.path, () => { mobileNavOpen.value = false })
+watch(
+  () => route.path,
+  () => {
+    mobileNavOpen.value = false
+  },
+)
 </script>
 
 <template>
@@ -148,14 +114,7 @@ watch(() => route.path, () => { mobileNavOpen.value = false })
           <DropdownMenu v-if="user">
             <DropdownMenuTrigger as-child>
               <button class="flex items-center rounded-full border border-border bg-card hover:border-primary transition-colors focus:outline-none p-1">
-                <Avatar class="w-8 h-8">
-                  <img v-if="avatarUrl && !avatarError" :src="avatarUrl" :alt="user.name" class="aspect-square size-full rounded-full object-cover" referrerpolicy="no-referrer" @error="avatarError = true">
-                  <!-- Brand accent (not a neutral gray) so identity chips carry the
-                       brand; derived in deriveBrandVars. -->
-                  <AvatarFallback v-else class="bg-accent text-accent-foreground text-sm font-bold">
-                    {{ initials }}
-                  </AvatarFallback>
-                </Avatar>
+                <AccountAvatar :user="user" class="w-8 h-8" />
               </button>
             </DropdownMenuTrigger>
             <DropdownMenuContent align="end" class="w-48">
@@ -166,14 +125,7 @@ watch(() => route.path, () => { mobileNavOpen.value = false })
                 </div>
               </DropdownMenuLabel>
               <DropdownMenuSeparator />
-              <DropdownMenuItem @click="onEditProfile">
-                <Icon name="lucide:user-round-pen" size="16" class="mr-2" />
-                {{ $t('nav.editProfile') }}
-              </DropdownMenuItem>
-              <DropdownMenuItem @click="onChangePassword">
-                <Icon name="lucide:key-round" size="16" class="mr-2" />
-                {{ $t('nav.changePassword') }}
-              </DropdownMenuItem>
+              <AccountProfileItems @edit-profile="onEditProfile" @change-password="onChangePassword" />
               <DropdownMenuItem @click="handleSignOut">
                 <Icon name="lucide:log-out" size="16" class="mr-2" />
                 {{ $t('common.signOut') }}

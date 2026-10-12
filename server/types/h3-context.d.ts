@@ -9,5 +9,3 @@ declare module 'h3' {
     orgSlug?: string
   }
 }
-
-export {}

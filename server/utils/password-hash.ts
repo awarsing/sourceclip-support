@@ -15,10 +15,10 @@ const PBKDF2_SALT_BYTES = 16
 const HASH_PREFIX = 'pbkdf2-sha256'
 
 function bytesToHex(bytes: Uint8Array): string {
-  return Array.from(bytes, b => b.toString(16).padStart(2, '0')).join('')
+  return Array.from(bytes, (b) => b.toString(16).padStart(2, '0')).join('')
 }
 
-function hexToBytes(hex: string): Uint8Array {
+function hexToBytes(hex: string): Uint8Array<ArrayBuffer> {
   const out = new Uint8Array(hex.length / 2)
   for (let i = 0; i < out.length; i++) out[i] = parseInt(hex.slice(i * 2, i * 2 + 2), 16)
   return out
@@ -27,11 +27,16 @@ function hexToBytes(hex: string): Uint8Array {
 function constantTimeEqual(a: Uint8Array, b: Uint8Array): boolean {
   if (a.length !== b.length) return false
   let diff = 0
-  for (let i = 0; i < a.length; i++) diff |= a[i] ^ b[i]
+  for (let i = 0; i < a.length; i++) diff |= a[i]! ^ b[i]!
   return diff === 0
 }
 
-async function deriveBits(password: string, salt: Uint8Array, iterations: number, bits: number): Promise<Uint8Array> {
+async function deriveBits(
+  password: string,
+  salt: Uint8Array<ArrayBuffer>,
+  iterations: number,
+  bits: number,
+): Promise<Uint8Array> {
   const key = await crypto.subtle.importKey(
     'raw',
     new TextEncoder().encode(password.normalize('NFKC')),
@@ -52,10 +57,11 @@ export async function hashPassword(password: string): Promise<string> {
 export async function verifyPassword({ hash, password }: { hash: string; password: string }): Promise<boolean> {
   const parts = hash.split('$')
   if (parts.length !== 4 || parts[0] !== HASH_PREFIX) return false
-  const iterations = parseInt(parts[1], 10)
+  const [, iterationText, saltHex, expectedHex] = parts as [string, string, string, string]
+  const iterations = parseInt(iterationText, 10)
   if (!Number.isFinite(iterations) || iterations < 1) return false
-  const salt = hexToBytes(parts[2])
-  const expected = hexToBytes(parts[3])
+  const salt = hexToBytes(saltHex)
+  const expected = hexToBytes(expectedHex)
   const derived = await deriveBits(password, salt, iterations, expected.length * 8)
   return constantTimeEqual(derived, expected)
 }

@@ -71,10 +71,7 @@ export async function requireLocalSession(event: H3Event) {
 // Throws 403 if the current user lacks any of the requested actions in the
 // active org. Combines "is a member of this org" and "role grants action" in
 // one call — both checks delegate to better-auth's hasPermission internals.
-export async function requireOrgPermission(
-  event: H3Event,
-  permissions: OrgPermissionStatement,
-) {
+export async function requireOrgPermission(event: H3Event, permissions: OrgPermissionStatement) {
   const session = await requireAuth(event)
   assertNotGuestSession(session)
   const orgId = event.context.orgId
@@ -125,7 +122,7 @@ export async function requireOrgMember(event: H3Event) {
     throw createError({ statusCode: 500, message: 'orgId missing from request context' })
   }
   const orgList = (session as { orgList?: { orgId: string; role: string }[] }).orgList
-  const found = orgList?.find(o => o.orgId === orgId)
+  const found = orgList?.find((o) => o.orgId === orgId)
   if (!found) {
     throw createError({ statusCode: 403, message: 'Not a member of this organization' })
   }
@@ -143,7 +140,7 @@ export function getOrgMemberRole(
   if (!session || !orgId) return null
   if ((session.user as { isAnonymous?: boolean | null }).isAnonymous) return null
   const orgList = (session as { orgList?: { orgId: string; role: string }[] }).orgList
-  return orgList?.find(o => o.orgId === orgId)?.role ?? null
+  return orgList?.find((o) => o.orgId === orgId)?.role ?? null
 }
 
 // Gate a dashboard surface on "current user is owner of this org". Used for

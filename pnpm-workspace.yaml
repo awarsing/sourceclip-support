@@ -1,4 +1,42 @@
-onlyBuiltDependencies:
-  - esbuild
-  - sharp
-  - unrs-resolver
+packages: []
+
+nodeLinker: isolated
+minimumReleaseAge: 4320
+minimumReleaseAgeStrict: true
+minimumReleaseAgeIgnoreMissingTime: false
+trustPolicy: no-downgrade
+trustPolicyIgnoreAfter: 43200
+blockExoticSubdeps: true
+strictDepBuilds: true
+dangerouslyAllowAllBuilds: false
+verifyDepsBeforeRun: warn
+engineStrict: true
+
+supportedArchitectures:
+  os:
+    - current
+    - linux
+  cpu:
+    - current
+    - x64
+    - arm64
+  libc:
+    - current
+    - glibc
+
+allowBuilds:
+  '@parcel/watcher': true
+  '@prisma/engines': false
+  esbuild: true
+  prisma: false
+  sharp: true
+  unrs-resolver: true
+  vue-demi: true
+
+overrides:
+  # 3.8.2 and later lack the provenance earlier releases had (trust downgrade).
+  '@vercel/oidc': 3.8.1
+  '@simple-git/argv-parser@<2.0.1': 2.0.1
+  esbuild@<=0.24.2: ^0.25.12
+  esbuild@>=0.27.3 <0.28.1: ^0.28.1
+  sharp@<0.35.5: ^0.35.5

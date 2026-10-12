@@ -10,11 +10,13 @@ export const handoffReason = z.enum([
   'support_rule',
 ])
 export type HandoffReason = z.infer<typeof handoffReason> | 'ai_error'
-export const handoffRule = z.object({
-  id: z.string().min(1),
-  scenario: z.string().min(1),
-  scenarioZh: z.string().min(1).optional(),
-}).strict()
+const handoffRule = z
+  .object({
+    id: z.string().min(1),
+    scenario: z.string().min(1),
+    scenarioZh: z.string().min(1).optional(),
+  })
+  .strict()
 export type HandoffRule = z.infer<typeof handoffRule>
 export const systemEventPart = z
   .object({
@@ -33,4 +35,5 @@ export type SystemEventPart = z.infer<typeof systemEventPart>
 export function handling(status: InboxStatus): 'ai' | 'human' | 'closed' {
   return status === 'ai_handling' ? 'ai' : status === 'closed' ? 'closed' : 'human'
 }
-export const HANDOFF_NOTICE = "Your question has been passed to our support team. You can send more details or screenshots here."
+export const HANDOFF_NOTICE =
+  'Your question has been passed to our support team. You can send more details or screenshots here.'

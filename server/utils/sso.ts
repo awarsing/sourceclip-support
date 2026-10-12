@@ -3,7 +3,7 @@ import { getRequestURL } from 'h3'
 import { jwtVerify } from 'jose'
 import { eq } from 'drizzle-orm'
 import { uuidv7 } from 'uuidv7'
-import { user } from '#layers/feedlog/server/db/schemas'
+import { user } from '../db/schemas'
 
 // Product-SSO helpers: verify the customer-signed HS256 JWT, resolve the
 // asserted identity to a user row, guard the return_to target against open
@@ -36,8 +36,7 @@ export async function verifySsoJwt(token: string, secrets: string[]): Promise<Ss
       })
       payload = res.payload as Record<string, unknown>
       break
-    }
-    catch {
+    } catch {
       // Signature/exp mismatch — try the next enabled secret.
     }
   }
@@ -62,12 +61,8 @@ export async function verifySsoJwt(token: string, secrets: string[]): Promise<Ss
     throw createError({ statusCode: 400, message: 'SSO token must carry a valid email claim' })
   }
   const normalizedEmail = email.trim().toLowerCase()
-  const name = typeof payload.name === 'string' && payload.name.trim()
-    ? payload.name.trim()
-    : normalizedEmail
-  const image = typeof payload.picture === 'string' && payload.picture
-    ? payload.picture
-    : null
+  const name = typeof payload.name === 'string' && payload.name.trim() ? payload.name.trim() : normalizedEmail
+  const image = typeof payload.picture === 'string' && payload.picture ? payload.picture : null
 
   return { email: normalizedEmail, name, image }
 }
@@ -82,14 +77,11 @@ export async function verifySsoJwt(token: string, secrets: string[]): Promise<Ss
 // host-binding collar exists — updating name/image here would let an org
 // overwrite a user's global profile from outside its own board.
 export async function findOrCreateSsoUser(db: ReturnType<typeof useDB>, identity: SsoIdentity): Promise<string> {
-  const existing = await db
-    .select({ id: user.id })
-    .from(user)
-    .where(eq(user.email, identity.email))
-    .limit(1)
+  const existing = await db.select({ id: user.id }).from(user).where(eq(user.email, identity.email)).limit(1)
   if (existing[0]) return existing[0].id
 
-  await db.insert(user)
+  await db
+    .insert(user)
     .values({
       id: uuidv7(),
       email: identity.email,
@@ -99,11 +91,7 @@ export async function findOrCreateSsoUser(db: ReturnType<typeof useDB>, identity
     })
     .onConflictDoNothing({ target: user.email })
 
-  const row = await db
-    .select({ id: user.id })
-    .from(user)
-    .where(eq(user.email, identity.email))
-    .limit(1)
+  const row = await db.select({ id: user.id }).from(user).where(eq(user.email, identity.email)).limit(1)
   if (!row[0]) {
     throw createError({ statusCode: 500, message: 'Failed to resolve SSO user' })
   }
@@ -121,8 +109,7 @@ export function validateReturnTo(event: H3Event, returnTo: string | undefined | 
     const url = new URL(returnTo, reqUrl.origin)
     if (url.host !== reqUrl.host) return '/'
     return url.pathname + url.search + url.hash
-  }
-  catch {
+  } catch {
     return '/'
   }
 }
@@ -169,7 +156,9 @@ export function ssoSecretToView(row: {
 // this runs on CF Workers / edge as well as Node.
 export async function signSessionCookieValue(token: string, secret: string): Promise<string> {
   const enc = new TextEncoder()
-  const key = await crypto.subtle.importKey('raw', enc.encode(secret), { name: 'HMAC', hash: 'SHA-256' }, false, ['sign'])
+  const key = await crypto.subtle.importKey('raw', enc.encode(secret), { name: 'HMAC', hash: 'SHA-256' }, false, [
+    'sign',
+  ])
   const sig = await crypto.subtle.sign('HMAC', key, enc.encode(token))
   const bytes = new Uint8Array(sig)
   let bin = ''

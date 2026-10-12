@@ -1,5 +1,7 @@
 <script setup lang="ts">
 import { onClickOutside } from '@vueuse/core'
+import { apiErrorMessage } from '~/lib/form-errors'
+import { canGenerateChangelog } from './-changelog-logic'
 
 const props = defineProps<{
   open: boolean
@@ -39,13 +41,13 @@ const styleOptions = computed(() => [
     id: 'structured' as AiStyle,
     name: t('changelog.ai.styles.structured.name'),
     desc: t('changelog.ai.styles.structured.desc'),
-    example: `<p><strong>v0.3.0 — 🌙 Dark Mode & Performance</strong></p><p class="mt-1.5">This release brings the highly requested Dark Mode and significant performance improvements to the roadmap board.</p><p class="mt-3">💎 <strong>Improvements</strong></p><ul class="mt-1 ml-4 list-disc space-y-0.5"><li>Added a dark mode toggle in personal settings</li><li>Reduced roadmap column repaint lag during drag-and-drop</li><li>Faster skeleton loading for large feedback boards</li></ul><p class="mt-3">🐞 <strong>Fixes</strong></p><ul class="mt-1 ml-4 list-disc space-y-0.5"><li>Fixed an issue where avatars wouldn't load on mobile devices</li><li>Resolved a crash when deleting comments with attachments</li></ul>`,
+    example: `<p><strong>v0.3.0 — \u{1F319} Dark Mode & Performance</strong></p><p class="mt-1.5">This release brings the highly requested Dark Mode and significant performance improvements to the roadmap board.</p><p class="mt-3">\u{1F48E} <strong>Improvements</strong></p><ul class="mt-1 ml-4 list-disc space-y-0.5"><li>Added a dark mode toggle in personal settings</li><li>Reduced roadmap column repaint lag during drag-and-drop</li><li>Faster skeleton loading for large feedback boards</li></ul><p class="mt-3">\u{1F41E} <strong>Fixes</strong></p><ul class="mt-1 ml-4 list-disc space-y-0.5"><li>Fixed an issue where avatars wouldn't load on mobile devices</li><li>Resolved a crash when deleting comments with attachments</li></ul>`,
   },
   {
     id: 'benefit-led' as AiStyle,
     name: t('changelog.ai.styles.benefitLed.name'),
     desc: t('changelog.ai.styles.benefitLed.desc'),
-    example: `<p><strong>Work comfortably at night with Dark Mode 🌙</strong></p><p class="mt-1.5">Stop straining your eyes during late-night triage sessions! You can now switch Feedlog to dark mode, making it easier to read and manage feedback in low-light environments.</p><ul class="mt-2 ml-4 list-disc space-y-0.5"><li>Toggle manually or sync with your system theme</li><li>High-contrast colors designed specifically to reduce eye fatigue</li><li>Available across all boards, roadmaps, and the admin dashboard</li></ul>`,
+    example: `<p><strong>Work comfortably at night with Dark Mode \u{1F319}</strong></p><p class="mt-1.5">Stop straining your eyes during late-night triage sessions! You can now switch Feedlog to dark mode, making it easier to read and manage feedback in low-light environments.</p><ul class="mt-2 ml-4 list-disc space-y-0.5"><li>Toggle manually or sync with your system theme</li><li>High-contrast colors designed specifically to reduce eye fatigue</li><li>Available across all boards, roadmaps, and the admin dashboard</li></ul>`,
   },
   {
     id: 'witty' as AiStyle,
@@ -56,21 +58,29 @@ const styleOptions = computed(() => [
 ])
 
 function removeFeedback(id: string) {
-  selectedFeedbackIds.value = selectedFeedbackIds.value.filter(i => i !== id)
-  selectedFeedback.value = selectedFeedback.value.filter(i => i.id !== id)
+  selectedFeedbackIds.value = selectedFeedbackIds.value.filter((i) => i !== id)
+  selectedFeedback.value = selectedFeedback.value.filter((i) => i.id !== id)
 }
 
 function handlePickerConfirm(items: { id: string; title: string }[]) {
   selectedFeedback.value = items
-  selectedFeedbackIds.value = items.map(i => i.id)
+  selectedFeedbackIds.value = items.map((i) => i.id)
   showPickerModal.value = false
+}
+
+const canGenerate = computed(() => canGenerateChangelog(selectedFeedbackIds.value, changeContent.value))
+const showProvideOne = computed(() => attempted.value && !canGenerate.value)
+const generateDisabled = computed(() => generating.value || !canGenerate.value)
+const generateLabel = computed(() => (generating.value ? t('changelog.ai.generating') : t('changelog.ai.generate')))
+const generateIcon = computed(() => (generating.value ? 'lucide:loader-2' : 'lucide:wand-2'))
+
+function togglePreview(id: string) {
+  activePreviewId.value = activePreviewId.value === id ? null : id
 }
 
 async function handleGenerateAndApply() {
   attempted.value = true
-  if (selectedFeedbackIds.value.length === 0 && !changeContent.value.trim()) {
-    return
-  }
+  if (!canGenerate.value) return
   error.value = ''
   generating.value = true
 
@@ -84,8 +94,8 @@ async function handleGenerateAndApply() {
       },
     })
     emit('apply', result)
-  } catch (e: any) {
-    error.value = e?.data?.message || t('changelog.ai.generateFailed')
+  } catch (e) {
+    error.value = apiErrorMessage(e, t('changelog.ai.generateFailed'))
   } finally {
     generating.value = false
   }
@@ -163,47 +173,16 @@ async function handleGenerateAndApply() {
               {{ $t('changelog.ai.stylePreset') }}
             </h4>
             <div ref="previewContainer" class="grid gap-3 sm:grid-cols-2">
-              <div
+              <ChangelogAiStyleOption
                 v-for="(opt, index) in styleOptions"
                 :key="opt.id"
-                class="relative flex flex-col items-start gap-1.5 rounded-lg border p-3 text-left transition-colors cursor-pointer"
-                :class="[
-                  selectedStyle === opt.id ? 'border-primary bg-primary/5' : 'border-border bg-background hover:bg-muted/50',
-                  activePreviewId === opt.id ? 'z-10' : ''
-                ]"
-                @click="selectedStyle = opt.id"
-              >
-                <div class="flex w-full items-center justify-between">
-                  <span class="text-sm font-semibold" :class="selectedStyle === opt.id ? 'text-primary' : 'text-foreground'">
-                    {{ opt.name }}
-                  </span>
-                  <button
-                    type="button"
-                    class="flex h-6 w-6 items-center justify-center rounded-full text-muted-foreground hover:bg-muted hover:text-foreground transition-colors"
-                    :title="$t('changelog.ai.viewExample')"
-                    @click.stop="activePreviewId = activePreviewId === opt.id ? null : opt.id"
-                  >
-                    <Icon name="lucide:info" size="14" />
-                  </button>
-                </div>
-                <span class="text-[11px] leading-snug text-muted-foreground">
-                  {{ opt.desc }}
-                </span>
-
-                <!-- Popup Preview -->
-                <div
-                  v-if="activePreviewId === opt.id"
-                  class="absolute left-0 z-50 w-[320px] rounded-lg border border-border bg-popover p-4 shadow-xl cursor-default"
-                  :class="index < 2 ? 'top-[calc(100%+8px)]' : 'bottom-[calc(100%+8px)]'"
-                  @click.stop
-                >
-                  <p class="mb-2.5 text-[10px] font-bold uppercase tracking-widest text-muted-foreground">{{ $t('changelog.ai.examplePreview') }}</p>
-                  <div
-                    class="text-[13px] text-popover-foreground leading-relaxed"
-                    v-html="opt.example"
-                  />
-                </div>
-              </div>
+                :option="opt"
+                :index="index"
+                :selected="selectedStyle === opt.id"
+                :preview-open="activePreviewId === opt.id"
+                @select="selectedStyle = opt.id"
+                @toggle-preview="togglePreview(opt.id)"
+              />
             </div>
           </section>
 
@@ -225,7 +204,7 @@ async function handleGenerateAndApply() {
                 {{ changeContent.length }} / 2000
               </div>
             </div>
-            <p v-if="attempted && selectedFeedbackIds.length === 0 && !changeContent.trim()" class="mt-2 text-xs font-medium text-amber-600 dark:text-amber-500 flex items-center gap-1.5">
+            <p v-if="showProvideOne" class="mt-2 text-xs font-medium text-amber-600 dark:text-amber-500 flex items-center gap-1.5">
               <Icon name="lucide:alert-circle" size="14" />
               {{ $t('changelog.ai.provideOne') }}
             </p>
@@ -248,12 +227,11 @@ async function handleGenerateAndApply() {
           <button
             type="button"
             class="inline-flex items-center gap-1.5 rounded-md bg-primary px-4 py-2 text-sm font-semibold text-primary-foreground hover:bg-primary/90 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-            :disabled="generating || (selectedFeedbackIds.length === 0 && !changeContent.trim())"
+            :disabled="generateDisabled"
             @click="handleGenerateAndApply"
           >
-            <Icon v-if="generating" name="lucide:loader-2" size="14" class="animate-spin" />
-            <Icon v-else name="lucide:wand-2" size="14" />
-            {{ generating ? $t('changelog.ai.generating') : $t('changelog.ai.generate') }}
+            <Icon :name="generateIcon" size="14" :class="{ 'animate-spin': generating }" />
+            {{ generateLabel }}
           </button>
         </div>
       </div>

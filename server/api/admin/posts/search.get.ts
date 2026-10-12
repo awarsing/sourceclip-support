@@ -1,5 +1,6 @@
-import { eq, and, desc, sql } from 'drizzle-orm'
-import { post, postSearch, user } from '#layers/feedlog/server/db/schemas'
+import { and, desc } from 'drizzle-orm'
+import { post } from '#layers/feedlog/server/db/schemas'
+import type { PostListRow } from '#layers/feedlog/server/utils/post-list-items'
 
 // GET /api/admin/posts/search — Admin feedback search, semantic within the active
 // filters (no threshold → nearest-N, consistent with the similar-posts search), with a pg_trgm
@@ -17,29 +18,6 @@ export default defineEventHandler(async (event): Promise<PagePaginatedList<PostL
 
   const db = useDB()
 
-  const flat = (rows: Array<{
-    id: string; slug: string; title: string; excerpt: string | null; status: string
-    boardId: string | null; voteCount: number; commentCount: number; mergedCount: number
-    authorId: string; authorName: string | null; authorImage: string | null
-    authorIsAnonymous: boolean | null; createdAt: Date
-  }>): PagePaginatedList<PostListItem> => ({
-    data: rows.map(r => ({
-      id: r.id,
-      slug: r.slug,
-      title: r.title,
-      excerpt: r.excerpt,
-      status: r.status,
-      boardId: r.boardId,
-      voteCount: r.voteCount,
-      commentCount: r.commentCount,
-      mergedCount: r.mergedCount,
-      hasVoted: false,
-      author: { id: r.authorId, name: r.authorName, image: r.authorImage, isAnonymous: !!r.authorIsAnonymous },
-      createdAt: r.createdAt,
-    })),
-    pagination: { page: 1, pageSize: rows.length, total: rows.length },
-  })
-
   const embedding = q ? await embedQueryOrNull(q) : null
 
   if (q && embedding) {
@@ -55,29 +33,14 @@ export default defineEventHandler(async (event): Promise<PagePaginatedList<PostL
   // searchSimilarByTrgm. post_search is sync-maintained on post create/update.
   const whereClause = and(...postFilterConditions(filter))
 
-  const rows = await db
-    .select({
-      id: post.id,
-      slug: post.slug,
-      title: post.title,
-      excerpt: post.excerpt,
-      status: post.status,
-      boardId: post.boardId,
-      voteCount: post.voteCount,
-      commentCount: post.commentCount,
-      mergedCount: sql<number>`(SELECT count(*)::int FROM post p2 WHERE p2.merged_to = ${post.id})`,
-      authorId: post.authorId,
-      authorName: user.name,
-      authorImage: user.image,
-      authorIsAnonymous: user.isAnonymous,
-      createdAt: post.createdAt,
-    })
-    .from(post)
-    .innerJoin(postSearch, eq(post.id, postSearch.postId))
-    .leftJoin(user, eq(post.authorId, user.id))
-    .where(whereClause)
-    .orderBy(sql`${postSearch.searchText} <-> ${q}`, desc(post.id))
-    .limit(ADMIN_SEARCH_LIMIT)
+  const rows = await searchPostsByText(db, q, whereClause, ADMIN_SEARCH_LIMIT, desc(post.id))
 
   return flat(rows)
 })
+
+function flat(rows: PostListRow[]): PagePaginatedList<PostListItem> {
+  return {
+    data: rows.map((r) => toPostListItem(r, NO_VOTED_POSTS)),
+    pagination: { page: 1, pageSize: rows.length, total: rows.length },
+  }
+}

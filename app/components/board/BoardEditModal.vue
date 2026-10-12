@@ -1,4 +1,7 @@
 <script setup lang="ts">
+import { boardFormFields } from '~/lib/board-form'
+import { apiErrorMessage } from '~/lib/form-errors'
+
 const open = defineModel<boolean>('open', { default: false })
 
 const props = defineProps<{
@@ -13,11 +16,15 @@ const formDesc = ref('')
 const submitting = ref(false)
 const error = ref('')
 
-watch(() => props.board, (b) => {
-  formName.value = b?.name ?? ''
-  formDesc.value = b?.description ?? ''
-  error.value = ''
-})
+watch(
+  () => props.board,
+  (b) => {
+    const fields = boardFormFields(b)
+    formName.value = fields.name
+    formDesc.value = fields.description
+    error.value = ''
+  },
+)
 
 watch(open, (v) => {
   if (!v) {
@@ -25,8 +32,18 @@ watch(open, (v) => {
   }
 })
 
+// An empty description clears it on edit and is omitted on create.
+async function saveBoard(name: string, description: string) {
+  if (props.board) {
+    await boardStore.updateBoard(props.board.id, { name, description: description || null })
+  } else {
+    await boardStore.createBoard({ name, description: description || undefined })
+  }
+}
+
 async function handleSave() {
-  if (!formName.value.trim()) {
+  const name = formName.value.trim()
+  if (!name) {
     error.value = t('dashboard.boards.nameRequired')
     return
   }
@@ -35,20 +52,10 @@ async function handleSave() {
   error.value = ''
 
   try {
-    if (isEdit.value && props.board) {
-      await boardStore.updateBoard(props.board.id, {
-        name: formName.value.trim(),
-        description: formDesc.value.trim() || null,
-      })
-    } else {
-      await boardStore.createBoard({
-        name: formName.value.trim(),
-        description: formDesc.value.trim() || undefined,
-      })
-    }
+    await saveBoard(name, formDesc.value.trim())
     open.value = false
-  } catch (e: any) {
-    error.value = e.data?.message || t('dashboard.boards.saveFailed')
+  } catch (e) {
+    error.value = apiErrorMessage(e, t('dashboard.boards.saveFailed'))
   } finally {
     submitting.value = false
   }

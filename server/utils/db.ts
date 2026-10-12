@@ -1,4 +1,4 @@
-import { db } from '#layers/feedlog/server/db'
+import { db } from '../db'
 
 export function useDB() {
   return db

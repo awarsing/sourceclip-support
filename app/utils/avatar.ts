@@ -1,4 +1,10 @@
-import { AVATAR_MAX_BYTES, AVATAR_MAX_EDGE, AVATAR_MAX_PIXELS, AvatarValidationError, inspectAvatar } from '#layers/feedlog/shared/utils/avatar'
+import {
+  AVATAR_MAX_BYTES,
+  AVATAR_MAX_EDGE,
+  AVATAR_MAX_PIXELS,
+  AvatarValidationError,
+  inspectAvatar,
+} from '../../shared/utils/avatar'
 
 export async function prepareAvatar(file: File): Promise<Blob> {
   if (file.size > AVATAR_MAX_BYTES) throw new AvatarValidationError('imageTooLarge')
@@ -18,11 +24,10 @@ export async function prepareAvatar(file: File): Promise<Blob> {
     const context = canvas.getContext('2d')
     if (!context) throw new AvatarValidationError('invalidImage')
     context.drawImage(image, 0, 0, canvas.width, canvas.height)
-    const blob = await new Promise<Blob | null>(resolve => canvas.toBlob(resolve, 'image/png'))
+    const blob = await new Promise<Blob | null>((resolve) => canvas.toBlob(resolve, 'image/png'))
     if (!blob) throw new AvatarValidationError('invalidImage')
     return blob
-  }
-  finally {
+  } finally {
     URL.revokeObjectURL(url)
   }
 }

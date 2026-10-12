@@ -19,10 +19,12 @@ export function usePermission(authorId: Ref<string | undefined> | ComputedRef<st
 
   const canModerate = computed(() => {
     if (!role.value) return false
-    return authClient.organization.checkRolePermission({
-      role: role.value,
-      permissions: { feedlog: ['moderate'] } as Record<string, string[]>,
-    }) === true
+    return (
+      authClient.organization.checkRolePermission({
+        role: role.value,
+        permissions: { feedlog: ['moderate'] } as Record<string, string[]>,
+      }) === true
+    )
   })
 
   // Kept as an alias for callers that still read `isOrgManager`. Semantically

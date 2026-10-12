@@ -9,7 +9,6 @@ Choose the guide that matches where you want to run FeedLog:
 | Target | Best for | Guide |
 |--------|----------|-------|
 | Cloudflare Workers | Serverless edge deploy with Hyperdrive and R2 | [Cloudflare Workers](./deploy/cloudflare-workers.md) |
-| Vercel | Managed Node.js deployment with Vercel Blob | [Vercel](./deploy/vercel.md) |
 | Docker | Full self-hosting on a VPS, NAS, or Docker PaaS | [Docker](./deploy/docker.md) |
 
 ## Configuration

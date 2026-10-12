@@ -1,8 +1,10 @@
 import { z } from 'zod'
-import { and, eq } from 'drizzle-orm'
 import { getRequestURL } from 'h3'
-import { post } from '#layers/feedlog/server/db/schemas'
-import { resolvePostThreadRecipients, resolveOrgBranding, deliverToRecipients } from '#layers/feedlog/server/utils/notifications'
+import {
+  resolvePostThreadRecipients,
+  resolveOrgBranding,
+  deliverToRecipients,
+} from '#layers/feedlog/server/utils/notifications'
 import { POST_STATUSES } from '#layers/feedlog/shared/types/post'
 
 // POST /api/admin/posts/:id/notify-status — mail the post's subscribers that it
@@ -17,16 +19,7 @@ export default defineEventHandler(async (event) => {
   const body = await readValidatedBody(event, bodySchema.parse)
   const { session, orgId } = await requireOrgPermission(event, { feedlog: ['moderate'] })
 
-  const db = useDB()
-  const [existing] = await db
-    .select({ id: post.id, status: post.status })
-    .from(post)
-    .where(and(eq(post.id, id), eq(post.orgId, orgId)))
-    .limit(1)
-
-  if (!existing) {
-    throw createError({ statusCode: 404, message: 'Post not found' })
-  }
+  const existing = await requireOrgPost(useDB(), orgId, id, ['status'])
   // Optimistic lock: the admin acts on the status they saw on the card. If it
   // changed under them, refuse rather than announce a status they never saw.
   if (existing.status !== body.status) {
@@ -37,8 +30,9 @@ export default defineEventHandler(async (event) => {
   // should follow the admin's decision to announce, so routine board tidying
   // doesn't light up everyone's launcher. Independent of `recipients`, which
   // excludes admins and voters the author's dot does not care about.
-  await markPostUnreadForAuthor(id, session.user.id)
-    .catch((err: unknown) => console.error('[widget] unread mark failed', err))
+  await markPostUnreadForAuthor(id, session.user.id).catch((err: unknown) =>
+    console.error('[widget] unread mark failed', err),
+  )
 
   // Resolve recipients synchronously so we can return the count; send async.
   const { slug: orgSlug, brandColor } = await resolveOrgBranding(orgId)
@@ -46,9 +40,15 @@ export default defineEventHandler(async (event) => {
 
   if (recipients.length > 0) {
     event.waitUntil(
-      deliverToRecipients(orgId, orgSlug, brandColor, recipients, 'post.status_changed',
-        { to: body.status, note: body.note || undefined }, getRequestURL(event).origin)
-        .catch((err: unknown) => console.error('[notifications] status notify failed', err)),
+      deliverToRecipients(
+        orgId,
+        orgSlug,
+        brandColor,
+        recipients,
+        'post.status_changed',
+        { to: body.status, note: body.note || undefined },
+        getRequestURL(event).origin,
+      ).catch((err: unknown) => console.error('[notifications] status notify failed', err)),
     )
   }
 

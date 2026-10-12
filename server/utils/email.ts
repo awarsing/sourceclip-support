@@ -26,8 +26,7 @@ export function resolveEmailProvider(): EmailProvider {
   const preferred = process.env.EMAIL_PROVIDER
 
   // 1. Explicitly specified provider
-  if (preferred && providers.has(preferred))
-    return providers.get(preferred)!
+  if (preferred && providers.has(preferred)) return providers.get(preferred)!
 
   // 2. Fallback by priority
   for (const name of ['resend', 'console']) {

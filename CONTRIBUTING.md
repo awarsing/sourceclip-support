@@ -15,8 +15,8 @@ to send a pull request.
 
 ### Prerequisites
 
-- **Node.js 22+**
-- **pnpm 10+** (managed via `packageManager` field in `package.json` — enable with `corepack enable`)
+- **Node.js 24**
+- **pnpm 12** (managed via `packageManager` field in `package.json` — enable with `corepack enable`)
 - **PostgreSQL 17+** with the `vector` extension. For local dev, the easiest path is the `pgvector/pgvector` Docker image:
 
   ```bash
@@ -26,6 +26,11 @@ to send a pull request.
     -p 5432:5432 \
     pgvector/pgvector:pg17
   ```
+
+  `pnpm test` starts its own throwaway cluster instead, so it needs local
+  PostgreSQL binaries with pgvector installed (for example
+  `brew install postgresql@17 pgvector`); set `PG_BIN` to pick a specific
+  installation.
 
 ### Setup
 
@@ -58,6 +63,9 @@ pnpm dev        # http://localhost:3000
 | `pnpm migrate` | Apply pending migrations |
 | `pnpm build:cf` | Production build for Cloudflare Workers preset |
 | `pnpm deploy:cf` | Deploy the CF build via wrangler |
+| `pnpm check` | Fast quality gate: format, lint, type-check, tests |
+| `pnpm quality` | Full quality gate: adds build, Fallow, knip, dependency audit, and the built-server runtime test |
+| `pnpm test` | Tests against a throwaway local PostgreSQL with pgvector |
 
 ### Project layout
 
