@@ -2,24 +2,17 @@ import { z } from 'zod'
 import { uuidv7 } from 'uuidv7'
 import { toAISdkStream } from '@mastra/ai-sdk'
 import { createEventStream, type H3Event } from 'h3'
-import { chatInput, contentSchema } from '#layers/feedlog/shared/agent/content'
-import {
-  type Actor,
-  agentRuntime,
-  agentError,
-  transaction,
-  lockConversation,
-  appendItem,
-} from '#layers/feedlog/server/lib/agent/runtime'
+import { chatInput, contentSchema } from '../../../shared/agent/content'
+import { type Actor, agentRuntime, agentError, transaction, lockConversation, appendItem } from './runtime'
 import { handoff } from '../inbox/service'
 import { syncConversationTask, syncRunTask, replyCloseDelayMs } from '../inbox/tasks'
 import { requestSchedule } from '../inbox/platform'
 import { handling } from '../../../shared/inbox/state'
 import { publicItem, publicRun } from './runtime'
-import { startRun } from '#layers/feedlog/server/lib/agent/conversations'
-import { prepareAgent, customerMemoryMessage } from '#layers/feedlog/server/lib/agent/agent'
-import { collectConversationReply } from '#layers/feedlog/server/lib/agent/stream'
-import { addTokenUsage, type RunTokenUsage } from '#layers/feedlog/shared/agent/usage'
+import { startRun } from './conversations'
+import { prepareAgent, customerMemoryMessage } from './agent'
+import { collectConversationReply } from './stream'
+import { addTokenUsage, type RunTokenUsage } from '../../../shared/agent/usage'
 
 export async function streamAgentReply(event: H3Event, actor: Actor) {
   await assertGuestMay(event, actor.session, 'allowPost')

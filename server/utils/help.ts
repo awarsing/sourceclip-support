@@ -3,8 +3,8 @@ import { customAlphabet } from 'nanoid'
 import pinyin from 'pinyinlite'
 import { and, eq, sql } from 'drizzle-orm'
 import type { SQL } from 'drizzle-orm'
-import { helpArticle, helpCollection } from '#layers/feedlog/server/db/schemas'
-import { CJK_RANGE, HELP_SHORT_ID_ALPHABET, HELP_SHORT_ID_LENGTH } from '#layers/feedlog/shared/constants/help'
+import { helpArticle, helpCollection } from '../db/schemas'
+import { CJK_RANGE, HELP_SHORT_ID_ALPHABET, HELP_SHORT_ID_LENGTH } from '../../shared/constants/help'
 
 const CJK = new RegExp(`[${CJK_RANGE}]`)
 

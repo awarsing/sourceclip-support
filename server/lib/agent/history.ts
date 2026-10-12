@@ -2,14 +2,7 @@ import type { H3Event } from 'h3'
 import { z } from 'zod'
 import { pageInput } from '../../../shared/inbox/schemas'
 import { handling } from '../../../shared/inbox/state'
-import {
-  type Actor,
-  agentRuntime,
-  agentError,
-  transaction,
-  publicItem,
-  publicRun,
-} from '#layers/feedlog/server/lib/agent/runtime'
+import { type Actor, agentRuntime, agentError, transaction, publicItem, publicRun } from './runtime'
 
 export async function readConversationItems(event: H3Event, actor: Actor) {
   const id = z.uuid().safeParse(getRouterParam(event, 'id'))

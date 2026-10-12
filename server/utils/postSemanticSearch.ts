@@ -1,6 +1,6 @@
 import { and, eq, sql } from 'drizzle-orm'
-import type { PostFilter } from '#layers/feedlog/server/utils/postFilterConditions'
-import { post, postEmbedding, user } from '#layers/feedlog/server/db/schemas'
+import type { PostFilter } from './postFilterConditions'
+import { post, postEmbedding, user } from '../db/schemas'
 
 export interface SemanticOpts {
   filter: PostFilter

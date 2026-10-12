@@ -1,5 +1,5 @@
 import { eq, and } from 'drizzle-orm'
-import { postEmbedding } from '#layers/feedlog/server/db/schemas'
+import { postEmbedding } from '../db/schemas'
 
 const EMBEDDING_MODEL = 'text-embedding-3-large'
 const EMBEDDING_DIMENSIONS = 768

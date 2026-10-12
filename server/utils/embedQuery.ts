@@ -1,4 +1,4 @@
-import { generateEmbedding, isEmbeddingEnabled } from '#layers/feedlog/server/utils/embedding'
+import { generateEmbedding, isEmbeddingEnabled } from './embedding'
 
 // Returns the query embedding, or null if embeddings are disabled or the provider
 // errors — callers fall back to trigram. Never throws (a search box must not 5xx).
