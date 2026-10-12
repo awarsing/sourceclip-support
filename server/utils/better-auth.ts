@@ -174,20 +174,22 @@ export function defaultTrustedOrigins(request?: Request): string[] {
   return host ? [`http://${host}`, `https://${host}`] : []
 }
 
-export function buildAuthConfig(overrides: AuthConfigOverrides = {}): BetterAuthOptions {
-  type SendInvite = NonNullable<NonNullable<Parameters<typeof organization>[0]>['sendInvitationEmail']>
-  // Default invite email: `${BETTER_AUTH_URL}/invite?id=...`. No-op when Resend isn't
-  // configured; the Members page "copy invitation link" button is the manual fallback.
-  const layerDefaultSendInvite: SendInvite = async (data) => {
-    if (!hasEmailProvider) return
-    const baseUrl = env.BETTER_AUTH_URL || 'http://localhost:3000'
-    const url = `${baseUrl}/invite?id=${data.id}`
-    await sendEmail({
-      to: data.email,
-      subject: `You're invited to join ${data.organization.name} on FeedLog`,
-      html: renderInvitationEmail({ url, orgName: data.organization.name }),
-    })
-  }
+type SendInvite = NonNullable<NonNullable<Parameters<typeof organization>[0]>['sendInvitationEmail']>
+
+// Default invite email: `${BETTER_AUTH_URL}/invite?id=...`. No-op when Resend isn't
+// configured; the Members page "copy invitation link" button is the manual fallback.
+const layerDefaultSendInvite: SendInvite = async (data) => {
+  if (!hasEmailProvider) return
+  const baseUrl = env.BETTER_AUTH_URL || 'http://localhost:3000'
+  const url = `${baseUrl}/invite?id=${data.id}`
+  await sendEmail({
+    to: data.email,
+    subject: `You're invited to join ${data.organization.name} on FeedLog`,
+    html: renderInvitationEmail({ url, orgName: data.organization.name }),
+  })
+}
+
+function organizationOptions(overrides: AuthConfigOverrides) {
   const rawSendInvite: SendInvite = overrides.organizationExtras?.sendInvitationEmail ?? layerDefaultSendInvite
   const sendInvitationEmail: SendInvite = async (data, request) => {
     try {
@@ -196,7 +198,7 @@ export function buildAuthConfig(overrides: AuthConfigOverrides = {}): BetterAuth
       logger.warn(`Invitation email failed for ${data.email}: ${(e as Error)?.message ?? e}`)
     }
   }
-  const orgOpts = {
+  return {
     ac,
     roles: { owner, manager, contributor },
     creatorRole: 'owner' as const,
@@ -206,25 +208,42 @@ export function buildAuthConfig(overrides: AuthConfigOverrides = {}): BetterAuth
     // sender (it already delegates to that override via rawSendInvite).
     sendInvitationEmail,
   }
-  const mergedSocial = defu(overrides.socialProviderOverrides ?? {}, socialProviders) as typeof socialProviders
-  // Guests short-circuit ahead of the override so a deployment that swaps in its
-  // own bootstrap (the SaaS layer does) still gets them named — and never runs
-  // org-membership bootstrap for an identity that can't be a member.
+}
+
+// Guests short-circuit ahead of the override so a deployment that swaps in its
+// own bootstrap (the SaaS layer does) still gets them named — and never runs
+// org-membership bootstrap for an identity that can't be a member.
+function userCreateAfterHook(overrides: AuthConfigOverrides) {
   const bootstrap = overrides.userCreateAfter ?? bootstrapAfterUserCreate
-  const afterUserCreate = async (newUser: { id: string; email: string; isAnonymous?: boolean | null }) => {
+  return async (newUser: { id: string; email: string; isAnonymous?: boolean | null }) => {
     if (newUser.isAnonymous) {
       await nameGuestUser(newUser.id)
       return
     }
     await bootstrap(newUser)
   }
+}
+
+// Sections present only when configured.
+function optionalAuthSections(
+  overrides: AuthConfigOverrides,
+): Pick<BetterAuthOptions, 'emailVerification' | 'account'> {
+  return {
+    ...(emailVerification && { emailVerification }),
+    ...(overrides.account && { account: overrides.account }),
+  }
+}
+
+export function buildAuthConfig(overrides: AuthConfigOverrides = {}): BetterAuthOptions {
+  const orgOpts = organizationOptions(overrides)
+  const mergedSocial = defu(overrides.socialProviderOverrides ?? {}, socialProviders) as typeof socialProviders
+  const afterUserCreate = userCreateAfterHook(overrides)
   return {
     database: drizzleAdapter(db, { provider: 'pg' }),
     emailAndPassword,
-    ...(emailVerification && { emailVerification }),
     socialProviders: mergedSocial,
     trustedOrigins: overrides.trustedOrigins ?? defaultTrustedOrigins,
-    ...(overrides.account && { account: overrides.account }),
+    ...optionalAuthSections(overrides),
     plugins: [
       // The widget runs in a cross-site iframe where the session cookie is
       // unreliable (third-party cookie blocking), so endpoints must also accept

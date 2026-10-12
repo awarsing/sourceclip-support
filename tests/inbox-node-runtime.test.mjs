@@ -18,6 +18,24 @@ assert.equal(
   'Run pnpm build before this test',
 )
 
+// True once the server answers the scheduler endpoint; false while it is not listening yet.
+async function schedulerReady() {
+  try {
+    return (await fetch('http://127.0.0.1:3149/api/internal/scheduler/schedule')).ok
+  } catch {
+    return false
+  }
+}
+
+async function waitForScheduler(child) {
+  for (let i = 0; i < 100; i++) {
+    if (child.exitCode !== null) throw new Error('Test server exited during startup')
+    if (await schedulerReady()) return
+    await delay(100)
+  }
+  throw new Error('Test server did not become ready')
+}
+
 test('built Node server recovers tasks through cron and restart using the shared scheduler API', {
   timeout: 390000,
 }, async () => {
@@ -52,17 +70,7 @@ test('built Node server recovers tasks through cron and restart using the shared
         EMAIL_PROVIDER: 'console',
       },
     })
-    for (let i = 0; i < 100; i++) {
-      if (child.exitCode !== null) throw new Error('Test server exited during startup')
-      try {
-        const response = await fetch('http://127.0.0.1:3149/api/internal/scheduler/schedule')
-        if (response.ok) return
-      } catch {
-        /* Not listening yet. */
-      }
-      await delay(100)
-    }
-    throw new Error('Test server did not become ready')
+    await waitForScheduler(child)
   }
   const expectDone = async (id, timeoutMs = 10000) => {
     const deadline = Date.now() + timeoutMs
