@@ -141,24 +141,14 @@ const authSteps = computed(() => [
           {{ $t('settings.widget.installInstructions') }}
         </summary>
         <div class="pt-5 space-y-5">
-          <div
+          <WidgetInstallStep
             v-for="step in steps"
             :key="step.key"
-          >
-            <div class="flex items-center justify-between gap-3">
-              <p class="text-[11px] font-bold uppercase tracking-wider text-muted-foreground">
-                {{ step.title }}
-              </p>
-              <button
-                type="button"
-                class="h-7 px-2.5 rounded-md border border-border text-[11px] font-semibold hover:bg-secondary"
-                @click="copy(step.key, step.code)"
-              >
-                {{ copiedKey === step.key ? $t('settings.widget.copied') : $t('settings.widget.copy') }}
-              </button>
-            </div>
-            <pre class="mt-2 px-4 py-3 rounded-lg bg-muted/40 border border-border overflow-x-auto text-xs font-mono leading-relaxed"><code>{{ step.code }}</code></pre>
-          </div>
+            :title="step.title"
+            :code="step.code"
+            :copied="copiedKey === step.key"
+            @copy="copy(step.key, step.code)"
+          />
           <p class="text-[11px] text-muted-foreground">
             {{ $t('settings.widget.guestInstallHint') }}
           </p>
@@ -170,24 +160,14 @@ const authSteps = computed(() => [
               <p class="text-[11px] text-muted-foreground">
                 {{ $t('settings.widget.serverHint') }}
               </p>
-              <div
+              <WidgetInstallStep
                 v-for="step in authSteps"
                 :key="step.key"
-              >
-                <div class="flex items-center justify-between gap-3">
-                  <p class="text-[11px] font-bold uppercase tracking-wider text-muted-foreground">
-                    {{ step.title }}
-                  </p>
-                  <button
-                    type="button"
-                    class="h-7 px-2.5 rounded-md border border-border text-[11px] font-semibold hover:bg-secondary"
-                    @click="copy(step.key, step.code)"
-                  >
-                    {{ copiedKey === step.key ? $t('settings.widget.copied') : $t('settings.widget.copy') }}
-                  </button>
-                </div>
-                <pre class="mt-2 px-4 py-3 rounded-lg bg-muted/40 border border-border overflow-x-auto text-xs font-mono leading-relaxed"><code>{{ step.code }}</code></pre>
-              </div>
+                :title="step.title"
+                :code="step.code"
+                :copied="copiedKey === step.key"
+                @copy="copy(step.key, step.code)"
+              />
             </div>
           </details>
           <details class="border-t border-border pt-4">
