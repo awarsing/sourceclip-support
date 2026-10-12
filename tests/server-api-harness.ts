@@ -41,7 +41,9 @@ export interface TestSession {
 
 const sessions = new Map<string, TestSession>()
 const permissionDenied = new Set<string>()
-export const pending: Promise<unknown>[] = []
+const pending: Promise<unknown>[] = []
+// Every email a handler sends, in order.
+export const sentEmails: { to: string; subject: string; html: string }[] = []
 const storage = new Map<string, unknown>()
 
 export const authApi: Record<string, (...args: any[]) => unknown> = {
@@ -77,15 +79,22 @@ async function installGlobals() {
     }),
   })
   Object.assign(globalThis, globals)
-  const utilsDir = new URL('../server/utils/', import.meta.url)
-  for (const file of readdirSync(utilsDir).sort()) {
-    if (!file.endsWith('.ts') || skippedUtils.has(file)) continue
-    const exports = await import(new URL(file, utilsDir).href)
-    for (const [name, value] of Object.entries(exports)) {
-      if (!(name in globals)) globals[name] = value
+  // Nitro auto-imports server/utils and, through Nuxt, shared/utils.
+  for (const dir of ['../server/utils/', '../shared/utils/']) {
+    const utilsDir = new URL(dir, import.meta.url)
+    for (const file of readdirSync(utilsDir).sort()) {
+      if (!file.endsWith('.ts') || skippedUtils.has(file)) continue
+      const exports = await import(new URL(file, utilsDir).href)
+      for (const [name, value] of Object.entries(exports)) {
+        if (!(name in globals)) globals[name] = value
+      }
     }
   }
   Object.assign(globalThis, globals)
+  ;(globals.registerEmailProvider as (provider: unknown) => void)({
+    name: 'console',
+    send: async (message: { to: string; subject: string; html: string }) => void sentEmails.push(message),
+  })
   // Org lookups read this database instead of opening the app's own pool.
   ;(globals.registerOrgCacheBackend as (backend: unknown) => void)({
     get: async (slug: string) => {
@@ -109,7 +118,14 @@ export async function loadHandler(path: string): Promise<h3.EventHandler> {
 // Mounts handlers at their route paths and returns a fetch-like caller. The
 // org is resolved from the x-test-org header, as org-context middleware would.
 export function serve(routes: Record<string, h3.EventHandler>) {
-  const app = h3.createApp()
+  // Errors answer with their message, as Nitro's error handler does.
+  const app = h3.createApp({
+    onError: (error, event) => {
+      h3.setResponseStatus(event, error.statusCode)
+      h3.setResponseHeader(event, 'content-type', 'application/json')
+      return h3.send(event, JSON.stringify({ statusCode: error.statusCode, message: error.message, data: error.data }))
+    },
+  })
   app.use(
     h3.defineEventHandler((event) => {
       event.context.orgId = event.headers.get('x-test-org') ?? undefined
@@ -136,6 +152,7 @@ export function serve(routes: Record<string, h3.EventHandler>) {
     } = {},
   ) => {
     const headers = new Headers(init.headers)
+    if (!headers.has('host')) headers.set('host', 'test.local')
     if (init.session) headers.set('x-test-session', init.session)
     if (init.org) headers.set('x-test-org', init.org)
     const slug = init.orgSlug ?? init.org
