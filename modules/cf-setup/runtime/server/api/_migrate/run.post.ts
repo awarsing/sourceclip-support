@@ -26,11 +26,16 @@ function requireConnectionString(): string {
   return connectionString
 }
 
+async function sessionUser(event: H3Event) {
+  const session = await getUserSession(event).catch(() => null)
+  return session?.user as { id?: string; role?: string } | undefined
+}
+
 // The id of a signed-in admin, or undefined for anyone else.
 async function adminUserId(event: H3Event): Promise<string | undefined> {
-  const session = await getUserSession(event).catch(() => null)
-  const user = session?.user as { id?: string; role?: string } | undefined
-  if (user?.role === 'admin') return user.id ?? 'unknown'
+  const user = await sessionUser(event)
+  if (user?.role !== 'admin') return undefined
+  return user.id ?? 'unknown'
 }
 
 async function migrationTriggerSource(event: H3Event, state: string): Promise<string> {

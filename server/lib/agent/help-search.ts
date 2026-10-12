@@ -43,6 +43,53 @@ export interface HelpArticleSearchResult {
 export const helpArticleSearchDescription =
   'Search AI-enabled knowledge articles, including internal articles using short English keyword queries for this English knowledge base. Each query independently returns up to three ranked articles; results are interleaved and deduplicated, with at most twelve articles. matched_queries lists the searches that returned each article. Use titles and excerpts to select relevant candidates, then read the full articles with read_help_article to establish product behavior.'
 
+interface HelpArticleRow {
+  article_id: string
+  title: string
+  description: string | null
+  content: string
+  slug: string
+  published: boolean
+}
+
+// Whitespace-normalized queries, without case-insensitive repeats.
+function uniqueQueries(queries: string[]): string[] {
+  const unique = new Map<string, string>()
+  for (const query of queries) {
+    const normalized = query.replace(/\s+/g, ' ')
+    const key = normalized.toLowerCase()
+    if (!unique.has(key)) unique.set(key, normalized)
+  }
+  return [...unique.values()]
+}
+
+async function queryHelpArticles(pool: Pick<Pool, 'query'>, orgId: string, query: string) {
+  const { rows } = await pool.query<HelpArticleRow>(
+    `SELECT a.id AS article_id,a.title,a.description,a.content,a.short_id||'-'||a.slug AS slug,(a.status='published' AND c.visible) AS published
+      FROM help_article a
+      JOIN help_collection c ON c.id=a.collection_id AND c.org_id=a.org_id
+      WHERE a.org_id=$1 AND a.ai_enabled
+        AND a.tsv @@ plainto_tsquery('english',$2)
+      ORDER BY ts_rank_cd(a.tsv,plainto_tsquery('english',$2)) DESC,a.id
+      LIMIT $3`,
+    [orgId, query, RESULTS_PER_QUERY],
+  )
+  return rows
+}
+
+function searchResult(row: HelpArticleRow, query: string, publicEnabled: boolean, origin: string) {
+  const { content, published, ...article } = row
+  const { excerpt } = buildHelpExcerpt(stripMarkdown(content), row.description, splitHelpQuery(query))
+  const visible = publicEnabled && published
+  return {
+    ...article,
+    excerpt,
+    matched_queries: [query],
+    customer_visible: visible,
+    url: visible ? new URL(`/help/${article.slug}`, origin).href : null,
+  }
+}
+
 export async function searchHelpArticles(
   pool: Pick<Pool, 'query'>,
   orgId: string,
@@ -54,38 +101,8 @@ export async function searchHelpArticles(
     rows: [org],
   } = await pool.query('SELECT metadata FROM organization WHERE id=$1', [orgId])
   const publicEnabled = resolvePortalModules(org?.metadata).helpCenter
-  const queries: string[] = []
-  const seen = new Set<string>()
-  for (const query of parsed.queries) {
-    const normalized = query.replace(/\s+/g, ' ')
-    const key = normalized.toLowerCase()
-    if (seen.has(key)) continue
-    seen.add(key)
-    queries.push(normalized)
-  }
-
-  const groups = await Promise.all(
-    queries.map(async (query) => {
-      const { rows } = await pool.query<{
-        article_id: string
-        title: string
-        description: string | null
-        content: string
-        slug: string
-        published: boolean
-      }>(
-        `SELECT a.id AS article_id,a.title,a.description,a.content,a.short_id||'-'||a.slug AS slug,(a.status='published' AND c.visible) AS published
-      FROM help_article a
-      JOIN help_collection c ON c.id=a.collection_id AND c.org_id=a.org_id
-      WHERE a.org_id=$1 AND a.ai_enabled
-        AND a.tsv @@ plainto_tsquery('english',$2)
-      ORDER BY ts_rank_cd(a.tsv,plainto_tsquery('english',$2)) DESC,a.id
-      LIMIT $3`,
-        [orgId, query, RESULTS_PER_QUERY],
-      )
-      return rows
-    }),
-  )
+  const queries = uniqueQueries(parsed.queries)
+  const groups = await Promise.all(queries.map((query) => queryHelpArticles(pool, orgId, query)))
 
   const articles = new Map<string, HelpArticleSearchResult>()
   // Interleave by rank so a broad query cannot occupy all leading positions.
@@ -95,19 +112,8 @@ export async function searchHelpArticles(
       if (!row) continue
       const query = queries[index]!
       const existing = articles.get(row.article_id)
-      if (existing) {
-        existing.matched_queries.push(query)
-      } else {
-        const { content, published, ...article } = row
-        const { excerpt } = buildHelpExcerpt(stripMarkdown(content), row.description, splitHelpQuery(query))
-        articles.set(row.article_id, {
-          ...article,
-          excerpt,
-          matched_queries: [query],
-          customer_visible: publicEnabled && published,
-          url: publicEnabled && published ? new URL(`/help/${article.slug}`, origin).href : null,
-        })
-      }
+      if (existing) existing.matched_queries.push(query)
+      else articles.set(row.article_id, searchResult(row, query, publicEnabled, origin))
     }
   }
   return { articles: [...articles.values()] }
