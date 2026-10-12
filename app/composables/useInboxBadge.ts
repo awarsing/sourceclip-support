@@ -1,38 +1,42 @@
+import {
+  advanceReadPosition,
+  hasUnread,
+  isObservedSeq,
+  mergeReadPositions,
+  type ReadPositions,
+  readPositionsKey,
+} from '../lib/inbox-read-positions'
+
 export function useInboxBadge() {
   const org = useOrgContext()
-  const activity = useState<Record<string, Record<string, number>>>('inbox-open-activity', () => ({}))
-  const positions = useState<Record<string, Record<string, number>>>('inbox-local-read-positions', () => ({}))
+  const activity = useState<Record<string, ReadPositions>>('inbox-open-activity', () => ({}))
+  const positions = useState<Record<string, ReadPositions>>('inbox-local-read-positions', () => ({}))
   const revisions = useState<Record<string, number>>('inbox-summary-revisions', () => ({}))
-  const storageKey = (orgId: string) => `feedlog:inbox:read:${orgId}`
+  // `raw` is a storage event's new value; without one, read this tab's storage.
   function loadPositions(orgId: string, raw?: string | null) {
     if (!import.meta.client) return
     try {
-      const saved: unknown = JSON.parse(
-        raw === undefined ? (localStorage.getItem(storageKey(orgId)) ?? '{}') : (raw ?? '{}'),
-      )
-      if (!saved || typeof saved !== 'object' || Array.isArray(saved)) return
-      const next = { ...positions.value[orgId] }
-      for (const [id, seq] of Object.entries(saved)) {
-        if (typeof seq === 'number' && Number.isSafeInteger(seq) && seq >= 0) next[id] = Math.max(next[id] ?? 0, seq)
-      }
-      positions.value[orgId] = next
+      const saved = raw === undefined ? localStorage.getItem(readPositionsKey(orgId)) : raw
+      const next = mergeReadPositions(positions.value[orgId], saved ?? '{}')
+      if (next) positions.value[orgId] = next
     } catch {
       /* Unavailable or invalid storage falls back to this page's memory. */
     }
   }
   function isUnread(id: string) {
     const orgId = org.value.orgId
-    return (activity.value[orgId]?.[id] ?? 0) > (positions.value[orgId]?.[id] ?? 0)
+    return hasUnread(activity.value[orgId], positions.value[orgId], id)
   }
   const count = computed(() => Object.keys(activity.value[org.value.orgId] ?? {}).filter(isUnread).length)
   function markRead(id: string, observedSeq: number) {
-    if (!Number.isSafeInteger(observedSeq) || observedSeq <= 0) return
+    if (!isObservedSeq(observedSeq)) return
     const orgId = org.value.orgId
     loadPositions(orgId)
-    if (observedSeq <= (positions.value[orgId]?.[id] ?? 0)) return
-    positions.value[orgId] = { ...positions.value[orgId], [id]: observedSeq }
+    const next = advanceReadPosition(positions.value[orgId], id, observedSeq)
+    if (!next) return
+    positions.value[orgId] = next
     try {
-      localStorage.setItem(storageKey(orgId), JSON.stringify(positions.value[orgId]))
+      localStorage.setItem(readPositionsKey(orgId), JSON.stringify(next))
     } catch {
       /* The read position still applies until this page is refreshed. */
     }
@@ -53,7 +57,7 @@ export function useInboxBadge() {
     }
   }
   function onStorage(event: StorageEvent) {
-    if (event.key === storageKey(org.value.orgId)) loadPositions(org.value.orgId, event.newValue)
+    if (event.key === readPositionsKey(org.value.orgId)) loadPositions(org.value.orgId, event.newValue)
   }
   onMounted(() => {
     loadPositions(org.value.orgId)
