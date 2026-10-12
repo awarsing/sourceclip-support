@@ -1,7 +1,7 @@
-import { createError, defineEventHandler, getQuery, readBody, setResponseHeader } from 'h3'
-import type { H3Event } from 'h3'
+import { createError, defineEventHandler, setResponseHeader } from 'h3'
 import { scheduleInbox, withScheduledRuntime } from '../../../lib/inbox/scheduler'
 import { checkRateLimit } from '../../../utils/rateLimit'
+import { assertBareSchedulerRequest } from '../../../utils/scheduler-request'
 import { delayTransport, restoreNodeTimers, schedulerContext } from '../../../lib/inbox/platform'
 
 // Public on purpose: Vercel Cron and self-hosting share this URL, and neither sets a cron secret.
@@ -23,19 +23,6 @@ export default defineEventHandler(async (event) => {
     { max: internal ? 4 : 1 },
   )
 })
-
-// GET or POST, with no query and no (or an empty object) body.
-async function assertBareSchedulerRequest(event: H3Event): Promise<void> {
-  if (!['GET', 'POST'].includes(event.method)) throw createError({ statusCode: 405, message: 'Method not allowed' })
-  if (Object.keys(getQuery(event)).length) throw createError({ statusCode: 400, message: 'No parameters accepted' })
-  if (event.method === 'POST' && !isEmptyBody(await readBody(event))) {
-    throw createError({ statusCode: 400, message: 'No parameters accepted' })
-  }
-}
-
-function isEmptyBody(body: unknown): boolean {
-  return body == null || (typeof body === 'object' && !Array.isArray(body) && !Object.keys(body).length)
-}
 
 // Internal wakes are trusted; HTTP callers share a small, fail-closed budget.
 async function assertSchedulerRateLimit(internal: boolean): Promise<void> {
