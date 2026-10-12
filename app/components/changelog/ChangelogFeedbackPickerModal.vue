@@ -1,4 +1,6 @@
 <script setup lang="ts">
+import { pickedFeedback, toggleLimitedSelection } from './-changelog-logic'
+
 interface FeedbackItem {
   id: string
   title: string
@@ -62,28 +64,15 @@ const MAX_SELECTION = 10
 const isAtLimit = computed(() => localSelectedIds.value.length >= MAX_SELECTION)
 
 function toggleSelection(id: string) {
-  const idx = localSelectedIds.value.indexOf(id)
-  if (idx >= 0) {
-    localSelectedIds.value.splice(idx, 1)
-  } else if (!isAtLimit.value) {
-    localSelectedIds.value.push(id)
-  }
+  localSelectedIds.value = toggleLimitedSelection(localSelectedIds.value, id, MAX_SELECTION)
 }
 
 function handleConfirm() {
-  const items = localSelectedIds.value
-    .map((id) => {
-      const src = sources.value.find((s) => s.id === id)
-      return src ? { id: src.id, title: src.title } : null
-    })
-    .filter(Boolean) as { id: string; title: string }[]
-  emit('confirm', items)
+  emit('confirm', pickedFeedback(localSelectedIds.value, sources.value))
 }
 
-function statusConfig(status: string) {
-  const normalized = status.toLowerCase().replace(' ', '_')
-  return STATUS_CONFIG[normalized as keyof typeof STATUS_CONFIG] ?? STATUS_CONFIG.open
-}
+const isSelected = (id: string) => localSelectedIds.value.includes(id)
+const counterClass = computed(() => (isAtLimit.value ? 'text-amber-600 dark:text-amber-500' : 'text-muted-foreground'))
 </script>
 
 <template>
@@ -126,66 +115,21 @@ function statusConfig(status: string) {
           {{ $t('changelog.picker.noResults') }}
         </div>
         <div v-else class="flex flex-col pb-4">
-          <div
+          <ChangelogFeedbackRow
             v-for="source in sources"
             :key="source.id"
-            class="group relative flex items-start gap-4 p-4 rounded-xl transition-all cursor-pointer mb-1 border border-transparent"
-            :class="[
-              localSelectedIds.includes(source.id) ? 'bg-primary/5 !border-primary/10' : 'hover:bg-background',
-              isAtLimit && !localSelectedIds.includes(source.id) ? 'opacity-40 cursor-not-allowed' : '',
-            ]"
-            @click="toggleSelection(source.id)"
-          >
-            <!-- Checkbox circle -->
-            <div class="mt-1 flex-shrink-0">
-              <div
-                class="w-5 h-5 rounded-[6px] transition-all flex items-center justify-center"
-                :class="localSelectedIds.includes(source.id)
-                  ? 'bg-primary border-primary shadow-sm text-primary-foreground'
-                  : 'border-2 border-border bg-card group-hover:border-primary/30 text-transparent'"
-              >
-                <Icon name="lucide:check" size="14" class="stroke-[3]" />
-              </div>
-            </div>
-            <div class="flex-1 min-w-0">
-              <div class="flex items-center justify-between gap-4">
-                <div class="flex items-center gap-3 overflow-hidden">
-                  <h4
-                    class="text-[15px] font-bold font-heading truncate transition-colors"
-                    :class="localSelectedIds.includes(source.id) ? 'text-primary' : 'group-hover:text-primary'"
-                  >
-                    {{ source.title }}
-                  </h4>
-                  <div class="flex items-center gap-3 text-muted-foreground/50 text-[12px] font-bold shrink-0">
-                    <span class="flex items-center gap-0.5">
-                      <Icon name="lucide:chevron-up" size="16" /> {{ source.voteCount }}
-                    </span>
-                  </div>
-                </div>
-              </div>
-              <div class="flex items-center justify-between gap-4 mt-1">
-                <p class="text-[13px] text-muted-foreground line-clamp-1 flex-1" />
-                <span
-                  class="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[9px] font-bold uppercase tracking-wider shrink-0 border"
-                  :style="{
-                    color: `var(${statusConfig(source.status).cssVar})`,
-                    backgroundColor: `var(${statusConfig(source.status).cssVar}-bg)`,
-                    borderColor: `var(${statusConfig(source.status).cssVar}-border)`,
-                  }"
-                >
-                  <span class="w-1.5 h-1.5 rounded-full" :style="{ backgroundColor: `var(${statusConfig(source.status).cssVar})` }" />
-                  {{ $t(statusLabelKey(source.status)) }}
-                </span>
-              </div>
-            </div>
-          </div>
+            :item="source"
+            :selected="isSelected(source.id)"
+            :blocked="isAtLimit && !isSelected(source.id)"
+            @toggle="toggleSelection(source.id)"
+          />
         </div>
       </div>
 
       <!-- Footer -->
       <div class="px-8 py-6 border-t border-border bg-card/50 shrink-0">
         <div class="flex items-center justify-between">
-          <span class="text-[14px] font-medium" :class="isAtLimit ? 'text-amber-600 dark:text-amber-500' : 'text-muted-foreground'">
+          <span class="text-[14px] font-medium" :class="counterClass">
             <strong class="text-foreground">{{ localSelectedIds.length }}</strong> / {{ MAX_SELECTION }} {{ $t('changelog.picker.selectedSuffix') }}
             <span v-if="isAtLimit" class="ml-1 text-xs">{{ $t('changelog.picker.limitReached') }}</span>
           </span>

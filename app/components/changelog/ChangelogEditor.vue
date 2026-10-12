@@ -3,6 +3,8 @@ import { NormalToolbar } from 'md-editor-v3'
 import '~/assets/css/md-editor-preview.css'
 import { sanitizeAttachmentHtml, resolveAttachmentUrl } from '~/utils/attachment'
 import { toast } from 'vue-sonner'
+import { apiErrorMessage } from '../post/-post-logic'
+import { changelogBody, hasTitleAndContent, toggleCategory, typeIcon, typeToggleClass } from './-changelog-logic'
 
 const props = defineProps<{
   changelogId?: string
@@ -40,7 +42,6 @@ const localSlug = ref<string | null>(null)
 const localPublishedAt = ref<string | null>(null)
 
 const showAiModal = ref(false)
-const fileInput = ref<HTMLInputElement | null>(null)
 
 // Snapshot for dirty detection (must be reactive so isDirty re-evaluates on snapshot change)
 const snapshot = ref({ title: '', content: '', categories: '[]', cover: null as string | null })
@@ -87,11 +88,7 @@ const coverUploading = ref(false)
 // Blob URL for local preview while uploading
 const coverPreviewBlob = ref<string | null>(null)
 
-async function handleFileChange(e: Event) {
-  const target = e.target as HTMLInputElement
-  const file = target.files?.[0]
-  if (!file) return
-
+async function handleFileChange(file: File) {
   // Show local blob preview immediately
   coverPreviewBlob.value = URL.createObjectURL(file)
   localHasCover.value = true
@@ -117,116 +114,93 @@ async function handleFileChange(e: Event) {
   }
 }
 
-function handleRemoveCover(e: Event) {
-  e.stopPropagation()
+function handleRemoveCover() {
   localHasCover.value = false
   localCoverUrl.value = null
-  if (fileInput.value) fileInput.value.value = ''
 }
 
 // Blob preview during upload, otherwise resolve key to /api/files/ path
 const coverPreviewUrl = computed(() => coverPreviewBlob.value ?? resolveAttachmentUrl(localCoverUrl.value))
-
-function triggerUpload() {
-  if (fileInput.value) fileInput.value.click()
-}
+const showCoverImage = computed(() => localHasCover.value && !!(localCoverUrl.value || coverPreviewBlob.value))
 
 function toggleType(type: ChangelogCategory) {
-  if (localCategories.value.includes(type)) {
-    localCategories.value = localCategories.value.filter((t) => t !== type)
-  } else {
-    localCategories.value.push(type)
-  }
+  localCategories.value = toggleCategory(localCategories.value, type)
 }
 
-function typeToggleClass(type: ChangelogCategory, isActive: boolean) {
-  if (!isActive) return 'border-border bg-background text-muted-foreground hover:bg-muted'
-  if (type === 'new') return 'border-primary/25 bg-primary/10 text-primary'
-  if (type === 'improved') return 'border-chart-2/25 bg-chart-2/10 text-chart-2'
-  return 'border-success/25 bg-success/10 text-success'
+const draft = () => ({
+  title: localTitle.value,
+  content: localContent.value,
+  categories: localCategories.value,
+  cover: localCoverUrl.value,
+})
+
+/** Shows the given error unless both title and content are filled in. */
+function requireTitleAndContent(errorKey: string) {
+  if (hasTitleAndContent(draft())) return true
+  toast.error(t(errorKey))
+  return false
 }
 
-function typeIcon(type: ChangelogCategory) {
-  if (type === 'new') return 'lucide:sparkles'
-  if (type === 'improved') return 'lucide:zap'
-  return 'lucide:wrench'
+async function createChangelog() {
+  const data = await useApiFetch<ChangelogAdminDetail>('/api/admin/changelogs', {
+    method: 'POST',
+    body: changelogBody(draft()),
+  })
+  takeSnapshot() // Clear dirty before navigation
+  navigateTo(localePath(`/dashboard/changelog/${data.id}`))
 }
 
-function statusLabel(status: string) {
-  return t(`changelog.admin.status.${status}`)
+async function updateChangelog() {
+  const data = await useApiFetch<ChangelogAdminDetail>(`/api/admin/changelogs/${props.changelogId}`, {
+    method: 'PATCH',
+    body: changelogBody(draft()),
+  })
+  localStatus.value = data.status
+  takeSnapshot()
+  emit('saved', data)
 }
 
 async function handleSave() {
-  if (!localTitle.value.trim() || !localContent.value.trim()) {
-    toast.error(t('changelog.editor.titleContentRequired'))
-    return
-  }
+  if (!requireTitleAndContent('changelog.editor.titleContentRequired')) return
   saving.value = true
 
   try {
-    const body = {
-      title: localTitle.value.trim(),
-      content: localContent.value,
-      categories: localCategories.value,
-      cover: localCoverUrl.value,
-    }
-
-    let data: ChangelogAdminDetail
-    if (isCreateMode.value) {
-      data = await useApiFetch<ChangelogAdminDetail>('/api/admin/changelogs', {
-        method: 'POST',
-        body,
-      })
-      takeSnapshot() // Clear dirty before navigation
-      navigateTo(localePath(`/dashboard/changelog/${data.id}`))
-    } else {
-      data = await useApiFetch<ChangelogAdminDetail>(`/api/admin/changelogs/${props.changelogId}`, {
-        method: 'PATCH',
-        body,
-      })
-      localStatus.value = data.status
-      takeSnapshot()
-      emit('saved', data)
-    }
-  } catch (e: any) {
-    toast.error(e?.data?.message || t('changelog.editor.saveFailed'))
+    await (isCreateMode.value ? createChangelog() : updateChangelog())
+  } catch (e) {
+    toast.error(apiErrorMessage(e, t('changelog.editor.saveFailed')))
   } finally {
     saving.value = false
   }
 }
 
-async function handlePublish() {
-  if (!localTitle.value.trim() || !localContent.value.trim()) {
-    toast.error(t('changelog.editor.titleContentRequiredPublish'))
-    return
+async function publishChangelog() {
+  // Save first
+  if (!isCreateMode.value) {
+    await useApiFetch(`/api/admin/changelogs/${props.changelogId}`, {
+      method: 'PATCH',
+      body: changelogBody(draft()),
+    })
   }
+
+  const data = await useApiFetch<ChangelogAdminDetail>(`/api/admin/changelogs/${props.changelogId}/publish`, {
+    method: 'POST',
+  })
+  localStatus.value = data.status
+  localSlug.value = data.slug
+  localPublishedAt.value = data.publishedAt
+  takeSnapshot()
+  emit('saved', data)
+  toast.success(t('changelog.editor.publishSuccess'))
+}
+
+async function handlePublish() {
+  if (!requireTitleAndContent('changelog.editor.titleContentRequiredPublish')) return
   publishing.value = true
 
   try {
-    // Save first
-    if (!isCreateMode.value) {
-      await useApiFetch(`/api/admin/changelogs/${props.changelogId}`, {
-        method: 'PATCH',
-        body: {
-          title: localTitle.value.trim(),
-          content: localContent.value,
-          categories: localCategories.value,
-          cover: localCoverUrl.value,
-        },
-      })
-    }
-
-    const data = await useApiFetch<ChangelogAdminDetail>(`/api/admin/changelogs/${props.changelogId}/publish`, {
-      method: 'POST',
-    })
-    localStatus.value = data.status
-    localSlug.value = data.slug
-    localPublishedAt.value = data.publishedAt
-    takeSnapshot()
-    emit('saved', data)
-    toast.success(t('changelog.editor.publishSuccess'))
-  } catch (e: any) {
-    toast.error(e?.data?.message || t('changelog.editor.publishFailed'))
+    await publishChangelog()
+  } catch (e) {
+    toast.error(apiErrorMessage(e, t('changelog.editor.publishFailed')))
   } finally {
     publishing.value = false
   }
@@ -239,7 +213,10 @@ async function handleDelete() {
     confirmText: t('common.delete'),
     variant: 'destructive',
   })
-  if (!ok) return
+  if (ok) await deleteChangelog()
+}
+
+async function deleteChangelog() {
   deleting.value = true
 
   try {
@@ -247,8 +224,8 @@ async function handleDelete() {
     takeSnapshot() // Clear dirty state before navigation
     emit('deleted')
     navigateTo(localePath('/dashboard/changelog'))
-  } catch (e: any) {
-    toast.error(e?.data?.message || t('changelog.editor.deleteFailed'))
+  } catch (e) {
+    toast.error(apiErrorMessage(e, t('changelog.editor.deleteFailed')))
   } finally {
     deleting.value = false
   }
@@ -301,64 +278,18 @@ function handleAiApply(result: ChangelogAiResult) {
 
   <div v-else class="flex h-full min-h-0 flex-col bg-background">
     <!-- Header -->
-    <header class="flex h-16 shrink-0 items-center justify-between border-b border-border bg-card px-6">
-      <div class="flex items-center gap-4">
-        <NuxtLink
-          :to="localePath('/dashboard/changelog')"
-          class="inline-flex items-center gap-2 text-sm font-medium text-muted-foreground transition-colors hover:text-foreground"
-        >
-          <Icon name="lucide:arrow-left" size="16" />
-          {{ $t('changelog.editor.back') }}
-        </NuxtLink>
-        <div class="h-4 w-px bg-border" />
-        <div v-if="!isCreateMode" class="flex items-center gap-2 text-sm font-medium text-foreground/80">
-          <Icon name="lucide:check-circle-2" size="16" class="text-success" />
-          {{ statusLabel(localStatus) }}
-        </div>
-        <a
-          v-if="localStatus === 'published' && localSlug"
-          :href="`/changelog/${localSlug}`"
-          target="_blank"
-          class="inline-flex items-center gap-1 text-sm font-medium text-primary hover:text-primary/80 transition-colors"
-        >
-          {{ $t('changelog.editor.view') }}
-          <Icon name="lucide:external-link" size="14" />
-        </a>
-      </div>
-      <div class="flex items-center gap-3">
-        <button
-          v-if="!isCreateMode"
-          type="button"
-          class="flex h-9 w-9 items-center justify-center rounded-lg border border-border bg-background text-muted-foreground shadow-sm transition-colors hover:border-destructive hover:bg-destructive hover:text-destructive-foreground"
-          :title="$t('common.delete')"
-          :disabled="deleting"
-          @click="handleDelete"
-        >
-          <Icon name="lucide:trash-2" size="16" />
-        </button>
-        <button
-          type="button"
-          class="inline-flex h-9 items-center gap-2 rounded-lg border border-border bg-background px-4 text-sm font-semibold text-foreground shadow-sm transition-colors hover:bg-muted"
-          :disabled="saving || coverUploading"
-          @click="handleSave"
-        >
-          <Icon v-if="saving" name="lucide:loader-2" size="14" class="animate-spin" />
-          <Icon v-else name="lucide:save" size="14" />
-          {{ $t('common.save') }}
-        </button>
-        <button
-          v-if="!isCreateMode"
-          type="button"
-          class="inline-flex h-9 items-center gap-2 rounded-lg bg-primary px-4 text-sm font-semibold text-primary-foreground shadow-sm transition-colors hover:bg-primary/90"
-          :disabled="publishing || coverUploading"
-          @click="handlePublish"
-        >
-          <Icon v-if="publishing" name="lucide:loader-2" size="14" class="animate-spin" />
-          <Icon v-else name="lucide:send" size="14" />
-          {{ $t('changelog.editor.publish') }}
-        </button>
-      </div>
-    </header>
+    <ChangelogEditorHeader
+      :create-mode="isCreateMode"
+      :status="localStatus"
+      :slug="localSlug"
+      :saving="saving"
+      :publishing="publishing"
+      :deleting="deleting"
+      :uploading="coverUploading"
+      @save="handleSave"
+      @publish="handlePublish"
+      @delete="handleDelete"
+    />
 
     <!-- Editor Container: left details col + right body col -->
     <div class="flex flex-1 flex-col min-h-0 overflow-y-auto bg-muted/10 lg:flex-row lg:overflow-hidden">
@@ -368,57 +299,14 @@ function handleAiApply(result: ChangelogAiResult) {
         <h2 class="shrink-0 text-xl font-bold text-foreground">{{ $t('changelog.editor.details') }}</h2>
 
         <!-- Featured Image -->
-        <section class="shrink-0 rounded-xl border border-border bg-card p-5 shadow-sm">
-          <h3 class="mb-3 text-sm font-semibold text-foreground">{{ $t('changelog.editor.featuredImage') }}</h3>
-          <div class="relative">
-            <button
-              class="group flex h-28 w-full flex-col items-center justify-center gap-2.5 rounded-lg border-2 border-dashed border-border bg-muted/30 transition-colors hover:border-primary/50 hover:bg-muted/50"
-              @click="triggerUpload"
-            >
-              <template v-if="localHasCover && (localCoverUrl || coverPreviewBlob)">
-                <img :src="coverPreviewUrl!" class="absolute inset-0 h-full w-full rounded-lg object-cover" :alt="$t('a11y.coverImage')" >
-                <!-- Upload loading overlay -->
-                <div v-if="coverUploading" class="absolute inset-0 flex flex-col items-center justify-center rounded-lg bg-black/50">
-                  <div class="animate-spin w-6 h-6 border-2 border-white border-t-transparent rounded-full" />
-                  <span class="mt-2 text-xs font-medium text-white">{{ $t('changelog.editor.uploading') }}</span>
-                </div>
-                <!-- Hover replace overlay (only when not uploading) -->
-                <div v-else class="absolute inset-0 flex flex-col items-center justify-center rounded-lg bg-black/40 opacity-0 transition-opacity group-hover:opacity-100">
-                  <div class="flex h-10 w-10 items-center justify-center rounded-full bg-background/90 shadow-sm">
-                    <Icon name="lucide:upload-cloud" size="18" class="text-foreground" />
-                  </div>
-                  <span class="mt-2 text-xs font-medium text-white">{{ $t('changelog.editor.clickReplace') }}</span>
-                </div>
-              </template>
-              <template v-else>
-                <div class="flex h-10 w-10 items-center justify-center rounded-full bg-background shadow-sm transition-colors group-hover:bg-card">
-                  <Icon name="lucide:upload-cloud" size="20" class="text-muted-foreground" />
-                </div>
-                <span class="text-xs font-medium text-muted-foreground group-hover:text-foreground">
-                  {{ $t('changelog.editor.clickUpload') }}
-                </span>
-                <span class="text-[11px] text-muted-foreground/60">
-                  {{ $t('changelog.editor.coverHint') }}
-                </span>
-              </template>
-            </button>
-            <button
-              v-if="localHasCover"
-              type="button"
-              class="absolute right-2 top-2 z-10 flex h-6 w-6 items-center justify-center rounded-full bg-black/50 text-white transition-colors hover:bg-black/70"
-              @click="handleRemoveCover"
-            >
-              <Icon name="lucide:x" size="14" />
-            </button>
-            <input
-              ref="fileInput"
-              type="file"
-              accept="image/*"
-              class="hidden"
-              @change="handleFileChange"
-            >
-          </div>
-        </section>
+        <ChangelogCoverUpload
+          :has-cover="localHasCover"
+          :show-image="showCoverImage"
+          :preview-url="coverPreviewUrl"
+          :uploading="coverUploading"
+          @pick="handleFileChange"
+          @remove="handleRemoveCover"
+        />
 
         <!-- Title & Types -->
         <section class="shrink-0 rounded-xl border border-border bg-card p-5 shadow-sm">

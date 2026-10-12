@@ -1,4 +1,11 @@
 <script setup lang="ts">
+import { applyServerReactions, isOutsideClick, reactionPath, shiftReaction } from './-changelog-logic'
+
+interface ReactionState {
+  reactionCounts: Record<string, number>
+  userReactions: string[]
+}
+
 const props = defineProps<{
   changelogId: string
   reactionCounts: Record<string, number>
@@ -33,50 +40,27 @@ async function toggle(emoji: string) {
     return
   }
 
-  const wasActive = picked[emoji]
+  const wasActive = !!picked[emoji]
 
   // Optimistic update
-  if (wasActive) {
-    picked[emoji] = false
-    counts[emoji] = Math.max((counts[emoji] ?? 0) - 1, 0)
-  } else {
-    picked[emoji] = true
-    counts[emoji] = (counts[emoji] ?? 0) + 1
-  }
+  shiftReaction(counts, picked, emoji, !wasActive)
 
   try {
-    let result: { reactionCounts: Record<string, number>; userReactions: string[] }
-
-    if (wasActive) {
-      result = await useApiFetch(`/api/changelogs/${props.changelogId}/reactions?emoji=${encodeURIComponent(emoji)}`, {
-        method: 'DELETE',
-      })
-    } else {
-      result = await useApiFetch(`/api/changelogs/${props.changelogId}/reactions`, {
-        method: 'POST',
-        body: { emoji },
-      })
-    }
-
+    const result = await sendReaction(emoji, wasActive)
     // Sync with server state
-    Object.assign(counts, {})
-    for (const [k, v] of Object.entries(result.reactionCounts)) {
-      counts[k] = v
-    }
-    for (const e of CHANGELOG_EMOJIS) {
-      picked[e] = result.userReactions.includes(e)
-    }
+    applyServerReactions(counts, picked, result, CHANGELOG_EMOJIS)
     emit('update', result.reactionCounts, result.userReactions)
   } catch {
     // Rollback on error
-    if (wasActive) {
-      picked[emoji] = true
-      counts[emoji] = (counts[emoji] ?? 0) + 1
-    } else {
-      picked[emoji] = false
-      counts[emoji] = Math.max((counts[emoji] ?? 0) - 1, 0)
-    }
+    shiftReaction(counts, picked, emoji, wasActive)
   }
+}
+
+function sendReaction(emoji: string, removing: boolean) {
+  const path = reactionPath(props.changelogId, emoji, removing)
+  return removing
+    ? useApiFetch<ReactionState>(path, { method: 'DELETE' })
+    : useApiFetch<ReactionState>(path, { method: 'POST', body: { emoji } })
 }
 
 function toggleFromPicker(emoji: string) {
@@ -93,11 +77,17 @@ onBeforeUnmount(() => {
 })
 
 function handleDocumentClick(event: MouseEvent) {
-  if (!pickerOpen.value || !rootRef.value) return
-  const target = event.target as Node | null
-  if (target && !rootRef.value.contains(target)) {
-    pickerOpen.value = false
-  }
+  if (isOutsideClick(pickerOpen.value, rootRef.value, event.target)) pickerOpen.value = false
+}
+
+function chipClass(emoji: string) {
+  return picked[emoji]
+    ? 'border-primary bg-primary/12 text-foreground ring-1 ring-primary/30'
+    : 'border-border bg-background text-muted-foreground hover:border-primary/50 hover:text-foreground active:bg-secondary/40'
+}
+
+function pickerItemClass(emoji: string) {
+  return picked[emoji] ? 'bg-primary/12 text-foreground ring-1 ring-primary/35' : ''
 }
 </script>
 
@@ -118,9 +108,7 @@ function handleDocumentClick(event: MouseEvent) {
         :key="emoji"
         type="button"
         class="inline-flex min-h-10 min-w-[2.75rem] items-center justify-center gap-1.5 rounded-full border px-2.5 py-1.5 text-sm transition-colors touch-manipulation active:scale-[0.98] sm:min-h-0 sm:min-w-0 sm:py-1"
-        :class="picked[emoji]
-          ? 'border-primary bg-primary/12 text-foreground ring-1 ring-primary/30'
-          : 'border-border bg-background text-muted-foreground hover:border-primary/50 hover:text-foreground active:bg-secondary/40'"
+        :class="chipClass(emoji)"
         data-fdl-action="changelog_react"
         data-fdl-source="chip"
         @click="toggle(emoji)"
@@ -140,7 +128,7 @@ function handleDocumentClick(event: MouseEvent) {
           :key="emoji"
           type="button"
           class="inline-flex h-8 w-8 items-center justify-center rounded-md text-lg hover:bg-secondary/70 active:bg-secondary touch-manipulation transition-colors"
-          :class="picked[emoji] ? 'bg-primary/12 text-foreground ring-1 ring-primary/35' : ''"
+          :class="pickerItemClass(emoji)"
           :aria-label="$t('changelog.reactWith', { emoji })"
           data-fdl-action="changelog_react"
           data-fdl-source="picker"
