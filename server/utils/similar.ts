@@ -70,7 +70,8 @@ async function searchSimilar(
     .innerJoin(source, eq(post.id, source.postId))
     .innerJoin(user, eq(post.authorId, user.id))
     .where(and(...conditions))
-    .orderBy(distance)
+    // Equal distances (identical text) would otherwise come back in arbitrary order.
+    .orderBy(distance, post.id)
     .limit(limit)
 
   const voted = userId
