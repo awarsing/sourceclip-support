@@ -2,7 +2,7 @@ import { and, asc, eq } from 'drizzle-orm'
 import { board, conversation, message, post } from '#layers/feedlog/server/db/schemas'
 import { isConversationId, ownedConversation, withinRetention } from '#layers/feedlog/server/utils/conversation'
 
-export interface WidgetConversationMessage {
+interface WidgetConversationMessage {
   id: string
   role: string
   kind: string | null

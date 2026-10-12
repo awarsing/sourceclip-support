@@ -2,6 +2,7 @@ import { and, count, desc, eq, sql } from 'drizzle-orm'
 import { post, postUnread } from '#layers/feedlog/server/db/schemas'
 import type { CursorPaginatedList } from '#layers/feedlog/shared/types/pagination'
 
+// fallow-ignore-next-line unused-type -- imported by app/pages/widget/embed.vue and WidgetEmbedFeedbackList.vue through the #layers/feedlog alias, which Fallow does not resolve from .vue files
 export interface WidgetFeedbackItem {
   id: string
   slug: string
@@ -21,16 +22,13 @@ export default defineEventHandler(
     const { session, orgId } = await requireAuthInOrg(event)
     const userId = session.user.id
     const query = getQuery(event)
-    const cursor = query.cursor as string | undefined
-    const pageSize = Math.min(Number(query.pageSize) || 20, 50)
+    const pageSize = readPageSize(query.pageSize, 20, 50)
 
     const conditions = [eq(post.orgId, orgId), eq(post.authorId, userId)]
 
+    const cursor = decodeTimestampCursor(query.cursor as string | undefined)
     if (cursor) {
-      const decoded = decodeCursor(cursor)
-      if (decoded) {
-        conditions.push(sql`(${post.createdAt}, ${post.id}) < (${decoded.s}::timestamptz, ${decoded.id}::uuid)`)
-      }
+      conditions.push(sql`(${post.createdAt}, ${post.id}) < (${cursor.s}::timestamptz, ${cursor.id}::uuid)`)
     }
 
     // Merged posts stay in the list: merging freezes a post but the author still
@@ -52,8 +50,8 @@ export default defineEventHandler(
       .orderBy(desc(post.createdAt), desc(post.id))
       .limit(pageSize + 1)
 
-    const hasMore = rows.length > pageSize
-    const data = rows.slice(0, pageSize).map((r) => ({
+    const { items, hasMore } = splitPage(rows, pageSize)
+    const data = items.map((r) => ({
       id: r.id,
       slug: r.slug,
       title: r.title,
@@ -63,8 +61,7 @@ export default defineEventHandler(
       unread: r.unreadAt !== null,
     }))
 
-    const lastItem = data[data.length - 1]
-    const nextCursor = hasMore && lastItem ? encodeCursor({ s: lastItem.createdAt, id: lastItem.id }) : null
+    const nextCursor = nextListCursor(data, hasMore, (last) => ({ s: last.createdAt, id: last.id }))
 
     // Counted without the cursor condition, so it stays the same on every page.
     const [totalRow] = await useDB()
@@ -75,26 +72,3 @@ export default defineEventHandler(
     return { data, total: Number(totalRow?.value ?? 0), pagination: { nextCursor } }
   },
 )
-
-// JSON turns the Date into an ISO string on the way out and never turns it back,
-// so the two halves are deliberately not symmetric.
-function encodeCursor(data: { s: Date; id: string }): string {
-  return Buffer.from(JSON.stringify(data)).toString('base64url')
-}
-
-const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i
-
-// The contents are checked, not just the encoding: the halves go straight into a
-// ::timestamptz / ::uuid cast, and Postgres answers anything it can't parse with
-// an error the handler has no way to catch. Rejecting here falls back to the
-// first page, which is what an unreadable cursor already did.
-function decodeCursor(cursor: string): { s: string; id: string } | null {
-  try {
-    const parsed = JSON.parse(Buffer.from(cursor, 'base64url').toString())
-    if (typeof parsed?.s !== 'string' || Number.isNaN(Date.parse(parsed.s))) return null
-    if (typeof parsed?.id !== 'string' || !UUID.test(parsed.id)) return null
-    return { s: parsed.s, id: parsed.id }
-  } catch {
-    return null
-  }
-}
