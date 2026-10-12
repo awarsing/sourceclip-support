@@ -303,6 +303,7 @@ type AuthInstance = ReturnType<typeof betterAuth>
 let _registeredOverrides: AuthConfigOverrides | null = null
 let _authInstance: AuthInstance | null = null
 
+/** @public Layer extension API for a consuming app's Nitro plugins. */
 export function registerAuthOverrides(overrides: AuthConfigOverrides): void {
   if (_authInstance) {
     throw new Error('[auth] registerAuthOverrides called after auth was already built')

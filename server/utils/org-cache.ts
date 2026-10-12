@@ -47,6 +47,7 @@ export function getOrgInfo(slug: string): Promise<OrgInfo | null> {
   return _backend.get(slug)
 }
 
+/** @public Layer extension API for a consuming app's Nitro plugins. */
 export function invalidateOrgInfo(slug: string): Promise<void> {
   return _backend.invalidate(slug)
 }
