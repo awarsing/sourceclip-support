@@ -30,7 +30,7 @@
     "preview": "nuxt preview",
     "quality": "node ${TTM_PLATFORM_ROOT:-../..}/local-quality/repo-quality.mjs --mode full",
     "quality:repo": "pnpm run i18n:check && pnpm run test:runtime",
-    "test": "rm -rf coverage && NODE_V8_COVERAGE=coverage/v8 node scripts/with-test-postgres.mjs node --enable-source-maps --import tsx --test tests/*.test.ts",
+    "test": "rm -rf coverage && NODE_V8_COVERAGE=coverage/v8 node scripts/with-test-postgres.mjs node --enable-source-maps --import tsx --test --test-concurrency=1 tests/*.test.ts",
     "test:runtime": "node scripts/with-test-postgres.mjs node --test tests/inbox-node-runtime.test.mjs",
     "type-check": "nuxt prepare && vue-tsc -b --noEmit"
   },
