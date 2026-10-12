@@ -38,22 +38,14 @@ const timeAgo = useTimeAgo()
     </span>
 
     <!-- Three-dot menu -->
-    <DropdownMenu v-if="showMenu">
-      <DropdownMenuTrigger as-child>
-        <button class="ml-auto p-1 rounded-md text-muted-foreground hover:text-foreground hover:bg-secondary/50 transition-colors">
-          <Icon name="lucide:more-horizontal" :size="sizing.menuIcon" />
-        </button>
-      </DropdownMenuTrigger>
-      <DropdownMenuContent align="end" class="min-w-[120px]">
-        <DropdownMenuItem v-if="canEdit" class="text-xs font-bold gap-2" @click="emit('edit')">
-          <Icon name="lucide:pencil" size="14" />
-          {{ $t('common.edit') }}
-        </DropdownMenuItem>
-        <DropdownMenuItem v-if="canDelete" class="text-xs font-bold gap-2 text-destructive" @click="emit('delete')">
-          <Icon name="lucide:trash-2" size="14" />
-          {{ $t('common.delete') }}
-        </DropdownMenuItem>
-      </DropdownMenuContent>
-    </DropdownMenu>
+    <ContentActionsMenu
+      v-if="showMenu"
+      :can-edit="canEdit"
+      :can-delete="canDelete"
+      trigger-class="ml-auto p-1"
+      :icon-size="sizing.menuIcon"
+      @edit="emit('edit')"
+      @delete="emit('delete')"
+    />
   </div>
 </template>

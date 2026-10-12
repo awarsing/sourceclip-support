@@ -42,17 +42,13 @@ async function loadComments() {
       <UserAvatar :author="comment.author" :size="10" />
     </div>
     <div class="flex-1 min-w-0">
-      <div class="flex items-center flex-wrap gap-2 mb-3">
-        <span class="font-heading font-bold text-sm">{{ authorName(comment.author) }}</span>
-        <span class="text-xs text-muted-foreground">{{ timeAgo(comment.createdAt) }}</span>
-        <span class="text-xs font-bold text-primary bg-primary/10 px-2 py-0.5 rounded-md flex items-center gap-1 ml-1">
-          <Icon name="lucide:git-merge" size="14" />
-          {{ $t('post.merge.mergedPost') }}
-        </span>
-
-        <!-- Admin unmerge menu for second-level -->
-        <MergedPostUnmergeMenu v-if="isAdmin" @unmerge="emit('unmerge', post.id)" />
-      </div>
+      <MergedPostByline
+        :author="comment.author"
+        :created-at="comment.createdAt"
+        :label="$t('post.merge.mergedPost')"
+        :is-admin="isAdmin"
+        @unmerge="emit('unmerge', post.id)"
+      />
       <div class="bg-card border border-border rounded-lg p-5 shadow-sm space-y-2">
         <NuxtLink :to="localePath(`/p/${post.slug}`)" class="font-heading font-bold text-base text-foreground hover:text-primary block">
           {{ post.title }}

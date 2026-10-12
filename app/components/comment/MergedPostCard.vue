@@ -18,7 +18,6 @@ const emit = defineEmits<{
 }>()
 
 const localePath = useLocalePath()
-const timeAgo = useTimeAgo()
 const mp = computed(() => props.comment.mergedPost)
 // Extra sub-comments loaded via pagination (for first-level merged post)
 const extraSubComments = ref<Record<string, CommentPage>>({})
@@ -62,17 +61,13 @@ function handleUnmerge() {
 
       <div class="flex-1 min-w-0">
         <!-- Header with merge badge -->
-        <div class="flex items-center flex-wrap gap-2 mb-3">
-          <span class="font-heading font-bold text-sm">{{ authorName(comment.author) }}</span>
-          <span class="text-xs text-muted-foreground">{{ timeAgo(comment.createdAt) }}</span>
-          <span class="text-xs font-bold text-primary bg-primary/10 px-2 py-0.5 rounded-md flex items-center gap-1 ml-1">
-            <Icon name="lucide:git-merge" size="14" />
-            {{ $t('post.merge.mergedPostBy', { name: authorName(comment.author) }) }}
-          </span>
-
-          <!-- Admin unmerge menu -->
-          <MergedPostUnmergeMenu v-if="isAdmin" @unmerge="handleUnmerge" />
-        </div>
+        <MergedPostByline
+          :author="comment.author"
+          :created-at="comment.createdAt"
+          :label="$t('post.merge.mergedPostBy', { name: authorName(comment.author) })"
+          :is-admin="isAdmin"
+          @unmerge="handleUnmerge"
+        />
 
         <!-- Merged post card -->
         <div class="bg-card border border-border rounded-lg p-5 shadow-sm space-y-3">

@@ -31,15 +31,15 @@ const timeAgo = useTimeAgo()
           <DropdownMenuItem class="text-xs font-bold gap-2" @click="emit('merge', 'push')"><Icon name="lucide:arrow-up-right" size="14" /> {{ $t('post.merge.thisInto') }}</DropdownMenuItem>
         </DropdownMenuContent>
       </DropdownMenu>
-      <DropdownMenu v-if="showMenu">
-        <DropdownMenuTrigger as-child>
-          <button class="p-1.5 rounded-md text-muted-foreground hover:text-foreground hover:bg-secondary/50 transition-colors"><Icon name="lucide:more-horizontal" size="18" /></button>
-        </DropdownMenuTrigger>
-        <DropdownMenuContent align="end" class="min-w-[120px]">
-          <DropdownMenuItem v-if="canEdit" class="text-xs font-bold gap-2" @click="emit('edit')"><Icon name="lucide:pencil" size="14" /> {{ $t('common.edit') }}</DropdownMenuItem>
-          <DropdownMenuItem v-if="canDelete" class="text-xs font-bold gap-2 text-destructive" @click="emit('delete')"><Icon name="lucide:trash-2" size="14" /> {{ $t('common.delete') }}</DropdownMenuItem>
-        </DropdownMenuContent>
-      </DropdownMenu>
+      <ContentActionsMenu
+        v-if="showMenu"
+        :can-edit="canEdit"
+        :can-delete="canDelete"
+        trigger-class="p-1.5"
+        icon-size="18"
+        @edit="emit('edit')"
+        @delete="emit('delete')"
+      />
     </div>
   </div>
 </template>
