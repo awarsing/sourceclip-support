@@ -1,5 +1,5 @@
-import { eq, and, isNull, sql } from 'drizzle-orm'
-import { post, postSearch, user } from '#layers/feedlog/server/db/schemas'
+import { eq, and, isNull } from 'drizzle-orm'
+import { post } from '#layers/feedlog/server/db/schemas'
 
 // GET /api/posts/search?q=&limit= — Public semantic search over an org's feedback.
 //
@@ -36,39 +36,12 @@ export default defineEventHandler(async (event) => {
     // Fallback (embeddings unavailable): pg_trgm nearest-N over post_search, matching
     // searchSimilarByTrgm — whole-string `<->` distance, no threshold,
     // global across boards. post_search is sync-written on post create/update.
-    rows = await db
-      .select(postListColumns)
-      .from(post)
-      .innerJoin(postSearch, eq(post.id, postSearch.postId))
-      .leftJoin(user, eq(post.authorId, user.id))
-      .where(and(eq(post.orgId, orgId), isNull(post.mergedTo)))
-      .orderBy(sql`${postSearch.searchText} <-> ${q}`)
-      .limit(PUBLIC_SEARCH_LIMIT)
+    rows = await searchPostsByText(db, q, and(eq(post.orgId, orgId), isNull(post.mergedTo)), PUBLIC_SEARCH_LIMIT)
   }
 
   // Batch hasVoted when authenticated (same pattern as GET /api/posts).
-  const voted = session
-    ? await findVotedPostIds(
-        db,
-        session.user.id,
-        rows.map((r) => r.id),
-      )
-    : new Set<string>()
-
-  const data: PostListItem[] = rows.map((r) => ({
-    id: r.id,
-    slug: r.slug,
-    title: r.title,
-    excerpt: r.excerpt,
-    status: r.status,
-    boardId: r.boardId,
-    voteCount: r.voteCount,
-    commentCount: r.commentCount,
-    mergedCount: r.mergedCount,
-    hasVoted: voted.has(r.id),
-    author: { id: r.authorId, name: r.authorName, image: r.authorImage, isAnonymous: !!r.authorIsAnonymous },
-    createdAt: r.createdAt.toISOString(),
-  }))
+  const voted = await findSessionVotedPostIds(db, session, rows)
+  const data: PostListItem[] = rows.map((r) => toPostListItem(r, voted))
 
   return { data }
 })
