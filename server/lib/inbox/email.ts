@@ -89,6 +89,42 @@ export async function deliverReplyNow(runtime: InboxRuntime, orgId: string, conv
     : null
 }
 
+// One automatic retry, plus one more once staff ask for a manual retry.
+const attemptLimit = (row: { manual_retry: boolean }) => (row.manual_retry ? 3 : 2)
+
+// The final result when no attempt should be made, or null to attempt delivery.
+function resultWithoutSending(row: {
+  delivery_mode: string
+  customer_read_seq: string | number
+  seq: string | number
+  attempts: number
+  manual_retry: boolean
+}): 'skipped' | 'failed' | null {
+  if (row.delivery_mode !== 'immediate' && BigInt(row.customer_read_seq) >= BigInt(row.seq)) return 'skipped'
+  return row.attempts >= attemptLimit(row) ? 'failed' : null
+}
+
+async function loadDeliveryState(runtime: InboxRuntime, task: ReplyEmailTask) {
+  const {
+    rows: [row],
+  } = await runtime.pool.query(
+    `SELECT t.attempts,t.manual_retry,t.delivery_mode,c.customer_read_seq,i.seq,c.org_id
+    FROM scheduled_task t JOIN conversation c ON c.id=t.ref_id JOIN conversation_item i ON i.id=t.item_id AND i.conversation_id=c.id
+    WHERE t.id=$1 AND t.status='processing' AND t.updated_at=$2`,
+    [task.id, task.updated_at],
+  )
+  return row
+}
+
+async function reserveAttempt(runtime: InboxRuntime, task: ReplyEmailTask, attempts: number) {
+  const { rowCount } = await runtime.pool.query(
+    `UPDATE scheduled_task SET attempts=attempts+1
+    WHERE id=$1 AND status='processing' AND updated_at=$2 AND attempts=$3`,
+    [task.id, task.updated_at, attempts],
+  )
+  return Boolean(rowCount)
+}
+
 // The task is already claimed. Reserve each attempt before the network call so
 // restarts cannot reset the automatic/manual retry budget.
 export async function deliverReplyTask(runtime: InboxRuntime, task: ReplyEmailTask) {
@@ -100,39 +136,13 @@ export async function deliverReplyTask(runtime: InboxRuntime, task: ReplyEmailTa
     )
   }
   for (;;) {
-    const {
-      rows: [row],
-    } = await runtime.pool.query(
-      `SELECT t.attempts,t.manual_retry,t.delivery_mode,c.customer_read_seq,i.seq,c.org_id
-      FROM scheduled_task t JOIN conversation c ON c.id=t.ref_id JOIN conversation_item i ON i.id=t.item_id AND i.conversation_id=c.id
-      WHERE t.id=$1 AND t.status='processing' AND t.updated_at=$2`,
-      [task.id, task.updated_at],
-    )
-    if (!row) {
-      await finish('skipped')
-      return
-    }
-    if (row.delivery_mode !== 'immediate' && BigInt(row.customer_read_seq) >= BigInt(row.seq)) {
-      await finish('skipped')
-      return
-    }
-    if (row.attempts >= (row.manual_retry ? 3 : 2)) {
-      await finish('failed')
-      return
-    }
-    const { rowCount } = await runtime.pool.query(
-      `UPDATE scheduled_task SET attempts=attempts+1
-      WHERE id=$1 AND status='processing' AND updated_at=$2 AND attempts=$3`,
-      [task.id, task.updated_at, row.attempts],
-    )
-    if (!rowCount) return
+    const row = await loadDeliveryState(runtime, task)
+    const settled = row ? resultWithoutSending(row) : 'skipped'
+    if (settled) return finish(settled)
+    if (!(await reserveAttempt(runtime, task, row.attempts))) return
     const email = await sendInboxEmail(runtime, row.org_id, task.ref_id, task.item_id)
-    if (email.status !== 'failed') {
-      await finish(email.status)
-      return
-    }
-    if (row.attempts + 1 < (row.manual_retry ? 3 : 2))
-      await new Promise((resolve) => setTimeout(resolve, automaticRetryDelayMs))
+    if (email.status !== 'failed') return finish(email.status)
+    if (row.attempts + 1 < attemptLimit(row)) await new Promise((resolve) => setTimeout(resolve, automaticRetryDelayMs))
   }
 }
 

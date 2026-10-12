@@ -45,63 +45,76 @@ function localAuthRequired(): Error {
   })
 }
 
-async function assertTargetOrgIsSessionOrg(event: H3Event, request: Request, ssoOrgId: string) {
-  // Most endpoints name an org by id, a few (get-full-organization) by slug.
-  const allowedSlug = event.context.orgSlug as string | undefined
+function crossOrgRejected(): Error {
+  return createError({
+    statusCode: 403,
+    message: 'This session cannot act on another organization',
+    data: { code: 'LOCAL_AUTH_REQUIRED' },
+  })
+}
 
-  const reject = (): never => {
-    throw createError({
-      statusCode: 403,
-      message: 'This session cannot act on another organization',
-      data: { code: 'LOCAL_AUTH_REQUIRED' },
-    })
-  }
+// Most endpoints name an org by id, a few (get-full-organization) by slug.
+function assertNamesSessionOrg(id: unknown, slug: unknown, ssoOrgId: string, allowedSlug: string | undefined) {
+  if (typeof id === 'string' && id && id !== ssoOrgId) throw crossOrgRejected()
+  if (typeof slug === 'string' && slug && allowedSlug && slug !== allowedSlug) throw crossOrgRejected()
+}
 
-  const check = (id: unknown, slug: unknown) => {
-    if (typeof id === 'string' && id && id !== ssoOrgId) reject()
-    if (typeof slug === 'string' && slug && allowedSlug && slug !== allowedSlug) reject()
-  }
-
-  const query = getQuery(event)
-  check(query.organizationId, query.organizationSlug)
-
-  if (!PAYLOAD_METHODS.has(request.method)) return
-  // clone() tees the stream; reading the body off the h3 event would consume the
-  // only copy better-auth gets on the Workers adapter.
-  let body: Record<string, unknown> | null = null
+// clone() tees the stream; reading the body off the h3 event would consume the
+// only copy better-auth gets on the Workers adapter.
+async function jsonPayload(request: Request): Promise<Record<string, unknown> | null> {
+  if (!PAYLOAD_METHODS.has(request.method)) return null
   try {
-    body = (await request.clone().json()) as Record<string, unknown>
+    const body = (await request.clone().json()) as unknown
+    return body && typeof body === 'object' ? (body as Record<string, unknown>) : null
   } catch {
-    return
+    return null
   }
-  if (!body || typeof body !== 'object') return
-  check(body.organizationId, body.organizationSlug)
+}
+
+async function assertTargetOrgIsSessionOrg(event: H3Event, request: Request, ssoOrgId: string) {
+  const allowedSlug = event.context.orgSlug as string | undefined
+  const query = getQuery(event)
+  assertNamesSessionOrg(query.organizationId, query.organizationSlug, ssoOrgId, allowedSlug)
+  const body = await jsonPayload(request)
+  if (body) assertNamesSessionOrg(body.organizationId, body.organizationSlug, ssoOrgId, allowedSlug)
+}
+
+type GuardedEndpoint = { kind: 'organization'; endpoint: string } | { kind: 'admin' | 'identity' | 'session' }
+
+const firstSegment = (path: string) => path.split(/[?/]/)[0] ?? ''
+
+// The better-auth endpoints an unverified session may be refused, or null for
+// everything else (sign-in, callbacks), which keeps its current cost.
+function guardedEndpoint(path: string): GuardedEndpoint | null {
+  if (!path.startsWith('/api/auth/')) return null
+  const rest = path.slice('/api/auth/'.length)
+  if (rest.startsWith('organization/')) {
+    return { kind: 'organization', endpoint: firstSegment(rest.slice('organization/'.length)) }
+  }
+  if (rest.startsWith('admin/')) return { kind: 'admin' }
+  const segment = firstSegment(rest)
+  if (GLOBAL_IDENTITY_ENDPOINTS.has(segment)) return { kind: 'identity' }
+  return segment === 'get-session' ? { kind: 'session' } : null
+}
+
+async function unverifiedSession(event: H3Event) {
+  const session = await auth.api.getSession({ headers: event.headers })
+  const ssoOrgId = (session?.session as { ssoOrgId?: string | null } | undefined)?.ssoOrgId ?? undefined
+  const isGuest = !!(session?.user as { isAnonymous?: boolean | null } | undefined)?.isAnonymous
+  return { ssoOrgId, isGuest }
 }
 
 // Returns true when the caller must answer as if nobody were signed in.
 export async function guardSsoAuthRequest(event: H3Event, request: Request): Promise<boolean> {
-  const path = event.path
-  if (!path.startsWith('/api/auth/')) return false
-  const rest = path.slice('/api/auth/'.length)
+  const guarded = guardedEndpoint(event.path)
+  if (!guarded) return false
 
-  const isOrganization = rest.startsWith('organization/')
-  const isAdmin = rest.startsWith('admin/')
-  const segment = rest.split(/[?/]/)[0] ?? ''
-  const isGlobalIdentity = GLOBAL_IDENTITY_ENDPOINTS.has(segment)
-  const isGetSession = segment === 'get-session'
-
-  // Resolve the session only for paths that can be refused, so sign-in and
-  // callbacks keep their current cost.
-  if (!isOrganization && !isAdmin && !isGlobalIdentity && !isGetSession) return false
-
-  const session = await auth.api.getSession({ headers: event.headers })
-  const ssoOrgId = (session?.session as { ssoOrgId?: string | null } | undefined)?.ssoOrgId
-  const isGuest = !!(session?.user as { isAnonymous?: boolean | null } | undefined)?.isAnonymous
+  const { ssoOrgId, isGuest } = await unverifiedSession(event)
   if (!ssoOrgId && !isGuest) return false
 
   // Business endpoints already refuse a session on a host it wasn't issued for,
   // but this route skips the collar and would still hand back name and email.
-  if (isGetSession) {
+  if (guarded.kind === 'session') {
     return !!ssoOrgId && ssoOrgId !== event.context.orgId
   }
 
@@ -113,10 +126,9 @@ export async function guardSsoAuthRequest(event: H3Event, request: Request): Pro
   }
 
   // The admin plugin judges by user.role, which has no notion of the current org.
-  if (isAdmin || isGlobalIdentity) throw localAuthRequired()
-
-  const endpoint = rest.slice('organization/'.length).split(/[?/]/)[0] ?? ''
-  if (!ORG_SCOPED_ORGANIZATION_ENDPOINTS.has(endpoint)) throw localAuthRequired()
+  if (guarded.kind !== 'organization' || !ORG_SCOPED_ORGANIZATION_ENDPOINTS.has(guarded.endpoint)) {
+    throw localAuthRequired()
+  }
 
   await assertTargetOrgIsSessionOrg(event, request, ssoOrgId!)
   return false

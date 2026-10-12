@@ -10,7 +10,7 @@ export const handoffReason = z.enum([
   'support_rule',
 ])
 export type HandoffReason = z.infer<typeof handoffReason> | 'ai_error'
-export const handoffRule = z
+const handoffRule = z
   .object({
     id: z.string().min(1),
     scenario: z.string().min(1),

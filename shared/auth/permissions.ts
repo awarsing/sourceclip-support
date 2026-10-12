@@ -21,13 +21,13 @@ import {
   memberAc,
 } from 'better-auth/plugins/organization/access'
 
-export const baseFeedlogStatement = {
+const baseFeedlogStatement = {
   feedlog: ['moderate'],
 } as const
 
 // Merge with better-auth organization plugin's built-in statement so
 // invitation / member / organization actions share the same `ac`.
-export const baseStatement = {
+const baseStatement = {
   ...orgDefaultStatements,
   ...baseFeedlogStatement,
 } as const
@@ -38,7 +38,7 @@ const moderatorPerms = {
   feedlog: ['moderate'],
 } as const
 
-export const baseRolePermissions = {
+const baseRolePermissions = {
   owner: {
     ...ownerAc.statements,
     ...moderatorPerms,
@@ -55,8 +55,3 @@ export const baseRolePermissions = {
 export const owner = ac.newRole(baseRolePermissions.owner)
 export const manager = ac.newRole(baseRolePermissions.manager)
 export const contributor = ac.newRole(baseRolePermissions.contributor)
-
-export const roles = { owner, manager, contributor }
-
-export type RoleName = keyof typeof roles
-export type FeedlogStatement = typeof baseStatement

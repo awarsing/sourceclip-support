@@ -11,7 +11,7 @@ import {
   postUnread,
   user,
   vote,
-} from '#layers/feedlog/server/db/schemas'
+} from '../db/schemas'
 
 // Moves everything a guest left behind onto the account they just signed in with,
 // then drops the guest row.

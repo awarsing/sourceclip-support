@@ -6,7 +6,7 @@ import { getEnabledSupportRules, type WidgetConfigRow } from '../../../../shared
 import { isActorAdmin, type OrgListSession } from '../../../../shared/utils/notifications'
 import { isGuestSession } from '../../../utils/guest'
 
-export async function agentProduct(pool: Pool, orgId: string) {
+async function agentProduct(pool: Pool, orgId: string) {
   const {
     rows: [organization],
   } = await pool.query<{ name: string }>('SELECT name FROM organization WHERE id=$1', [orgId])

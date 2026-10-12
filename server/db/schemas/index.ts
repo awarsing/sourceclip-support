@@ -13,9 +13,9 @@ import {
   foreignKey,
 } from 'drizzle-orm/pg-core'
 import { relations, sql } from 'drizzle-orm'
-import { uuidv7 } from 'uuidv7'
 import { conversation } from './widget'
 import { user, session, account, organization, member, invitation } from './auth'
+import { createdAt, postUserColumns, postUserPrimaryKey, updatedAt, uuidPrimaryKey } from './columns'
 
 export { conversationItem, agentRun } from './agent'
 
@@ -74,18 +74,13 @@ const vector = customType<{ data: number[]; driverParam: string }>({
 export const board = pgTable(
   'board',
   {
-    id: uuid()
-      .primaryKey()
-      .$defaultFn(() => uuidv7()),
+    id: uuidPrimaryKey(),
     orgId: text('org_id').notNull(),
     name: varchar({ length: 100 }).notNull(),
     description: text(),
     position: integer().notNull().default(0),
-    createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
-    updatedAt: timestamp('updated_at', { withTimezone: true })
-      .notNull()
-      .defaultNow()
-      .$onUpdate(() => new Date()),
+    createdAt: createdAt(),
+    updatedAt: updatedAt(),
   },
   (t) => [index('idx_board_org_position').on(t.orgId, t.position)],
 )
@@ -94,9 +89,7 @@ export const post = pgTable(
   'post',
   {
     sourceConversationId: uuid('source_conversation_id'),
-    id: uuid()
-      .primaryKey()
-      .$defaultFn(() => uuidv7()),
+    id: uuidPrimaryKey(),
     orgId: text('org_id').notNull(),
     boardId: uuid('board_id'),
     authorId: text('author_id').notNull(),
@@ -109,11 +102,8 @@ export const post = pgTable(
     commentCount: integer('comment_count').notNull().default(0),
     mergedTo: uuid('merged_to'),
     contentHash: varchar('content_hash', { length: 64 }),
-    createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
-    updatedAt: timestamp('updated_at', { withTimezone: true })
-      .notNull()
-      .defaultNow()
-      .$onUpdate(() => new Date()),
+    createdAt: createdAt(),
+    updatedAt: updatedAt(),
   },
   (t) => [
     foreignKey({
@@ -150,9 +140,7 @@ export const post = pgTable(
 export const comment = pgTable(
   'comment',
   {
-    id: uuid()
-      .primaryKey()
-      .$defaultFn(() => uuidv7()),
+    id: uuidPrimaryKey(),
     postId: uuid('post_id').notNull(),
     parentId: uuid('parent_id'),
     replyToId: uuid('reply_to_id'),
@@ -163,11 +151,8 @@ export const comment = pgTable(
     type: varchar({ length: 20 }).notNull().default('comment'),
     metadata: jsonb(),
     editedAt: timestamp('edited_at', { withTimezone: true }),
-    createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
-    updatedAt: timestamp('updated_at', { withTimezone: true })
-      .notNull()
-      .defaultNow()
-      .$onUpdate(() => new Date()),
+    createdAt: createdAt(),
+    updatedAt: updatedAt(),
   },
   (t) => [
     // Top-level comments sorted by time (newest/oldest)
@@ -184,20 +169,12 @@ export const commentLike = pgTable(
   {
     commentId: uuid('comment_id').notNull(),
     userId: text('user_id').notNull(),
-    createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
+    createdAt: createdAt(),
   },
   (t) => [primaryKey({ columns: [t.commentId, t.userId] })],
 )
 
-export const vote = pgTable(
-  'vote',
-  {
-    postId: uuid('post_id').notNull(),
-    userId: text('user_id').notNull(),
-    createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
-  },
-  (t) => [primaryKey({ columns: [t.postId, t.userId] })],
-)
+export const vote = pgTable('vote', postUserColumns(), postUserPrimaryKey)
 
 export const postEmbedding = pgTable(
   'post_embedding',
@@ -209,7 +186,7 @@ export const postEmbedding = pgTable(
     embedding: vector('embedding', { dimensions: 768 }).notNull(),
     model: varchar({ length: 50 }).notNull(),
     contentHash: varchar('content_hash', { length: 64 }).notNull(),
-    createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
+    createdAt: createdAt(),
   },
   (t) => [index('idx_post_embedding_org').on(t.orgId)],
 )
@@ -229,9 +206,7 @@ export const postSearch = pgTable(
 export const changelog = pgTable(
   'changelog',
   {
-    id: uuid()
-      .primaryKey()
-      .$defaultFn(() => uuidv7()),
+    id: uuidPrimaryKey(),
     orgId: text('org_id').notNull(),
     authorId: text('author_id').notNull(),
     slug: varchar({ length: 300 }).notNull(),
@@ -245,11 +220,8 @@ export const changelog = pgTable(
     publishedCategories: jsonb('published_categories').$type<string[]>(),
     publishedCover: text('published_cover'),
     publishedAt: timestamp('published_at', { withTimezone: true }),
-    createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
-    updatedAt: timestamp('updated_at', { withTimezone: true })
-      .notNull()
-      .defaultNow()
-      .$onUpdate(() => new Date()),
+    createdAt: createdAt(),
+    updatedAt: updatedAt(),
   },
   (t) => [
     // Public list: cursor pagination by published_at DESC
@@ -274,7 +246,7 @@ export const changelogReaction = pgTable(
     changelogId: uuid('changelog_id').notNull(),
     userId: text('user_id').notNull(),
     emoji: varchar({ length: 10 }).notNull(),
-    createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
+    createdAt: createdAt(),
   },
   (t) => [primaryKey({ columns: [t.changelogId, t.userId, t.emoji] })],
 )

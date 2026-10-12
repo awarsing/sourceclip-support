@@ -113,9 +113,19 @@ export async function deliverToRecipients(
   }
 }
 
+// The actor is the same for every recipient — resolve once for the email.
+async function actorPayload(actorId: string, snippet: string): Promise<NotificationPayload> {
+  const rows = await useDB()
+    .select({ name: user.name, image: user.image })
+    .from(user)
+    .where(eq(user.id, actorId))
+    .limit(1)
+  const { name, image } = rows[0] ?? { name: null, image: null }
+  return { snippet: snippet.slice(0, 280), actorName: name ?? undefined, actorImage: image }
+}
+
 // Comment path — resolve and deliver in one go; the caller doesn't need a count.
 async function emitAdminReply(input: CommentEmitInput): Promise<void> {
-  const db = useDB()
   const { slug: orgSlug, brandColor } = await resolveOrgBranding(input.orgId)
   if (!orgSlug) {
     console.error(`[notifications] no org slug, skipping org=${input.orgId}`)
@@ -124,23 +134,13 @@ async function emitAdminReply(input: CommentEmitInput): Promise<void> {
   const recipients = await resolvePostThreadRecipients(input.orgId, input.postId, input.actorId, input.notifyVoters)
   if (recipients.length === 0) return
 
-  // Actor is the same for every recipient — resolve once for the email.
-  const [actor] = await db
-    .select({ name: user.name, image: user.image })
-    .from(user)
-    .where(eq(user.id, input.actorId))
-    .limit(1)
   await deliverToRecipients(
     input.orgId,
     orgSlug,
     brandColor,
     recipients,
     'post.admin_replied',
-    {
-      snippet: input.snippet.slice(0, 280),
-      actorName: actor?.name ?? undefined,
-      actorImage: actor?.image ?? null,
-    },
+    await actorPayload(input.actorId, input.snippet),
     input.requestOrigin,
   )
 }
@@ -175,7 +175,6 @@ export async function resolveOrgAdminRecipients(orgId: string, actorId: string) 
 }
 
 export async function emitAdminNotification(input: AdminEmitInput): Promise<void> {
-  const db = useDB()
   const { slug: orgSlug, brandColor } = await resolveOrgBranding(input.orgId)
   if (!orgSlug) {
     console.error(`[notifications] no org slug, skipping org=${input.orgId}`)
@@ -184,16 +183,7 @@ export async function emitAdminNotification(input: AdminEmitInput): Promise<void
   const recipients = await resolveOrgAdminRecipients(input.orgId, input.actorId)
   if (recipients.length === 0) return
 
-  const [actor] = await db
-    .select({ name: user.name, image: user.image })
-    .from(user)
-    .where(eq(user.id, input.actorId))
-    .limit(1)
-  const payload: NotificationPayload = {
-    snippet: input.snippet.slice(0, 280),
-    actorName: actor?.name ?? undefined,
-    actorImage: actor?.image ?? null,
-  }
+  const payload = await actorPayload(input.actorId, input.snippet)
   for (const r of recipients) {
     await sendNotification({
       orgId: input.orgId,

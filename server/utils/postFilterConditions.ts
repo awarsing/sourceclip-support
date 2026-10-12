@@ -1,5 +1,5 @@
 import { and, eq, gte, inArray, isNotNull, isNull, lt, notInArray, or, type SQL } from 'drizzle-orm'
-import { post } from '#layers/feedlog/server/db/schemas'
+import { post } from '../db/schemas'
 
 // Filter conditions shared by the three post query paths: the admin list, the
 // keyword-search fallback, and the semantic search.

@@ -1,7 +1,7 @@
 import slugify from 'slugify'
 import { nanoid } from 'nanoid'
 import { eq } from 'drizzle-orm'
-import { post, changelog } from '#layers/feedlog/server/db/schemas'
+import { post, changelog } from '../db/schemas'
 
 type SlugExistsCheck = (slug: string) => Promise<boolean>
 

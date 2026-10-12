@@ -142,13 +142,6 @@ export const invitation = pgTable(
   (table) => [index('invitation_org_idx').on(table.organizationId), index('invitation_email_idx').on(table.email)],
 )
 
-export const userRelations = relations(user, ({ many }) => ({
-  sessions: many(session),
-  accounts: many(account),
-  members: many(member),
-  invitationsSent: many(invitation),
-}))
-
 export const sessionRelations = relations(session, ({ one }) => ({
   user: one(user, {
     fields: [session.userId],

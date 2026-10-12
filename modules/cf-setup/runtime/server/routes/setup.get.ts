@@ -1,4 +1,5 @@
 import { resolveState } from '../utils/migration-state'
+import { assertCloudflare } from '../utils/preset'
 
 // Serve /setup as a self-contained HTML document so it works on the very
 // first request — before any Nuxt client bundle has loaded, before there's
@@ -225,13 +226,8 @@ function safeRedirectTarget(event: Parameters<typeof getQuery>[0]): string {
   return candidate.startsWith('/') && !candidate.startsWith('//') ? candidate : '/'
 }
 
-function isCloudflare(): boolean {
-  const p = import.meta.preset
-  return p === 'cloudflare-module' || p === 'cloudflare-pages'
-}
-
 export default defineEventHandler(async (event) => {
-  if (!isCloudflare()) throw createError({ statusCode: 404 })
+  assertCloudflare()
   const snapshot = await resolveState()
   if (snapshot.state === 'migrated') {
     return sendRedirect(event, safeRedirectTarget(event), 302)

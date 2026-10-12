@@ -147,39 +147,31 @@ interface AiOutput {
   suggested_tags: string[]
 }
 
-export function parseAiResponse(raw: string): AiOutput {
-  // Layer 1: direct parse
+function tryParseAiOutput(text: string | undefined): AiOutput | null {
+  if (!text) return null
   try {
-    const obj = JSON.parse(raw) as AiOutput
-    if (validateAiOutput(obj)) return obj
+    const obj: unknown = JSON.parse(text)
+    return validateAiOutput(obj) ? obj : null
   } catch {
-    /* fall through */
+    return null
   }
+}
 
-  // Layer 2: strip ```json fence
-  const fenceMatch = raw.match(/```(?:json)?\s*([\s\S]*?)\s*```/)
-  if (fenceMatch?.[1]) {
-    try {
-      const obj = JSON.parse(fenceMatch[1]) as AiOutput
-      if (validateAiOutput(obj)) return obj
-    } catch {
-      /* fall through */
-    }
-  }
-
-  // Layer 3: first '{' to last '}'
+// The text from the first '{' to the last '}', if there is one.
+function outermostBraces(raw: string): string | undefined {
   const firstBrace = raw.indexOf('{')
   const lastBrace = raw.lastIndexOf('}')
-  if (firstBrace !== -1 && lastBrace > firstBrace) {
-    const sub = raw.slice(firstBrace, lastBrace + 1)
-    try {
-      const obj = JSON.parse(sub) as AiOutput
-      if (validateAiOutput(obj)) return obj
-    } catch {
-      /* fall through */
-    }
-  }
+  return firstBrace !== -1 && lastBrace > firstBrace ? raw.slice(firstBrace, lastBrace + 1) : undefined
+}
 
+// Tries the raw text, then the inside of a ```json fence, then the outermost
+// braces.
+export function parseAiResponse(raw: string): AiOutput {
+  const candidates = [raw, raw.match(/```(?:json)?\s*([\s\S]*?)\s*```/)?.[1], outermostBraces(raw)]
+  for (const candidate of candidates) {
+    const output = tryParseAiOutput(candidate)
+    if (output) return output
+  }
   throw createError({ statusCode: 502, message: 'AI returned invalid response format' })
 }
 

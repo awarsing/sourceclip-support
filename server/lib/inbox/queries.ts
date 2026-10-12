@@ -3,6 +3,7 @@ import { z } from 'zod'
 import { agentError, transaction } from '../agent/runtime'
 import type { listInput, pageInput } from '../../../shared/inbox/schemas'
 import { conversationResult, type InboxRuntime, type ConversationRow } from './service'
+import { readItemPage } from './item-page'
 
 export async function listConversations(runtime: InboxRuntime, orgId: string, input: z.infer<typeof listInput>) {
   const signature = createHash('sha256')
@@ -82,13 +83,16 @@ export async function readInbox(runtime: InboxRuntime, orgId: string, id: string
         'SELECT id,name,image,coalesce(is_anonymous,false) AS "isAnonymous",CASE WHEN is_anonymous IS TRUE THEN NULL ELSE email END AS email FROM "user" WHERE id=$1',
         [row.user_id],
       )
-      const ascending = page.afterSeq !== undefined
-      const { rows } = await client.query(
-        `SELECT i.*,u.name AS author_name,u.image AS author_image,u.is_anonymous AS author_is_anonymous FROM conversation_item i LEFT JOIN "user" u ON u.id=i.author_user_id WHERE i.conversation_id=$1 AND ($2::bigint IS NULL OR i.seq${ascending ? '>' : '<'}$2) ORDER BY i.seq ${ascending ? 'ASC' : 'DESC'} LIMIT $3`,
-        [id, page.afterSeq ?? page.beforeSeq ?? null, page.limit + 1],
+      const { items, nextBeforeSeq, nextAfterSeq, hasMore } = await readItemPage(
+        client,
+        id,
+        page,
+        {
+          columns: 'u.name AS author_name,u.image AS author_image,u.is_anonymous AS author_is_anonymous',
+          on: 'u.id=i.author_user_id',
+        },
+        Number(row.last_seq),
       )
-      const items = rows.slice(0, page.limit)
-      if (!ascending) items.reverse()
       const { rows: emailTasks } = await client.query(
         `SELECT item_id,status,result,manual_retry,delivery_mode FROM scheduled_task
         WHERE kind='inbox_email' AND ref_id=$1`,
@@ -124,9 +128,9 @@ export async function readInbox(runtime: InboxRuntime, orgId: string, id: string
           agentRunId: item.agent_run_id,
           createdAt: item.created_at,
         })),
-        nextBeforeSeq: !ascending && rows.length > page.limit ? Number(items[0].seq) : null,
-        nextAfterSeq: items.length ? Number(items.at(-1).seq) : (page.afterSeq ?? Number(row.last_seq)),
-        hasMore: rows.length > page.limit,
+        nextBeforeSeq,
+        nextAfterSeq,
+        hasMore,
       }
     },
     true,

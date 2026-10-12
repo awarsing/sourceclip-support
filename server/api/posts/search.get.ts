@@ -1,5 +1,5 @@
-import { eq, and, isNull, inArray, sql } from 'drizzle-orm'
-import { post, postSearch, user, vote } from '#layers/feedlog/server/db/schemas'
+import { eq, and, isNull, sql } from 'drizzle-orm'
+import { post, postSearch, user } from '#layers/feedlog/server/db/schemas'
 
 // GET /api/posts/search?q=&limit= — Public semantic search over an org's feedback.
 //
@@ -37,22 +37,7 @@ export default defineEventHandler(async (event) => {
     // searchSimilarByTrgm — whole-string `<->` distance, no threshold,
     // global across boards. post_search is sync-written on post create/update.
     rows = await db
-      .select({
-        id: post.id,
-        slug: post.slug,
-        title: post.title,
-        excerpt: post.excerpt,
-        status: post.status,
-        boardId: post.boardId,
-        voteCount: post.voteCount,
-        commentCount: post.commentCount,
-        mergedCount: sql<number>`(SELECT count(*)::int FROM post p2 WHERE p2.merged_to = ${post.id})`,
-        authorId: post.authorId,
-        authorName: user.name,
-        authorImage: user.image,
-        authorIsAnonymous: user.isAnonymous,
-        createdAt: post.createdAt,
-      })
+      .select(postListColumns)
       .from(post)
       .innerJoin(postSearch, eq(post.id, postSearch.postId))
       .leftJoin(user, eq(post.authorId, user.id))
@@ -62,15 +47,13 @@ export default defineEventHandler(async (event) => {
   }
 
   // Batch hasVoted when authenticated (same pattern as GET /api/posts).
-  let votedPostIds = new Set<string>()
-  if (session && rows.length > 0) {
-    const ids = rows.map((r) => r.id)
-    const votes = await db
-      .select({ postId: vote.postId })
-      .from(vote)
-      .where(and(eq(vote.userId, session.user.id), inArray(vote.postId, ids)))
-    votedPostIds = new Set(votes.map((v) => v.postId))
-  }
+  const voted = session
+    ? await findVotedPostIds(
+        db,
+        session.user.id,
+        rows.map((r) => r.id),
+      )
+    : new Set<string>()
 
   const data: PostListItem[] = rows.map((r) => ({
     id: r.id,
@@ -82,7 +65,7 @@ export default defineEventHandler(async (event) => {
     voteCount: r.voteCount,
     commentCount: r.commentCount,
     mergedCount: r.mergedCount,
-    hasVoted: votedPostIds.has(r.id),
+    hasVoted: voted.has(r.id),
     author: { id: r.authorId, name: r.authorName, image: r.authorImage, isAnonymous: !!r.authorIsAnonymous },
     createdAt: r.createdAt.toISOString(),
   }))

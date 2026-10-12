@@ -40,23 +40,27 @@ function initialize(connectionString: string, worker = false) {
 export type AgentRuntime = ReturnType<typeof initialize>
 let nodeRuntime: AgentRuntime | undefined
 
-export function agentRuntime(event: H3Event): AgentRuntime {
-  if (import.meta.preset === 'cloudflare-module' || import.meta.preset === 'cloudflare-pages') {
-    // Hyperdrive sockets belong to one Worker invocation.
-    if (!event.context.feedlogAgentRuntime) {
-      const binding =
-        (
-          globalThis as typeof globalThis & {
-            __env__?: { POSTGRES?: { connectionString: string } }
-            POSTGRES?: { connectionString: string }
-          }
-        ).__env__?.POSTGRES || (globalThis as typeof globalThis & { POSTGRES?: { connectionString: string } }).POSTGRES
-      if (!binding) throw new Error('POSTGRES Hyperdrive binding not found')
-      event.context.feedlogAgentRuntime = initialize(binding.connectionString, true)
-    }
-    return requestRuntime(event, event.context.feedlogAgentRuntime)
+const onCloudflare = () => import.meta.preset === 'cloudflare-module' || import.meta.preset === 'cloudflare-pages'
+
+function hyperdriveConnectionString(): string {
+  const scope = globalThis as typeof globalThis & {
+    __env__?: { POSTGRES?: { connectionString: string } }
+    POSTGRES?: { connectionString: string }
   }
-  return requestRuntime(event, (nodeRuntime ??= initialize(process.env.DATABASE_URL!)))
+  const binding = scope.__env__?.POSTGRES || scope.POSTGRES
+  if (!binding) throw new Error('POSTGRES Hyperdrive binding not found')
+  return binding.connectionString
+}
+
+// Hyperdrive sockets belong to one Worker invocation.
+function invocationRuntime(event: H3Event): AgentRuntime {
+  event.context.feedlogAgentRuntime ||= initialize(hyperdriveConnectionString(), true)
+  return event.context.feedlogAgentRuntime
+}
+
+export function agentRuntime(event: H3Event): AgentRuntime {
+  const runtime = onCloudflare() ? invocationRuntime(event) : (nodeRuntime ??= initialize(process.env.DATABASE_URL!))
+  return requestRuntime(event, runtime)
 }
 
 function requestRuntime(event: H3Event, runtime: AgentRuntime): AgentRuntime {

@@ -7,10 +7,12 @@ import { dirname, join } from 'node:path'
 const SOURCE = 'en'
 const localesDir = join(dirname(fileURLToPath(import.meta.url)), '..', 'i18n', 'locales')
 
+const isNested = (v) => Boolean(v) && typeof v === 'object' && !Array.isArray(v)
+
 function flatten(obj, prefix = '', out = {}) {
   for (const [k, v] of Object.entries(obj)) {
     const key = prefix ? `${prefix}.${k}` : k
-    if (v && typeof v === 'object' && !Array.isArray(v)) flatten(v, key, out)
+    if (isNested(v)) flatten(v, key, out)
     else out[key] = true
   }
   return out
