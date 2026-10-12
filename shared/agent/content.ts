@@ -126,7 +126,6 @@ interface Conversation {
   unread: boolean
   handling?: 'ai' | 'human' | 'closed'
 }
-// fallow-ignore-next-line unused-type -- imported by app/components/WidgetEmbed/WidgetEmbedChat.vue through the #layers/feedlog alias, which Fallow does not resolve in Vue SFCs
 export interface Detail {
   conversation: Conversation
   items: Item[]

@@ -3,7 +3,6 @@ export type WidgetLauncherAlignment = (typeof WIDGET_LAUNCHER_ALIGNMENTS)[number
 
 // fallow-ignore-next-line unused-export -- imported by app/pages/dashboard/settings/widget.vue through the #layers/feedlog alias, which Fallow does not resolve in Vue SFCs
 export const WIDGET_LAUNCHER_ALIGNMENT_DEFAULT: WidgetLauncherAlignment = 'right'
-// fallow-ignore-next-line unused-export -- imported by app/pages/dashboard/settings/widget.vue and WidgetLauncherPreview.vue through the #layers/feedlog alias, which Fallow does not resolve in Vue SFCs
 export const WIDGET_LAUNCHER_OFFSET_DEFAULT = 20
 export const WIDGET_LAUNCHER_OFFSET_MIN = 0
 
