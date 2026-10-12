@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import type { SimilarPost } from '#layers/feedlog/server/utils/similar'
-import { apiErrorMessage, mergeBody } from './-post-logic'
+import { apiErrorMessage } from '~/lib/form-errors'
+import { mergeBody } from './-post-logic'
 
 const props = defineProps<{
   postId: string

@@ -2,7 +2,7 @@
 import { toast } from 'vue-sonner'
 import type { HelpArticleStatus, HelpCollectionIcon } from '#layers/feedlog/shared/constants/help'
 import '~/assets/css/help-article.css'
-import { apiErrorMessage } from '../post/-post-logic'
+import { apiErrorMessage } from '~/lib/form-errors'
 import {
   articleContentBody,
   articleForm,

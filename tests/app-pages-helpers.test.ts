@@ -2,7 +2,7 @@ import { strict as assert } from 'node:assert'
 import { test } from 'node:test'
 import type { FilterCondition } from '../app/composables/useFeedbackFilters'
 import { adminStatusBadge, adminTypeBadgeClass, categoryBadgeClass, formatListDate } from '../app/lib/pages/changelog'
-import { errorStatus } from '../app/lib/pages/http'
+import { errorStatus } from '../app/lib/form-errors'
 import { acceptFailure, inviteState } from '../app/lib/pages/invite'
 import {
   formatExpiresIn,
@@ -12,7 +12,7 @@ import {
   parseInviteEmails,
   roleChangeAllowed,
 } from '../app/lib/pages/members'
-import { PASSWORD_MIN_LENGTH, passwordProblem } from '../app/lib/pages/password'
+import { newPasswordProblem, PASSWORD_MIN_LENGTH } from '../app/lib/auth-forms'
 import { isDefiniteFailure, readBackState, saveStatus } from '../app/lib/pages/personal'
 import {
   applyBoardPostUpdate,
@@ -106,11 +106,11 @@ test('members helpers parse invites, format expiry and guard the last owner', ()
   })
 })
 
-test('passwordProblem reports a mismatch before a short password', () => {
+test('newPasswordProblem reports a mismatch before a short password', () => {
   const long = 'x'.repeat(PASSWORD_MIN_LENGTH)
-  assert.equal(passwordProblem('short', 'other'), 'auth.errors.passwordsMismatch')
-  assert.equal(passwordProblem('short', 'short'), 'auth.errors.passwordTooShort')
-  assert.equal(passwordProblem(long, long), null)
+  assert.equal(newPasswordProblem('short', 'other'), 'auth.errors.passwordsMismatch')
+  assert.equal(newPasswordProblem('short', 'short'), 'auth.errors.passwordTooShort')
+  assert.equal(newPasswordProblem(long, long), null)
 })
 
 test('personal preference save states', () => {

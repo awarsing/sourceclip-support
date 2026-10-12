@@ -18,7 +18,7 @@ export interface InboxCustomer {
   isAnonymous: boolean
   email?: string | null
 }
-interface InboxMessage extends Item {
+export interface InboxMessage extends Item {
   author: { id: string; name: string | null; image: string | null; isAnonymous: boolean } | null
 }
 export interface InboxDetail {

@@ -108,31 +108,28 @@ async function onSubmit() {
 
       <form v-else class="space-y-4" @submit.prevent="onSubmit">
         <!-- Current password (only for users who already have one) -->
-        <div v-if="hasPassword" class="space-y-2">
-          <label class="text-sm font-medium" for="current-password">{{ $t('auth.fields.current') }}</label>
-          <PasswordInput id="current-password" v-model="form.currentPassword" v-model:visible="showCurrentPassword" />
-        </div>
-
-        <div class="space-y-2">
-          <label class="text-sm font-medium" for="new-password">{{ $t('auth.fields.new') }}</label>
-          <PasswordInput
-            id="new-password"
-            v-model="form.newPassword"
-            v-model:visible="showNewPassword"
-            :placeholder="$t('auth.passwordMinHint')"
-            :minlength="PASSWORD_MIN_LENGTH"
-          />
-        </div>
-
-        <div class="space-y-2">
-          <label class="text-sm font-medium" for="confirm-password">{{ $t('auth.fields.confirm') }}</label>
-          <PasswordInput
-            id="confirm-password"
-            v-model="form.confirmPassword"
-            v-model:visible="showConfirmPassword"
-            :minlength="PASSWORD_MIN_LENGTH"
-          />
-        </div>
+        <PasswordField
+          v-if="hasPassword"
+          id="current-password"
+          v-model="form.currentPassword"
+          v-model:visible="showCurrentPassword"
+          :label="$t('auth.fields.current')"
+        />
+        <PasswordField
+          id="new-password"
+          v-model="form.newPassword"
+          v-model:visible="showNewPassword"
+          :label="$t('auth.fields.new')"
+          :placeholder="$t('auth.passwordMinHint')"
+          :minlength="PASSWORD_MIN_LENGTH"
+        />
+        <PasswordField
+          id="confirm-password"
+          v-model="form.confirmPassword"
+          v-model:visible="showConfirmPassword"
+          :label="$t('auth.fields.confirm')"
+          :minlength="PASSWORD_MIN_LENGTH"
+        />
 
         <FormSubmitButton :loading="loading">{{ $t(copy.submit) }}</FormSubmitButton>
         <p class="text-center">

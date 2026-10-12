@@ -12,15 +12,6 @@ export function postEditError(title: string, content: string): string | null {
   return null
 }
 
-/** The server's message for a failed request, or the fallback when it sent none. */
-export function apiErrorMessage(error: unknown, fallback: string): string {
-  return (error as { data?: { message?: string } } | null)?.data?.message || fallback
-}
-
-export function statusCodeOf(error: unknown): number | undefined {
-  return (error as { statusCode?: number } | null)?.statusCode
-}
-
 /** `bring` merges the other post into this one; `push` merges this one into the other. */
 export function mergeBody(direction: MergeDirection, currentId: string, otherId: string) {
   return direction === 'bring'

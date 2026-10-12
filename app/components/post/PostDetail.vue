@@ -1,14 +1,13 @@
 <script setup lang="ts">
 import '~/assets/css/md-editor-preview.css'
 import { toast } from 'vue-sonner'
+import { apiErrorMessage, errorStatus } from '~/lib/form-errors'
 import {
-  apiErrorMessage,
   findComment,
   mergeBody,
   postEditError,
   replyIds,
   replyTargetFor,
-  statusCodeOf,
   statusNotifyBody,
   type MergeDirection,
 } from './-post-logic'
@@ -184,7 +183,7 @@ async function sendStatusNotification(note: string) {
 
 function reportNotifyFailure(err: unknown) {
   // 409 = status changed under the admin between the write and the send.
-  if (statusCodeOf(err) === 409) {
+  if (errorStatus(err) === 409) {
     console.error('[notifications] status changed by someone else')
   }
 }

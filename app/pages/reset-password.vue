@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { toast } from 'vue-sonner'
-import { PASSWORD_MIN_LENGTH, passwordProblem } from '~/lib/pages/password'
+import { newPasswordProblem, PASSWORD_MIN_LENGTH } from '~/lib/auth-forms'
 
 const { resetPassword } = useAuth()
 const { t } = useI18n()
@@ -27,7 +27,7 @@ function reportResetError(error: { message?: string }) {
 
 async function onSubmit() {
   if (!token.value) return
-  const problem = passwordProblem(form.newPassword, form.confirmPassword)
+  const problem = newPasswordProblem(form.newPassword, form.confirmPassword)
   if (problem) {
     toast.error(t(problem))
     return

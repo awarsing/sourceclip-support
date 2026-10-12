@@ -3,7 +3,7 @@ import { NormalToolbar } from 'md-editor-v3'
 import '~/assets/css/md-editor-preview.css'
 import { sanitizeAttachmentHtml, resolveAttachmentUrl } from '~/utils/attachment'
 import { toast } from 'vue-sonner'
-import { apiErrorMessage } from '../post/-post-logic'
+import { apiErrorMessage } from '~/lib/form-errors'
 import { changelogBody, hasTitleAndContent, toggleCategory, typeIcon, typeToggleClass } from './-changelog-logic'
 
 const props = defineProps<{

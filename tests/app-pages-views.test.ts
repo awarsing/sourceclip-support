@@ -12,7 +12,7 @@ import {
   withoutId,
 } from '../app/lib/pages/help'
 import { activeHeading, createAnchorIds, headingSlug, tocItemClass } from '../app/lib/pages/help-article'
-import { apiErrorMessage } from '../app/lib/pages/http'
+import { apiErrorMessage } from '../app/lib/form-errors'
 import { navGroupClasses, navGroupVisibility } from '../app/lib/pages/layout'
 import {
   canRestore,

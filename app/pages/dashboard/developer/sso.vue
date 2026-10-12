@@ -2,7 +2,7 @@
 import { toast } from 'vue-sonner'
 import type { SsoSecret } from '~/composables/useSsoSecrets'
 import { SSO_SECRET_LIMIT } from '~~/shared/constants/sso'
-import { apiErrorMessage } from '~/lib/pages/http'
+import { apiErrorMessage } from '~/lib/form-errors'
 
 // /dashboard/settings/sso — manage product-SSO signing secrets + integration
 // guide. Owner-only (the API enforces it too); other staff see a notice.

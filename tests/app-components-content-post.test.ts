@@ -1,8 +1,8 @@
 import { strict as assert } from 'node:assert'
 import { test } from 'node:test'
 import type { CommentItem } from '../shared/types/comment'
+import { apiErrorMessage, errorStatus } from '../app/lib/form-errors'
 import {
-  apiErrorMessage,
   findComment,
   mergeBody,
   postEditError,
@@ -11,7 +11,6 @@ import {
   similarSearchBody,
   similarSearchDelay,
   statusBadgeStyle,
-  statusCodeOf,
   statusCssVar,
   statusNotifyBody,
   submitDefaults,
@@ -43,8 +42,8 @@ test('prefers the server message for a failed request', () => {
   assert.equal(apiErrorMessage({ data: { message: '' } }, 'fallback'), 'fallback')
   assert.equal(apiErrorMessage({}, 'fallback'), 'fallback')
   assert.equal(apiErrorMessage(null, 'fallback'), 'fallback')
-  assert.equal(statusCodeOf({ statusCode: 409 }), 409)
-  assert.equal(statusCodeOf(undefined), undefined)
+  assert.equal(errorStatus({ statusCode: 409 }), 409)
+  assert.equal(errorStatus(undefined), undefined)
 })
 
 test('builds merge bodies for both directions', () => {

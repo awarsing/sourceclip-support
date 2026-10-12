@@ -30,7 +30,7 @@ import {
   uploadRejection,
   visibleTimelineItems,
 } from '~/lib/pages/inbox'
-import { errorStatus } from '~/lib/pages/http'
+import { errorStatus } from '~/lib/form-errors'
 
 interface CommandContext {
   id: string

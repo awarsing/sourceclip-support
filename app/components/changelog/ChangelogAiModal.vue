@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { onClickOutside } from '@vueuse/core'
-import { apiErrorMessage } from '../post/-post-logic'
+import { apiErrorMessage } from '~/lib/form-errors'
 import { canGenerateChangelog } from './-changelog-logic'
 
 const props = defineProps<{

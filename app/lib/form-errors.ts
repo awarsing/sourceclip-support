@@ -23,3 +23,8 @@ export function authErrorMessage(
 export function apiErrorMessage(error: unknown, fallback: string): string {
   return (error as { data?: { message?: string } } | null)?.data?.message || fallback
 }
+
+// The HTTP status carried by a failed $fetch call, if any.
+export function errorStatus(error: unknown): number | undefined {
+  return (error as { statusCode?: number } | null)?.statusCode
+}

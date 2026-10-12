@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { HELP_COLLECTION_ICONS, HELP_COLLECTION_ICON_DEFAULT } from '#layers/feedlog/shared/constants/help'
 import type { HelpCollectionIcon } from '#layers/feedlog/shared/constants/help'
-import { apiErrorMessage } from '../post/-post-logic'
+import { apiErrorMessage } from '~/lib/form-errors'
 import { collectionBody, collectionFormValues } from './-help-logic'
 
 // fallow-ignore-next-line unused-type -- imported by app/pages/dashboard/help/index.vue through the #layers/feedlog alias, which Fallow does not resolve for .vue type imports

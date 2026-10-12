@@ -2,7 +2,8 @@
 import '~/assets/css/md-editor-preview.css'
 import { preventShadcnDialogClose } from '~/lib/md-editor-helper'
 import { sanitizeAttachmentHtml } from '~/utils/attachment'
-import { apiErrorMessage, similarSearchBody, similarSearchDelay, submitDefaults, submitError } from './-post-logic'
+import { apiErrorMessage } from '~/lib/form-errors'
+import { similarSearchBody, similarSearchDelay, submitDefaults, submitError } from './-post-logic'
 
 const props = defineProps<{
   defaultBoardId?: string

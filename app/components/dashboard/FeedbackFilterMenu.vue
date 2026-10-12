@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import type { FilterValueOption } from '../shared/FilterValuePanel.vue'
+import type { FilterValueOption } from '~/lib/filter-values'
 import { blankCondition, conditionBinding, type FilterFieldKey, upsertCondition, valuesPatch } from '~/lib/pages/posts'
 
 export interface FeedbackFieldDef {

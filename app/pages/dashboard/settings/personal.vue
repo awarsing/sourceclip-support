@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import type { MemberPreferenceResponse } from '#layers/feedlog/shared/schemas/member-preference'
-import { errorStatus } from '~/lib/pages/http'
+import { errorStatus } from '~/lib/form-errors'
 import { isDefiniteFailure, type PreferenceState, readBackState } from '~/lib/pages/personal'
 
 // Keep the email destination during sign-in; the shared login modal stays on this URL.
