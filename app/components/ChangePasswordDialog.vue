@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { toast } from 'vue-sonner'
+import { PASSWORD_MIN_LENGTH, passwordProblem } from '~/lib/pages/password'
 
 const { changePassword, listAccounts } = useAuth()
 const { t } = useI18n()
@@ -43,12 +44,9 @@ function resetForm() {
 }
 
 async function onSubmit() {
-  if (form.newPassword !== form.confirmPassword) {
-    toast.error(t('auth.errors.passwordsMismatch'))
-    return
-  }
-  if (form.newPassword.length < 8) {
-    toast.error(t('auth.errors.passwordTooShort'))
+  const problem = passwordProblem(form.newPassword, form.confirmPassword)
+  if (problem) {
+    toast.error(t(problem))
     return
   }
 
@@ -104,68 +102,29 @@ async function onSubmit() {
 
       <form v-else class="space-y-4" @submit.prevent="onSubmit">
         <!-- Current password (only for users who already have one) -->
-        <div v-if="hasPassword" class="space-y-2">
-          <label class="text-sm font-medium" for="current-password">{{ $t('auth.fields.current') }}</label>
-          <div class="relative">
-            <Input
-              id="current-password"
-              v-model="form.currentPassword"
-              :type="showCurrentPassword ? 'text' : 'password'"
-              required
-              class="pr-10"
-            />
-            <button
-              type="button"
-              class="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
-              @click="showCurrentPassword = !showCurrentPassword"
-            >
-              <Icon :name="showCurrentPassword ? 'lucide:eye-off' : 'lucide:eye'" size="16" />
-            </button>
-          </div>
-        </div>
+        <PasswordField
+          v-if="hasPassword"
+          id="current-password"
+          v-model="form.currentPassword"
+          v-model:visible="showCurrentPassword"
+          :label="$t('auth.fields.current')"
+        />
 
-        <div class="space-y-2">
-          <label class="text-sm font-medium" for="new-password">{{ $t('auth.fields.new') }}</label>
-          <div class="relative">
-            <Input
-              id="new-password"
-              v-model="form.newPassword"
-              :type="showNewPassword ? 'text' : 'password'"
-              :placeholder="$t('auth.passwordMinHint')"
-              required
-              minlength="8"
-              class="pr-10"
-            />
-            <button
-              type="button"
-              class="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
-              @click="showNewPassword = !showNewPassword"
-            >
-              <Icon :name="showNewPassword ? 'lucide:eye-off' : 'lucide:eye'" size="16" />
-            </button>
-          </div>
-        </div>
-
-        <div class="space-y-2">
-          <label class="text-sm font-medium" for="confirm-password">{{ $t('auth.fields.confirm') }}</label>
-          <div class="relative">
-            <Input
-              id="confirm-password"
-              v-model="form.confirmPassword"
-              :type="showConfirmPassword ? 'text' : 'password'"
-              required
-              minlength="8"
-              class="pr-10"
-            />
-            <button
-              type="button"
-              class="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
-              @click="showConfirmPassword = !showConfirmPassword"
-            >
-              <Icon :name="showConfirmPassword ? 'lucide:eye-off' : 'lucide:eye'" size="16" />
-            </button>
-          </div>
-        </div>
+        <PasswordField
+          id="new-password"
+          v-model="form.newPassword"
+          v-model:visible="showNewPassword"
+          :label="$t('auth.fields.new')"
+          :placeholder="$t('auth.passwordMinHint')"
+          :minlength="PASSWORD_MIN_LENGTH"
+        />
+        <PasswordField
+          id="confirm-password"
+          v-model="form.confirmPassword"
+          v-model:visible="showConfirmPassword"
+          :label="$t('auth.fields.confirm')"
+          :minlength="PASSWORD_MIN_LENGTH"
+        />
 
         <Button type="submit" class="w-full" size="lg" :disabled="loading">
           <Spinner v-if="loading" class="mr-2 size-4" />
