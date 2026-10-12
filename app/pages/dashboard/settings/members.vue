@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { toast } from 'vue-sonner'
 import { authClient } from '~/lib/auth-client'
+import { inviteToast, isLastOwner, type MemberRole, parseInviteEmails, roleChangeAllowed } from '~/lib/pages/members'
 
 // /dashboard/settings/members — list members + pending invitations.
 // Backed by better-auth organization plugin's listMembers / listInvitations
@@ -16,7 +17,7 @@ const canManage = computed(() => ctx.value.role === 'owner' || ctx.value.role ==
 const canPromoteToOwner = computed(() => ctx.value.role === 'owner')
 const { t } = useI18n()
 
-type Role = 'owner' | 'manager' | 'contributor'
+type Role = MemberRole
 
 interface MemberView {
   id: string
@@ -104,13 +105,9 @@ const { data: authCfg } = await useFetch<{ emailProvider?: boolean }>('/api/auth
   default: () => ({ emailProvider: false }),
 })
 const emailConfigured = computed(() => !!authCfg.value?.emailProvider)
-const currentInviteRole = computed(() => roleOptions.value.find((r) => r.key === inviteRole.value)!)
 
 async function sendInvite() {
-  const emails = inviteEmails.value
-    .split(/[,;\n\s]+/)
-    .map((s) => s.trim())
-    .filter(Boolean)
+  const emails = parseInviteEmails(inviteEmails.value)
   if (emails.length === 0) return
   inviting.value = true
   try {
@@ -125,16 +122,8 @@ async function sendInvite() {
     inviteEmails.value = ''
     inviteRole.value = 'contributor'
     await refresh()
-    toast.success(
-      emails.length > 1
-        ? t('settings.members.invitationsCreated', { count: emails.length })
-        : t('settings.members.invitationCreated'),
-      {
-        description: emailConfigured.value
-          ? t('settings.members.inviteToastEmailOn')
-          : t('settings.members.inviteToastEmailOff'),
-      },
-    )
+    const message = inviteToast(emails.length, emailConfigured.value)
+    toast.success(t(message.title, { count: emails.length }), { description: t(message.description) })
   } finally {
     inviting.value = false
   }
@@ -146,8 +135,7 @@ async function cancelInvitation(id: string) {
 }
 
 async function onRoleChange(member: MemberView, role: Role) {
-  if (role === member.role) return
-  if (member.role === 'owner' && role !== 'owner' && ownerCount.value <= 1) return
+  if (!roleChangeAllowed(member, role, ownerCount.value)) return
   await authClient.organization.updateMemberRole({
     organizationId: orgId.value,
     memberId: member.id,
@@ -157,7 +145,7 @@ async function onRoleChange(member: MemberView, role: Role) {
 }
 
 async function removeMember(member: MemberView) {
-  if (member.role === 'owner' && ownerCount.value <= 1) return
+  if (isLastOwner(member, ownerCount.value)) return
   await authClient.organization.removeMember({
     organizationId: orgId.value,
     memberIdOrEmail: member.id,
@@ -168,18 +156,6 @@ async function removeMember(member: MemberView) {
 function copyInviteLink(invitationId: string) {
   const url = `${window.location.origin}/invite?id=${invitationId}`
   navigator.clipboard?.writeText(url)
-}
-
-function formatExpiresIn(iso: string | null): string {
-  if (!iso) return ''
-  const diff = new Date(iso).getTime() - Date.now()
-  if (diff <= 0) return t('settings.members.expired')
-  const days = Math.floor(diff / (24 * 60 * 60 * 1000))
-  if (days >= 1) return `${days}d`
-  const hours = Math.floor(diff / (60 * 60 * 1000))
-  if (hours >= 1) return `${hours}h`
-  const mins = Math.max(1, Math.floor(diff / (60 * 1000)))
-  return `${mins}m`
 }
 </script>
 
@@ -213,36 +189,15 @@ function formatExpiresIn(iso: string | null): string {
               <h3 class="font-heading font-bold text-sm">{{ $t('settings.members.pending') }}</h3>
             </div>
             <ul class="divide-y divide-border">
-              <li v-for="inv in invitations" :key="inv.id" class="px-5 py-3 flex items-center gap-3">
-                <div class="w-9 h-9 rounded-full bg-muted flex items-center justify-center shrink-0">
-                  <Icon name="lucide:mail" size="14" class="text-muted-foreground" />
-                </div>
-                <div class="flex-1 min-w-0">
-                  <p class="text-sm font-semibold truncate">{{ inv.email }}</p>
-                  <p class="text-[11px] text-muted-foreground truncate">
-                    {{ $t('settings.members.invitedAs') }} <span class="font-semibold capitalize">{{ roleLabel(inv.role) }}</span>
-                    <template v-if="inv.expiresAt"> · {{ $t('settings.members.expiresIn', { time: formatExpiresIn(inv.expiresAt) }) }}</template>
-                  </p>
-                </div>
-                <DropdownMenu v-if="canManage">
-                  <DropdownMenuTrigger as-child>
-                    <button class="w-8 h-8 rounded-md hover:bg-secondary transition-colors flex items-center justify-center text-muted-foreground">
-                      <Icon name="lucide:more-horizontal" size="14" />
-                    </button>
-                  </DropdownMenuTrigger>
-                  <DropdownMenuContent align="end" class="w-[180px]">
-                    <DropdownMenuItem @click="copyInviteLink(inv.id)">
-                      <Icon name="lucide:link" size="13" class="mr-2" />
-                      {{ $t('settings.members.copyLink') }}
-                    </DropdownMenuItem>
-                    <DropdownMenuSeparator />
-                    <DropdownMenuItem class="text-red-600" @click="cancelInvitation(inv.id)">
-                      <Icon name="lucide:x" size="13" class="mr-2" />
-                      {{ $t('settings.members.revoke') }}
-                    </DropdownMenuItem>
-                  </DropdownMenuContent>
-                </DropdownMenu>
-              </li>
+              <MemberInvitationRow
+                v-for="inv in invitations"
+                :key="inv.id"
+                :invitation="inv"
+                :role-label="roleLabel(inv.role)"
+                :can-manage="canManage"
+                @copy-link="copyInviteLink"
+                @revoke="cancelInvitation"
+              />
             </ul>
           </section>
 
@@ -253,65 +208,19 @@ function formatExpiresIn(iso: string | null): string {
               <span class="text-[11px] text-muted-foreground">{{ $t('settings.members.total', { count: members.length }) }}</span>
             </div>
             <ul class="divide-y divide-border">
-              <li v-for="m in members" :key="m.id" class="px-5 py-3 flex items-center gap-3">
-                <UserAvatar :author="{ id: m.userId, name: m.user.name, image: m.user.image }" :size="9" />
-                <div class="flex-1 min-w-0">
-                  <div class="flex items-center gap-2">
-                    <p class="text-sm font-bold truncate">{{ m.user.name }}</p>
-                    <span v-if="m.userId === myUserId" class="text-[10px] font-bold uppercase tracking-wider bg-muted text-muted-foreground px-1.5 py-0.5 rounded">{{ $t('settings.members.you') }}</span>
-                  </div>
-                  <p class="text-[11px] text-muted-foreground truncate">{{ m.user.email }}</p>
-                </div>
-
-                <!-- Role: inline Select (read-only label for self / when can't manage) -->
-                <Select
-                  v-if="canManage && m.userId !== myUserId"
-                  :model-value="m.role"
-                  :disabled="m.role === 'owner' && ownerCount === 1"
-                  @update:model-value="(v) => onRoleChange(m, v as Role)"
-                >
-                  <SelectTrigger class="h-8 w-auto gap-1.5 px-2.5 text-xs font-semibold capitalize">
-                    <span class="flex items-center gap-1.5">
-                      <Icon :name="roleIcon(m.role)" size="12" class="text-muted-foreground" />
-                      <span>{{ roleLabel(m.role) }}</span>
-                    </span>
-                  </SelectTrigger>
-                  <SelectContent align="end">
-                    <SelectItem v-for="r in availableRoles" :key="r.key" :value="r.key" class="py-2.5">
-                      <div class="flex items-start gap-2.5">
-                        <Icon :name="r.icon" size="14" class="mt-0.5 shrink-0 opacity-70" />
-                        <div class="min-w-0">
-                          <p class="text-sm font-semibold leading-tight">{{ r.label }}</p>
-                          <p class="text-[11px] leading-snug mt-0.5 opacity-70">{{ r.desc }}</p>
-                        </div>
-                      </div>
-                    </SelectItem>
-                  </SelectContent>
-                </Select>
-                <span v-else class="inline-flex items-center gap-1.5 h-8 px-2.5 text-xs font-semibold capitalize text-muted-foreground">
-                  <Icon :name="roleIcon(m.role)" size="12" />
-                  {{ roleLabel(m.role) }}
-                </span>
-
-                <!-- More -->
-                <DropdownMenu v-if="canManage && m.userId !== myUserId">
-                  <DropdownMenuTrigger as-child>
-                    <button class="w-8 h-8 rounded-md hover:bg-secondary transition-colors flex items-center justify-center text-muted-foreground">
-                      <Icon name="lucide:more-horizontal" size="14" />
-                    </button>
-                  </DropdownMenuTrigger>
-                  <DropdownMenuContent align="end" class="w-[180px]">
-                    <DropdownMenuItem
-                      class="text-red-600"
-                      :disabled="m.role === 'owner' && ownerCount <= 1"
-                      @click="removeMember(m)"
-                    >
-                      <Icon name="lucide:user-x" size="13" class="mr-2" />
-                      {{ $t('settings.members.remove') }}
-                    </DropdownMenuItem>
-                  </DropdownMenuContent>
-                </DropdownMenu>
-              </li>
+              <MemberRow
+                v-for="m in members"
+                :key="m.id"
+                :member="m"
+                :is-self="m.userId === myUserId"
+                :can-manage="canManage"
+                :owner-count="ownerCount"
+                :roles="availableRoles"
+                :role-label="roleLabel(m.role)"
+                :role-icon="roleIcon(m.role)"
+                @role-change="onRoleChange(m, $event)"
+                @remove="removeMember(m)"
+              />
             </ul>
           </section>
 
@@ -324,85 +233,14 @@ function formatExpiresIn(iso: string | null): string {
       </div>
     </div>
 
-    <Dialog v-model:open="showInvite">
-      <DialogContent class="sm:max-w-md">
-        <DialogHeader>
-          <DialogTitle class="font-heading">{{ $t('settings.members.inviteTitle') }}</DialogTitle>
-          <DialogDescription class="text-sm">
-            {{ $t('settings.members.inviteDesc') }}
-          </DialogDescription>
-        </DialogHeader>
-
-        <div class="space-y-4">
-          <!-- Email-not-configured banner -->
-          <div v-if="!emailConfigured" class="p-3 rounded-lg bg-amber-50 border border-amber-200 text-xs text-amber-900 flex items-start gap-2">
-            <Icon name="lucide:mail-x" size="14" class="mt-0.5 shrink-0" />
-            <div>
-              <p class="font-bold">{{ $t('settings.members.emailNotConfigured') }}</p>
-              <p class="mt-0.5 leading-relaxed">{{ $t('settings.members.emailNotConfiguredHint') }}</p>
-            </div>
-          </div>
-
-          <!-- Emails input -->
-          <div>
-            <label class="text-[11px] font-bold uppercase tracking-wider text-muted-foreground">{{ $t('settings.members.emailLabel') }}</label>
-            <textarea
-              v-model="inviteEmails"
-              rows="2"
-              :disabled="inviting"
-              :placeholder="$t('settings.members.emailPlaceholder')"
-              class="mt-2 w-full px-3 py-2 rounded-lg border border-border bg-background text-sm focus:outline-none focus:border-primary transition-colors resize-none disabled:opacity-60 disabled:cursor-not-allowed"
-            />
-            <p class="text-[11px] text-muted-foreground mt-1">{{ $t('settings.members.emailHint') }}</p>
-          </div>
-
-          <!-- Role -->
-          <div>
-            <label class="text-[11px] font-bold uppercase tracking-wider text-muted-foreground">{{ $t('settings.members.roleLabel') }}</label>
-            <Select v-model="inviteRole" :disabled="inviting">
-              <SelectTrigger class="mt-2 w-full h-10 text-sm">
-                <SelectValue>
-                  <span class="flex items-center gap-2">
-                    <Icon :name="currentInviteRole.icon" size="14" class="text-muted-foreground" />
-                    <span class="font-semibold">{{ currentInviteRole.label }}</span>
-                  </span>
-                </SelectValue>
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem v-for="r in availableRoles" :key="r.key" :value="r.key" class="py-2.5">
-                  <div class="flex items-start gap-2.5">
-                    <Icon :name="r.icon" size="14" class="mt-0.5 shrink-0 opacity-70" />
-                    <div class="min-w-0">
-                      <p class="text-sm font-semibold leading-tight">{{ r.label }}</p>
-                      <p class="text-[11px] leading-snug mt-0.5 opacity-70">{{ r.desc }}</p>
-                    </div>
-                  </div>
-                </SelectItem>
-              </SelectContent>
-            </Select>
-            <p class="text-[11px] text-muted-foreground mt-1.5 leading-relaxed">{{ currentInviteRole.desc }}</p>
-
-            <!-- In-context warning when Owner is selected -->
-            <div v-if="inviteRole === 'owner'" class="mt-3 flex items-start gap-2 p-2.5 rounded-lg bg-amber-50 border border-amber-200 text-[11px] text-amber-900 leading-relaxed">
-              <Icon name="lucide:alert-triangle" size="13" class="mt-0.5 shrink-0 text-amber-600" />
-              <span>{{ $t('settings.members.ownerWarning') }}</span>
-            </div>
-          </div>
-        </div>
-
-        <DialogFooter>
-          <button class="h-9 px-4 rounded-lg border border-border bg-background text-xs font-semibold hover:bg-secondary transition-colors" @click="showInvite = false">
-            {{ $t('common.cancel') }}
-          </button>
-          <button
-            :disabled="!inviteEmails.trim() || inviting"
-            class="h-9 px-4 rounded-lg bg-primary text-primary-foreground text-xs font-heading font-bold hover:opacity-90 disabled:opacity-40 disabled:cursor-not-allowed transition-all"
-            @click="sendInvite"
-          >
-            {{ inviting ? (emailConfigured ? $t('settings.members.sending') : $t('settings.members.creating')) : (emailConfigured ? $t('settings.members.sendInvites') : $t('settings.members.createInvites')) }}
-          </button>
-        </DialogFooter>
-      </DialogContent>
-    </Dialog>
+    <MemberInviteDialog
+      v-model:open="showInvite"
+      v-model:emails="inviteEmails"
+      v-model:role="inviteRole"
+      :roles="availableRoles"
+      :email-configured="emailConfigured"
+      :inviting="inviting"
+      @send="sendInvite"
+    />
   </div>
 </template>

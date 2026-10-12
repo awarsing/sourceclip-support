@@ -4,9 +4,7 @@ import draggable from 'vuedraggable'
 definePageMeta({ layout: 'dashboard', middleware: 'admin' })
 
 const { t } = useI18n()
-const boardStore = useBoardStore()
-await callOnce(() => boardStore.fetchBoards())
-const { boards } = storeToRefs(boardStore)
+const { boardStore, boards } = await useLoadedBoards()
 
 // Search
 const search = ref('')

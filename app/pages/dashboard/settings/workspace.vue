@@ -1,6 +1,5 @@
 <script setup lang="ts">
 import { authClient } from '~/lib/auth-client'
-import type { OrgMetadataInput } from '#layers/feedlog/shared/utils/branding'
 
 // /dashboard/settings/workspace — single-tenant workspace settings.
 // Owners can edit the workspace name (surfaced in invitation emails as the
@@ -9,44 +8,10 @@ import type { OrgMetadataInput } from '#layers/feedlog/shared/utils/branding'
 
 definePageMeta({ layout: 'dashboard', middleware: ['admin'] })
 
-const ctx = useOrgContext()
-const orgId = computed(() => ctx.value.orgId)
-const isOwner = computed(() => ctx.value.role === 'owner')
-
-interface OrgRow {
-  id: string
-  name: string
-  slug: string
-  logo: string | null
-  metadata: OrgMetadataInput
-}
-
-const org = ref<OrgRow | null>(null)
-const loading = ref(true)
 const form = reactive({ name: '' })
-
-async function loadOrg() {
-  if (!ctx.value.role) return
-  loading.value = true
-  try {
-    const res = await authClient.organization.getFullOrganization({ query: { organizationId: orgId.value } })
-    org.value = (res as { data?: OrgRow }).data ?? null
-    if (org.value) form.name = org.value.name
-  } finally {
-    loading.value = false
-  }
-}
-// Load on the client only. The dashboard sits behind auth (nothing to SSR for
-// SEO) and the better-auth client is browser-oriented; fetching during SSR would
-// bake the loaded section into the HTML while the client hydrates from the empty
-// initial state, tripping a hydration mismatch.
-watch(
-  () => [orgId.value, ctx.value.role] as const,
-  ([, role]) => {
-    if (role && import.meta.client) void loadOrg()
-  },
-  { immediate: true },
-)
+const { org, loading, isOwner, loadOrg } = useOrgSettings((loaded) => {
+  form.name = loaded.name
+})
 
 const dirty = computed(() => org.value && form.name !== org.value.name)
 const canSave = computed(() => dirty.value && form.name.trim().length > 0 && isOwner.value)

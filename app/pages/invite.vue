@@ -1,14 +1,8 @@
 <script setup lang="ts">
 import { authClient } from '~/lib/auth-client'
-import { resolveAttachmentUrl } from '~/utils/attachment'
+import { acceptFailure, inviteState } from '~/lib/pages/invite'
 
-// Accept invitation page at /invite?id=<invitationId>.
-//
-// Renders four states:
-//   - invalid: invitation missing / expired / canceled / accepted
-//   - anonymous: not signed in; offer to sign in or register
-//   - match: signed in with matching email; one-click accept
-//   - mismatch: signed in with a different email; offer Switch account
+// Accept invitation page at /invite?id=<invitationId>; see inviteState for the states it renders.
 //
 // `layout: false` keeps the public-board chrome (nav + Sign-in button)
 // off this page — this is a standalone auth-style shell with just a logo
@@ -67,13 +61,7 @@ onMounted(async () => {
   }
 })
 
-type State = 'loading' | 'invalid' | 'anonymous' | 'match' | 'mismatch'
-const state = computed<State>(() => {
-  if (loading.value) return 'loading'
-  if (error.value || !invitation.value) return 'invalid'
-  if (!session.value?.user) return 'anonymous'
-  return session.value.user.email === invitation.value.email ? 'match' : 'mismatch'
-})
+const state = computed(() => inviteState(loading.value, !!error.value, invitation.value, session.value?.user))
 
 async function accept() {
   if (!invitation.value) return
@@ -92,7 +80,7 @@ async function accept() {
     // where the button label would otherwise flicker back to "Join …".
     await router.push(localePath('/dashboard'))
   } catch (e) {
-    error.value = (e as Error)?.message ?? 'invalid'
+    error.value = acceptFailure(e)
     accepting.value = false
   }
 }
@@ -109,12 +97,6 @@ async function switchAccount() {
   // Same as anonymous flow once signed out.
   loginModal.open()
 }
-
-const userInitials = computed(() => {
-  const name = session.value?.user?.name ?? ''
-  return name.slice(0, 2).toUpperCase()
-})
-const userImage = computed(() => resolveAttachmentUrl(session.value?.user?.image))
 </script>
 
 <template>
@@ -140,95 +122,35 @@ const userImage = computed(() => resolveAttachmentUrl(session.value?.user?.image
         </NuxtLink>
       </template>
 
-      <template v-else-if="state === 'anonymous'">
+      <template v-else>
         <h1 class="font-heading text-2xl font-bold tracking-tight">{{ $t('auth.invite.joinTitle') }}</h1>
         <i18n-t keypath="auth.invite.joinTeam" tag="p" class="text-sm text-muted-foreground mt-2 leading-relaxed" scope="global">
           <template #org><span class="font-semibold text-foreground">{{ invitation!.organizationName }}</span></template>
         </i18n-t>
 
-        <button
-          class="mt-8 w-full h-11 rounded-lg bg-primary text-primary-foreground text-sm font-heading font-bold hover:opacity-90 transition-all flex items-center justify-center gap-2"
-          @click="startSignIn"
-        >
-          {{ $t('auth.invite.signInToContinue') }}
-          <Icon name="lucide:arrow-right" size="14" />
-        </button>
+        <template v-if="state === 'anonymous'">
+          <button
+            class="mt-8 w-full h-11 rounded-lg bg-primary text-primary-foreground text-sm font-heading font-bold hover:opacity-90 transition-all flex items-center justify-center gap-2"
+            @click="startSignIn"
+          >
+            {{ $t('auth.invite.signInToContinue') }}
+            <Icon name="lucide:arrow-right" size="14" />
+          </button>
 
-        <p class="mt-3 text-[11px] text-muted-foreground">
-          {{ $t('auth.invite.anonymousHint') }}
-        </p>
-      </template>
+          <p class="mt-3 text-[11px] text-muted-foreground">
+            {{ $t('auth.invite.anonymousHint') }}
+          </p>
+        </template>
 
-      <template v-else-if="state === 'match'">
-        <h1 class="font-heading text-2xl font-bold tracking-tight">{{ $t('auth.invite.joinTitle') }}</h1>
-        <i18n-t keypath="auth.invite.joinTeam" tag="p" class="text-sm text-muted-foreground mt-2 leading-relaxed" scope="global">
-          <template #org><span class="font-semibold text-foreground">{{ invitation!.organizationName }}</span></template>
-        </i18n-t>
-
-        <div class="mt-6 flex items-center gap-3 px-4 py-3 rounded-xl border border-border bg-card text-left">
-          <div class="w-10 h-10 rounded-full overflow-hidden bg-accent shrink-0 flex items-center justify-center">
-            <img
-              v-if="userImage"
-              :src="userImage"
-              :alt="session!.user.name"
-              class="w-full h-full object-cover"
-              referrerpolicy="no-referrer"
-            >
-            <span v-else class="text-accent-foreground text-sm font-bold">{{ userInitials }}</span>
-          </div>
-          <div class="flex-1 min-w-0">
-            <p class="text-sm font-bold truncate leading-tight">{{ session!.user.name }}</p>
-            <p class="text-xs text-muted-foreground truncate leading-tight mt-0.5">{{ session!.user.email }}</p>
-          </div>
-        </div>
-
-        <button
-          :disabled="accepting"
-          class="mt-4 w-full h-11 rounded-lg bg-primary text-primary-foreground text-sm font-heading font-bold hover:opacity-90 transition-all flex items-center justify-center gap-2 disabled:opacity-50"
-          @click="accept"
-        >
-          {{ accepting ? $t('auth.invite.joining') : $t('auth.invite.joinOrg', { org: invitation!.organizationName }) }}
-          <Icon name="lucide:arrow-right" size="14" />
-        </button>
-
-        <p class="mt-3 text-[11px] text-muted-foreground">
-          {{ $t('auth.invite.notYou') }}
-          <a class="text-foreground font-semibold hover:underline ml-1 cursor-pointer" @click="switchAccount">{{ $t('auth.invite.signOut') }}</a>
-        </p>
-      </template>
-
-      <template v-else-if="state === 'mismatch'">
-        <h1 class="font-heading text-2xl font-bold tracking-tight">{{ $t('auth.invite.joinTitle') }}</h1>
-        <i18n-t keypath="auth.invite.joinTeam" tag="p" class="text-sm text-muted-foreground mt-2 leading-relaxed" scope="global">
-          <template #org><span class="font-semibold text-foreground">{{ invitation!.organizationName }}</span></template>
-        </i18n-t>
-
-        <div class="mt-6 flex items-center gap-3 px-4 py-3 rounded-xl border border-border bg-card text-left">
-          <div class="w-10 h-10 rounded-full overflow-hidden bg-accent shrink-0 flex items-center justify-center">
-            <img
-              v-if="userImage"
-              :src="userImage"
-              :alt="session!.user.name"
-              class="w-full h-full object-cover"
-              referrerpolicy="no-referrer"
-            >
-            <span v-else class="text-accent-foreground text-sm font-bold">{{ userInitials }}</span>
-          </div>
-          <div class="flex-1 min-w-0">
-            <p class="text-sm font-bold truncate leading-tight">{{ session!.user.name }}</p>
-            <p class="text-xs text-muted-foreground truncate leading-tight mt-0.5">{{ session!.user.email }}</p>
-          </div>
-        </div>
-
-        <p class="mt-4 text-xs text-red-600 leading-relaxed flex items-center justify-center gap-1.5">
-          <Icon name="lucide:alert-circle" size="13" class="shrink-0" />
-          <span>
-            <i18n-t keypath="auth.invite.sentToEmail" tag="span" scope="global">
-              <template #email><span class="font-semibold">{{ invitation!.email }}</span></template>
-            </i18n-t>
-            <a class="text-foreground font-semibold hover:underline ml-1 cursor-pointer" @click="switchAccount">{{ $t('auth.invite.switchAccount') }}</a>
-          </span>
-        </p>
+        <InviteAccountPanel
+          v-else
+          :user="session!.user"
+          :invitation="invitation!"
+          :matches="state === 'match'"
+          :accepting="accepting"
+          @accept="accept"
+          @switch-account="switchAccount"
+        />
       </template>
     </div>
   </div>
