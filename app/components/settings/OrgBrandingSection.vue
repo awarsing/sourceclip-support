@@ -41,7 +41,6 @@ const themeOptions = computed(() => [
   { value: 'dark' as const, label: t('settings.branding.theme.dark'), icon: 'lucide:moon' },
 ])
 
-const fileInput = ref<HTMLInputElement | null>(null)
 const saving = ref(false)
 const uploading = ref(false)
 const error = ref<string | null>(null)
@@ -105,12 +104,6 @@ async function uploadLogo(file: File) {
   }
 }
 
-function onFileChange(event: Event) {
-  const file = (event.target as HTMLInputElement).files?.[0]
-  if (file) void uploadLogo(file)
-  if (fileInput.value) fileInput.value.value = ''
-}
-
 async function save() {
   if (!canSave.value) return
   saving.value = true
@@ -152,93 +145,19 @@ async function save() {
            larger, more faithful preview). stacked falls back to a single column. -->
       <div :class="layoutMode === 'split' ? 'grid lg:grid-cols-[270px_minmax(0,1fr)] gap-6 items-start' : 'space-y-6'">
         <div class="space-y-6">
-          <!-- Logo -->
-          <div>
-            <label class="text-[11px] font-bold uppercase tracking-wider text-muted-foreground">{{ $t('settings.branding.logo') }}</label>
-            <div class="mt-2 flex items-center gap-4">
-              <input ref="fileInput" type="file" accept="image/*" class="hidden" :disabled="!isOwner || uploading" @change="onFileChange">
-              <!-- Logo doubles as the upload trigger: hover reveals an edit overlay. -->
-              <button
-                type="button"
-                class="group relative w-16 h-16 rounded-xl border border-border bg-background grid place-items-center overflow-hidden shrink-0 disabled:cursor-not-allowed"
-                :disabled="!isOwner || uploading"
-                @click="fileInput?.click()"
-              >
-                <img v-if="logoUrl" :src="logoUrl" alt="Logo" class="w-full h-full object-contain">
-                <span v-else class="font-heading font-bold text-2xl text-muted-foreground">{{ org.name.charAt(0) }}</span>
-                <span
-                  v-if="isOwner || uploading"
-                  class="absolute inset-0 grid place-items-center bg-black/50 text-white opacity-0 transition-opacity group-hover:opacity-100"
-                  :class="{ '!opacity-100': uploading }"
-                >
-                  <Icon :name="uploading ? 'lucide:loader-2' : 'lucide:pencil'" size="16" :class="{ 'animate-spin': uploading }" />
-                </span>
-              </button>
-              <button
-                v-if="form.logo"
-                class="h-9 px-3.5 rounded-lg text-xs font-semibold text-destructive hover:bg-destructive/10 transition-colors flex items-center gap-1.5 disabled:opacity-50"
-                :disabled="!isOwner || uploading"
-                @click="form.logo = null"
-              >
-                <Icon name="lucide:trash-2" size="14" />
-                {{ $t('settings.branding.removeLogo') }}
-              </button>
-            </div>
-            <!-- Helper on its own full-width line so it stays one line in the
-                 narrow split column instead of wrapping beside the buttons. -->
-            <p class="text-[11px] text-muted-foreground mt-2">{{ $t('settings.branding.logoHint') }}</p>
-          </div>
+          <OrgLogoField
+            :logo-url="logoUrl"
+            :has-logo="!!form.logo"
+            :initial="org.name.charAt(0)"
+            :is-owner="isOwner"
+            :uploading="uploading"
+            @pick="uploadLogo"
+            @remove="form.logo = null"
+          />
 
-          <!-- Brand color -->
-          <div>
-            <label class="text-[11px] font-bold uppercase tracking-wider text-muted-foreground">{{ $t('settings.branding.brandColor') }}</label>
-            <div class="mt-2 flex flex-wrap items-center gap-3">
-              <label class="relative w-11 h-11 rounded-lg border border-border overflow-hidden cursor-pointer shrink-0" :style="{ backgroundColor: form.primaryColor }">
-                <input v-model="form.primaryColor" type="color" class="absolute inset-0 opacity-0 cursor-pointer" :disabled="!isOwner">
-              </label>
-              <input
-                v-model="form.primaryColor"
-                type="text"
-                class="w-32 h-11 px-3 rounded-lg border border-border bg-background text-sm font-mono uppercase focus:outline-none focus:border-primary transition-colors disabled:opacity-60"
-                :disabled="!isOwner"
-              >
-              <div class="flex items-center gap-1.5">
-                <button
-                  v-for="c in presets"
-                  :key="c"
-                  type="button"
-                  :style="{ backgroundColor: c }"
-                  class="w-7 h-7 rounded-md border border-border/60 ring-offset-2 ring-offset-card transition disabled:cursor-not-allowed"
-                  :class="normalizeBrandHex(form.primaryColor) === c ? 'ring-2 ring-foreground' : ''"
-                  :disabled="!isOwner"
-                  @click="form.primaryColor = c"
-                />
-              </div>
-            </div>
-            <p class="text-[11px] text-muted-foreground mt-1.5">{{ $t('settings.branding.brandColorHint') }}</p>
-          </div>
+          <OrgBrandColorField v-model="form.primaryColor" :presets="presets" :disabled="!isOwner" />
 
-          <!-- Default theme -->
-          <div>
-            <label class="text-[11px] font-bold uppercase tracking-wider text-muted-foreground">{{ $t('settings.branding.defaultTheme') }}</label>
-            <!-- flex (block-level) + w-fit so it drops below the inline <label> like
-                 the Logo/Brand-color rows; inline-flex would stay on the label's line. -->
-            <div class="mt-2 flex w-fit rounded-lg border border-border bg-background p-1">
-              <button
-                v-for="opt in themeOptions"
-                :key="opt.value"
-                type="button"
-                class="flex items-center gap-1.5 px-3 h-8 rounded-md text-xs font-semibold transition-colors disabled:cursor-not-allowed"
-                :class="form.defaultTheme === opt.value ? 'bg-primary text-primary-foreground' : 'text-muted-foreground hover:text-foreground'"
-                :disabled="!isOwner"
-                @click="form.defaultTheme = opt.value"
-              >
-                <Icon :name="opt.icon" size="14" />
-                {{ opt.label }}
-              </button>
-            </div>
-            <p class="text-[11px] text-muted-foreground mt-1.5">{{ $t('settings.branding.defaultThemeHint') }}</p>
-          </div>
+          <OrgThemeField v-model="form.defaultTheme" :options="themeOptions" :disabled="!isOwner" />
         </div>
 
         <!-- Preview -->
@@ -267,6 +186,13 @@ async function save() {
       </div>
     </div>
 
-    <SettingsSaveFooter :error="error" :dirty="dirty" :saving="saving" :can-save="canSave" @reset="hydrate" @save="save" />
+    <SettingsSaveFooter
+      :error="error"
+      :dirty="dirty"
+      :saving="saving"
+      :can-save="canSave"
+      @reset="hydrate"
+      @save="save"
+    />
   </section>
 </template>

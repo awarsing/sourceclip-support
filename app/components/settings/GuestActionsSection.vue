@@ -89,6 +89,13 @@ async function save() {
       </div>
     </div>
 
-    <SettingsSaveFooter :error="error" :dirty="dirty" :saving="saving" :can-save="canSave" @reset="hydrate" @save="save" />
+    <SettingsSaveFooter
+      :error="error"
+      :dirty="dirty"
+      :saving="saving"
+      :can-save="canSave"
+      @reset="hydrate"
+      @save="save"
+    />
   </section>
 </template>

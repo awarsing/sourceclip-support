@@ -3,6 +3,8 @@ import { toast } from 'vue-sonner'
 import { resolveAttachmentUrl } from '~/utils/attachment'
 import { prepareAvatar } from '~/utils/avatar'
 import { AVATAR_ACCEPT, AvatarValidationError } from '#layers/feedlog/shared/utils/avatar'
+import { profileFromSession, profileNameProblem } from '~/lib/auth-forms'
+import { authErrorMessage } from '~/lib/form-errors'
 
 const NAME_MAX = 50
 const { updateUser } = useAuth()
@@ -42,8 +44,9 @@ watch(
   (value) => {
     clearSelection()
     if (value) {
-      name.value = session.value?.user?.name ?? ''
-      image.value = session.value?.user?.image ?? null
+      const profile = profileFromSession(session.value)
+      name.value = profile.name
+      image.value = profile.image
       previewError.value = false
     }
   },
@@ -59,58 +62,90 @@ function removeAvatar() {
   image.value = null
 }
 
-async function onFileChange(event: Event) {
+// Reads the picked file and clears the input so picking the same file again
+// still fires a change. Nothing is taken while a save or another file is busy.
+function takePickedFile(event: Event): File | undefined {
   const file = (event.target as HTMLInputElement).files?.[0]
   if (fileInput.value) fileInput.value.value = ''
-  if (!file || busy.value) return
+  return busy.value ? undefined : file
+}
+
+// Closing and reopening the dialog invalidates work from the previous selection.
+function isCurrentSelection(currentSelection: number) {
+  return currentSelection === selection && open.value
+}
+
+function showPreview(currentSelection: number, prepared: Blob) {
+  if (!isCurrentSelection(currentSelection)) return
+  if (previewUrl.value) URL.revokeObjectURL(previewUrl.value)
+  pendingAvatar = prepared
+  previewUrl.value = URL.createObjectURL(prepared)
+}
+
+async function onFileChange(event: Event) {
+  const file = takePickedFile(event)
+  if (!file) return
   const currentSelection = ++selection
   processing.value = true
   try {
-    const prepared = await prepareAvatar(file)
-    // Closing and reopening the dialog invalidates work from the previous selection.
-    if (currentSelection !== selection || !open.value) return
-    if (previewUrl.value) URL.revokeObjectURL(previewUrl.value)
-    pendingAvatar = prepared
-    previewUrl.value = URL.createObjectURL(prepared)
+    showPreview(currentSelection, await prepareAvatar(file))
   } catch (error) {
-    if (currentSelection !== selection || !open.value) return
-    toast.error(t(`auth.profile.${error instanceof AvatarValidationError ? error.code : 'invalidImage'}`))
+    reportAvatarError(currentSelection, error)
   } finally {
     if (currentSelection === selection) processing.value = false
   }
 }
 
-async function onSubmit() {
-  if (busy.value) return
+function reportAvatarError(currentSelection: number, error: unknown) {
+  if (!isCurrentSelection(currentSelection)) return
+  toast.error(t(`auth.profile.${error instanceof AvatarValidationError ? error.code : 'invalidImage'}`))
+}
+
+// The trimmed name when the form can be submitted; otherwise null, with a toast
+// when the name itself is the problem.
+function submittableName(): string | null {
+  if (busy.value) return null
   const trimmed = name.value.trim()
-  if (!trimmed || trimmed.length > NAME_MAX) {
-    toast.error(t(`auth.profile.${trimmed ? 'nameTooLong' : 'nameRequired'}`))
+  const problem = profileNameProblem(trimmed, NAME_MAX)
+  if (problem) toast.error(t(problem))
+  return problem ? null : trimmed
+}
+
+// Uploads the picked avatar, if any. False when the upload failed.
+async function uploadPendingAvatar(): Promise<boolean> {
+  if (!pendingAvatar) return true
+  try {
+    const result = await $fetch<{ key: string }>('/api/profile/avatar', {
+      method: 'POST',
+      body: pendingAvatar,
+    })
+    image.value = resolveAttachmentUrl(result.key)
+    clearSelection()
+    return true
+  } catch {
+    toast.error(t('auth.profile.uploadFailed'))
+    return false
+  }
+}
+
+async function saveProfile(trimmed: string) {
+  const { error } = await updateUser({ name: trimmed, image: image.value ?? '' })
+  if (error) {
+    toast.error(authErrorMessage(error, t, 'auth.profile.saveFailed'))
     return
   }
+  await refresh()
+  toast.success(t('auth.success.profileUpdated'))
+  open.value = false
+}
+
+async function onSubmit() {
+  const trimmed = submittableName()
+  if (!trimmed) return
 
   loading.value = true
   try {
-    if (pendingAvatar) {
-      try {
-        const result = await $fetch<{ key: string }>('/api/profile/avatar', {
-          method: 'POST',
-          body: pendingAvatar,
-        })
-        image.value = resolveAttachmentUrl(result.key)
-        clearSelection()
-      } catch {
-        toast.error(t('auth.profile.uploadFailed'))
-        return
-      }
-    }
-    const { error } = await updateUser({ name: trimmed, image: image.value ?? '' })
-    if (error) {
-      toast.error(error.message || t('auth.profile.saveFailed'))
-      return
-    }
-    await refresh()
-    toast.success(t('auth.success.profileUpdated'))
-    open.value = false
+    if (await uploadPendingAvatar()) await saveProfile(trimmed)
   } catch {
     toast.error(t('auth.profile.saveFailed'))
   } finally {

@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { toast } from 'vue-sonner'
-import { PASSWORD_MIN_LENGTH, passwordProblem } from '~/lib/pages/password'
+import { hasCredentialAccount, newPasswordProblem, PASSWORD_MIN_LENGTH, passwordDialogCopy } from '~/lib/auth-forms'
+import { apiErrorMessage, authErrorMessage } from '~/lib/form-errors'
 
 const { changePassword, listAccounts } = useAuth()
 const { t } = useI18n()
@@ -9,6 +10,7 @@ const open = defineModel<boolean>('open', { default: false })
 
 const loading = ref(false)
 const hasPassword = ref<boolean | null>(null) // null = loading
+const copy = computed(() => passwordDialogCopy(hasPassword.value))
 
 const form = reactive({
   currentPassword: '',
@@ -27,7 +29,7 @@ watch(open, async (val) => {
     hasPassword.value = null
     try {
       const { data } = await listAccounts()
-      hasPassword.value = data?.some((acc: { providerId: string }) => acc.providerId === 'credential') ?? false
+      hasPassword.value = hasCredentialAccount(data)
     } catch {
       hasPassword.value = false
     }
@@ -43,8 +45,33 @@ function resetForm() {
   showConfirmPassword.value = false
 }
 
+// Change password: requires the current password.
+async function changeExistingPassword(): Promise<boolean> {
+  const { error } = await changePassword({
+    currentPassword: form.currentPassword,
+    newPassword: form.newPassword,
+    revokeOtherSessions: true,
+  })
+  if (error) toast.error(authErrorMessage(error, t, 'auth.errors.changeFailed'))
+  return !error
+}
+
+// Set password: OAuth user, no current password.
+async function setFirstPassword(): Promise<boolean> {
+  try {
+    await $fetch('/api/auth/set-password', {
+      method: 'POST',
+      body: { newPassword: form.newPassword },
+    })
+    return true
+  } catch (e) {
+    toast.error(apiErrorMessage(e, t('auth.errors.setFailed')))
+    return false
+  }
+}
+
 async function onSubmit() {
-  const problem = passwordProblem(form.newPassword, form.confirmPassword)
+  const problem = newPasswordProblem(form.newPassword, form.confirmPassword)
   if (problem) {
     toast.error(t(problem))
     return
@@ -52,30 +79,9 @@ async function onSubmit() {
 
   loading.value = true
   try {
-    if (hasPassword.value) {
-      // Change password: requires current password
-      const { error } = await changePassword({
-        currentPassword: form.currentPassword,
-        newPassword: form.newPassword,
-        revokeOtherSessions: true,
-      })
-      if (error) {
-        toast.error(error.message || t('auth.errors.changeFailed'))
-        return
-      }
-    } else {
-      // Set password: OAuth user, no current password
-      try {
-        await $fetch('/api/auth/set-password', {
-          method: 'POST',
-          body: { newPassword: form.newPassword },
-        })
-      } catch (e: any) {
-        toast.error(e.data?.message || t('auth.errors.setFailed'))
-        return
-      }
-    }
-    toast.success(hasPassword.value ? t('auth.success.passwordUpdated') : t('auth.success.passwordSet'))
+    const saved = hasPassword.value ? await changeExistingPassword() : await setFirstPassword()
+    if (!saved) return
+    toast.success(t(copy.value.success))
     open.value = false
   } finally {
     loading.value = false
@@ -88,10 +94,10 @@ async function onSubmit() {
     <DialogContent class="sm:max-w-sm">
       <DialogHeader>
         <DialogTitle class="font-heading text-lg">
-          {{ hasPassword ? $t('auth.changePassword.title') : $t('auth.changePassword.setTitle') }}
+          {{ $t(copy.title) }}
         </DialogTitle>
         <DialogDescription>
-          {{ hasPassword ? $t('auth.changePassword.subtitle') : $t('auth.changePassword.setSubtitle') }}
+          {{ $t(copy.subtitle) }}
         </DialogDescription>
       </DialogHeader>
 
@@ -102,34 +108,33 @@ async function onSubmit() {
 
       <form v-else class="space-y-4" @submit.prevent="onSubmit">
         <!-- Current password (only for users who already have one) -->
-        <PasswordField
-          v-if="hasPassword"
-          id="current-password"
-          v-model="form.currentPassword"
-          v-model:visible="showCurrentPassword"
-          :label="$t('auth.fields.current')"
-        />
+        <div v-if="hasPassword" class="space-y-2">
+          <label class="text-sm font-medium" for="current-password">{{ $t('auth.fields.current') }}</label>
+          <PasswordInput id="current-password" v-model="form.currentPassword" v-model:visible="showCurrentPassword" />
+        </div>
 
-        <PasswordField
-          id="new-password"
-          v-model="form.newPassword"
-          v-model:visible="showNewPassword"
-          :label="$t('auth.fields.new')"
-          :placeholder="$t('auth.passwordMinHint')"
-          :minlength="PASSWORD_MIN_LENGTH"
-        />
-        <PasswordField
-          id="confirm-password"
-          v-model="form.confirmPassword"
-          v-model:visible="showConfirmPassword"
-          :label="$t('auth.fields.confirm')"
-          :minlength="PASSWORD_MIN_LENGTH"
-        />
+        <div class="space-y-2">
+          <label class="text-sm font-medium" for="new-password">{{ $t('auth.fields.new') }}</label>
+          <PasswordInput
+            id="new-password"
+            v-model="form.newPassword"
+            v-model:visible="showNewPassword"
+            :placeholder="$t('auth.passwordMinHint')"
+            :minlength="PASSWORD_MIN_LENGTH"
+          />
+        </div>
 
-        <Button type="submit" class="w-full" size="lg" :disabled="loading">
-          <Spinner v-if="loading" class="mr-2 size-4" />
-          {{ hasPassword ? $t('auth.changePassword.submit') : $t('auth.changePassword.setTitle') }}
-        </Button>
+        <div class="space-y-2">
+          <label class="text-sm font-medium" for="confirm-password">{{ $t('auth.fields.confirm') }}</label>
+          <PasswordInput
+            id="confirm-password"
+            v-model="form.confirmPassword"
+            v-model:visible="showConfirmPassword"
+            :minlength="PASSWORD_MIN_LENGTH"
+          />
+        </div>
+
+        <FormSubmitButton :loading="loading">{{ $t(copy.submit) }}</FormSubmitButton>
         <p class="text-center">
           <button type="button" class="text-sm text-muted-foreground hover:text-foreground transition-colors" @click="open = false">
             {{ $t('common.cancel') }}

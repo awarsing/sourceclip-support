@@ -1,5 +1,13 @@
 <script setup lang="ts">
-defineProps<{ error: string | null; dirty: boolean; saving: boolean; canSave: boolean }>()
+// Footer of a settings card: the last save error, Reset while there are
+// unsaved edits, and Save.
+defineProps<{
+  error: string | null
+  dirty: boolean
+  saving: boolean
+  canSave: boolean
+}>()
+
 const emit = defineEmits<{ reset: []; save: [] }>()
 </script>
 
