@@ -1,4 +1,13 @@
 <script setup lang="ts">
+import {
+  appendCommentPage,
+  commentPageParams,
+  hasMoreMergedComments,
+  mergedSubComments,
+  nextMergedPage,
+  type CommentPage,
+} from './-comment-logic'
+
 const props = defineProps<{
   comment: CommentItem
   isAdmin?: boolean
@@ -6,85 +15,40 @@ const props = defineProps<{
 
 const emit = defineEmits<{
   unmerge: [postId: string]
-  loadMoreComments: [postId: string, cursor: string]
 }>()
 
 const localePath = useLocalePath()
 const timeAgo = useTimeAgo()
 const mp = computed(() => props.comment.mergedPost)
-const subComments = computed(() => {
-  const base = mp.value?.comments.data ?? []
-  const postId = mp.value?.post.id
-  const extra = postId ? (extraSubComments.value[postId]?.data ?? []) : []
-  return [...base, ...extra]
-})
-const hasMoreSub = computed(() => {
-  const postId = mp.value?.post.id
-  if (!postId) return false
-  const extra = extraSubComments.value[postId]
-  // If we've started lazy-loading, use extra's cursor; otherwise use initial pagination
-  if (extra) return extra.cursor !== null
-  return !!mp.value?.comments.pagination.nextCursor
-})
+// Extra sub-comments loaded via pagination (for first-level merged post)
+const extraSubComments = ref<Record<string, CommentPage>>({})
+const subComments = computed(() => mergedSubComments(mp.value, extraSubComments.value))
+const hasMoreSub = computed(() => hasMoreMergedComments(mp.value, extraSubComments.value))
 const loadingMore = ref(false)
 
-// Extra sub-comments loaded via pagination (for first-level merged post)
-const extraSubComments = ref<Record<string, { data: any[]; cursor: string | null }>>({})
-
 async function loadMoreSubComments() {
-  const postId = mp.value?.post.id
-  if (!postId || loadingMore.value) return
+  const page = nextMergedPage(mp.value, extraSubComments.value, loadingMore.value)
+  if (page) await fetchSubComments(page)
+}
 
-  const extra = extraSubComments.value[postId]
-  const cursor = extra?.cursor ?? mp.value?.comments.pagination.nextCursor
-  if (!cursor) return
-
+async function fetchSubComments(page: { postId: string; cursor: string; previous: any[] }) {
   loadingMore.value = true
   try {
     const res = await useApiFetch<{ data: any[]; pagination: { nextCursor: string | null } }>(
-      `/api/posts/${postId}/comments`,
-      { params: { sort: 'oldest', limit: 5, withChildren: 'false', cursor } },
+      `/api/posts/${page.postId}/comments`,
+      { params: commentPageParams(page.cursor) },
     )
-    const prev = extra?.data ?? []
-    extraSubComments.value[postId] = {
-      data: [...prev, ...res.data],
-      cursor: res.pagination.nextCursor,
-    }
+    extraSubComments.value[page.postId] = appendCommentPage(page.previous, res)
   } finally {
     loadingMore.value = false
   }
 }
-
-// Track lazily-loaded comments for second-level merged posts (keyed by post id)
-const level2Comments = ref<Record<string, { data: any[]; loading: boolean; cursor: string | null }>>({})
 
 const { authorName } = useAuthorDisplay()
 
 function handleUnmerge() {
   const postId = mp.value?.post.id
   if (postId) emit('unmerge', postId)
-}
-
-async function loadLevel2Comments(postId: string) {
-  const state = level2Comments.value[postId]
-  const cursor = state?.cursor ?? undefined
-  if (state?.loading) return
-
-  level2Comments.value[postId] = { data: state?.data ?? [], loading: true, cursor: state?.cursor ?? null }
-  try {
-    const res = await useApiFetch<{ data: any[]; pagination: { nextCursor: string | null } }>(
-      `/api/posts/${postId}/comments`,
-      { params: { sort: 'oldest', limit: 5, withChildren: 'false', ...(cursor ? { cursor } : {}) } },
-    )
-    const prev = level2Comments.value[postId]?.data ?? []
-    level2Comments.value[postId] = {
-      data: [...prev, ...res.data],
-      loading: false,
-      cursor: res.pagination.nextCursor,
-    }
-  } catch {
-    level2Comments.value[postId] = { ...level2Comments.value[postId], loading: false }
-  }
 }
 </script>
 
@@ -107,19 +71,7 @@ async function loadLevel2Comments(postId: string) {
           </span>
 
           <!-- Admin unmerge menu -->
-          <DropdownMenu v-if="isAdmin">
-            <DropdownMenuTrigger as-child>
-              <button class="p-1 rounded-md text-muted-foreground hover:text-foreground hover:bg-secondary/50 transition-colors ml-auto">
-                <Icon name="lucide:more-horizontal" size="18" />
-              </button>
-            </DropdownMenuTrigger>
-            <DropdownMenuContent align="end" class="min-w-[120px]">
-              <DropdownMenuItem class="text-xs font-bold gap-2" @click="handleUnmerge">
-                <Icon name="lucide:git-branch" size="14" />
-                {{ $t('post.merge.unmerge') }}
-              </DropdownMenuItem>
-            </DropdownMenuContent>
-          </DropdownMenu>
+          <MergedPostUnmergeMenu v-if="isAdmin" @unmerge="handleUnmerge" />
         </div>
 
         <!-- Merged post card -->
@@ -134,97 +86,16 @@ async function loadLevel2Comments(postId: string) {
 
     <!-- Sub-post comments (indented with left border line, read-only) -->
     <div v-if="subComments.length > 0" class="ml-10 space-y-4 relative comment-thread">
-      <template v-for="sc in subComments" :key="sc.id">
-        <!-- Second-level merged post card -->
-        <div v-if="sc.type === 'mergedPost' && sc.mergedPost?.post" class="flex gap-4">
-          <div class="w-10 h-10 rounded-full shrink-0 flex items-center justify-center shadow-sm relative z-10">
-            <UserAvatar :author="sc.author" :size="10" />
-          </div>
-          <div class="flex-1 min-w-0">
-            <div class="flex items-center flex-wrap gap-2 mb-3">
-              <span class="font-heading font-bold text-sm">{{ authorName(sc.author) }}</span>
-              <span class="text-xs text-muted-foreground">{{ timeAgo(sc.createdAt) }}</span>
-              <span class="text-xs font-bold text-primary bg-primary/10 px-2 py-0.5 rounded-md flex items-center gap-1 ml-1">
-                <Icon name="lucide:git-merge" size="14" />
-                {{ $t('post.merge.mergedPost') }}
-              </span>
-
-              <!-- Admin unmerge menu for second-level -->
-              <DropdownMenu v-if="isAdmin">
-                <DropdownMenuTrigger as-child>
-                  <button class="p-1 rounded-md text-muted-foreground hover:text-foreground hover:bg-secondary/50 transition-colors ml-auto">
-                    <Icon name="lucide:more-horizontal" size="18" />
-                  </button>
-                </DropdownMenuTrigger>
-                <DropdownMenuContent align="end" class="min-w-[120px]">
-                  <DropdownMenuItem class="text-xs font-bold gap-2" @click="emit('unmerge', sc.mergedPost!.post.id)">
-                    <Icon name="lucide:git-branch" size="14" />
-                    {{ $t('post.merge.unmerge') }}
-                  </DropdownMenuItem>
-                </DropdownMenuContent>
-              </DropdownMenu>
-            </div>
-            <div class="bg-card border border-border rounded-lg p-5 shadow-sm space-y-2">
-              <NuxtLink :to="localePath(`/p/${sc.mergedPost.post.slug}`)" class="font-heading font-bold text-base text-foreground hover:text-primary block">
-                {{ sc.mergedPost.post.title }}
-              </NuxtLink>
-              <p v-if="sc.mergedPost.post.excerpt" class="text-sm text-foreground/80 leading-relaxed">{{ sc.mergedPost.post.excerpt }}</p>
-            </div>
-
-            <!-- Lazily loaded comments for this second-level post -->
-            <div v-if="level2Comments[sc.mergedPost.post.id]?.data?.length" class="mt-3 space-y-3">
-              <div v-for="l2c in level2Comments[sc.mergedPost.post.id]?.data" :key="l2c.id" class="flex gap-3">
-                <div class="w-8 h-8 rounded-full shrink-0 flex items-center justify-center shadow-sm">
-                  <UserAvatar :author="l2c.author" :size="8" />
-                </div>
-                <div class="flex-1 min-w-0 bg-card border border-border rounded-lg p-3 shadow-sm">
-                  <div class="flex items-center gap-2 mb-1">
-                    <span class="font-heading font-bold text-xs">{{ authorName(l2c.author) }}</span>
-                    <span class="text-[10px] text-muted-foreground">{{ timeAgo(l2c.createdAt) }}</span>
-                  </div>
-                  <p class="text-sm text-foreground/90">{{ l2c.content }}</p>
-                </div>
-              </div>
-            </div>
-
-            <!-- Load comments button -->
-            <button
-              v-if="sc.mergedPost.post.commentCount > 0 && (!level2Comments[sc.mergedPost.post.id] || level2Comments[sc.mergedPost.post.id]?.loading || level2Comments[sc.mergedPost.post.id]?.cursor !== null)"
-              class="text-xs font-bold text-muted-foreground hover:text-primary transition-colors mt-2 inline-flex items-center gap-1.5"
-              :disabled="level2Comments[sc.mergedPost.post.id]?.loading"
-              @click="loadLevel2Comments(sc.mergedPost.post.id)"
-            >
-              {{ level2Comments[sc.mergedPost.post.id]?.data?.length ? $t('post.merge.loadMoreComments') : $t('post.merge.loadComments', { count: sc.mergedPost.post.commentCount }) }}
-              <Icon v-if="level2Comments[sc.mergedPost.post.id]?.loading" name="lucide:loader-2" size="12" class="animate-spin" />
-            </button>
-          </div>
-        </div>
-
-        <!-- Regular sub-comment -->
-        <div v-else class="flex gap-4">
-          <div class="w-10 h-10 rounded-full shrink-0 flex items-center justify-center shadow-sm relative z-10">
-            <UserAvatar :author="sc.author" :size="10" />
-          </div>
-          <div class="flex-1 min-w-0 bg-card border border-border rounded-lg p-4 shadow-sm">
-            <div class="flex items-center gap-2 mb-2">
-              <span class="font-heading font-bold text-sm">{{ authorName(sc.author) }}</span>
-              <span class="text-xs text-muted-foreground">{{ timeAgo(sc.createdAt) }}</span>
-            </div>
-            <p class="text-sm text-foreground/90">{{ sc.content }}</p>
-          </div>
-        </div>
-      </template>
+      <MergedSubEntry v-for="sc in subComments" :key="sc.id" :comment="sc" :is-admin="isAdmin" @unmerge="emit('unmerge', $event)" />
 
       <!-- Load more sub-comments -->
-      <button
+      <MergedCommentsLoadButton
         v-if="hasMoreSub"
-        class="text-xs font-bold text-muted-foreground hover:text-primary transition-colors ml-14 inline-flex items-center gap-1.5"
-        :disabled="loadingMore"
-        @click="loadMoreSubComments"
-      >
-        {{ $t('post.merge.loadMoreComments') }}
-        <Icon v-if="loadingMore" name="lucide:loader-2" size="12" class="animate-spin" />
-      </button>
+        class="ml-14"
+        :loading="loadingMore"
+        :label="$t('post.merge.loadMoreComments')"
+        @load="loadMoreSubComments"
+      />
     </div>
   </div>
 </template>
