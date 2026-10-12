@@ -216,6 +216,14 @@ export default defineNuxtConfig({
       // Exclude md-editor-v3 from SSR bundle — it's browser-only and very large (~2MB)
       external: ['md-editor-v3'],
     },
+    build: {
+      rolldownOptions: {
+        // Nuxt externalizes shared/ in the SSR build for Nitro to bundle. Rolldown
+        // rewrites externals imported by a relative path ('../../shared/...') to a
+        // relative path that points above the project; absolute ids resolve.
+        makeAbsoluteExternalsRelative: false,
+      },
+    },
   },
 
   ogImage: {
