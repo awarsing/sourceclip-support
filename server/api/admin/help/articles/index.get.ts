@@ -6,8 +6,8 @@ export default defineEventHandler(async (event) => {
 
   const query = getQuery(event)
   const q = (query.q as string)?.trim()
-  const page = Math.max(Number(query.page) || 1, 1)
-  const pageSize = Math.min(Number(query.pageSize) || 10, 100)
+  const page = readPageNumber(query.page)
+  const pageSize = readPageSize(query.pageSize, 10, 100)
 
   const db = useDB()
   const where = q ? and(eq(helpArticle.orgId, orgId), ilike(helpArticle.title, `%${q}%`)) : eq(helpArticle.orgId, orgId)
