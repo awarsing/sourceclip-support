@@ -4,7 +4,7 @@ import {
   AVATAR_MAX_PIXELS,
   AvatarValidationError,
   inspectAvatar,
-} from '#layers/feedlog/shared/utils/avatar'
+} from '../../shared/utils/avatar'
 
 export async function prepareAvatar(file: File): Promise<Blob> {
   if (file.size > AVATAR_MAX_BYTES) throw new AvatarValidationError('imageTooLarge')
