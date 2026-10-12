@@ -4,7 +4,8 @@
 // a guest token this frame minted for itself on an earlier visit.
 
 import type { InjectionKey } from 'vue'
-import { GUEST_TOKEN_STORAGE_KEY } from '#layers/feedlog/shared/utils/guest'
+import { GUEST_TOKEN_STORAGE_KEY } from '../../shared/utils/guest'
+import { isRetryableClaimError } from '../lib/guest-claim'
 
 export interface WidgetEmbedUser {
   id: string
@@ -113,11 +114,9 @@ export function useWidgetEmbed() {
         body: JSON.stringify({ anonymousToken }),
       })
     } catch (e) {
-      const statusCode = (e as { statusCode?: number })?.statusCode ?? 0
       // Keep the token only while a retry could plausibly work; the next frame
-      // load will try again. Anything else is permanent, and retrying it forever
-      // is worse than losing a claim that was never going to land.
-      if (statusCode === 0 || statusCode === 429 || statusCode >= 500) return
+      // load will try again.
+      if (isRetryableClaimError(e)) return
     }
     // Cleared only once the call has answered. The SDK can drop this iframe
     // mid-call, and clearing up front would throw the claim away when it does —

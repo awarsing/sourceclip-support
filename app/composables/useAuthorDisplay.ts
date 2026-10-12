@@ -1,4 +1,4 @@
-import { guestTag } from '#layers/feedlog/shared/utils/identity'
+import { guestTag } from '../../shared/utils/identity'
 
 // How an author's name is shown.
 //

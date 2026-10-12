@@ -2,6 +2,7 @@
 import { Toaster } from 'vue-sonner'
 import 'vue-sonner/style.css'
 import { derivePortalThemeVars, styleObjectToCss } from '#layers/feedlog/shared/utils/branding'
+import { brandStyles, logoFaviconLinks, systemThemeScripts } from '~/lib/app-head'
 
 // Site-wide share-card defaults; per-page title/description come from usePageOg.
 // og:image must be absolute, so build it from the request origin.
@@ -81,33 +82,10 @@ useHead(() => ({
     ...localeHead.value.htmlAttrs,
     class: themeClass.value,
   },
-  // A configured org logo is the favicon on every surface (dashboard included),
-  // so the tab mirrors the brand the admin just set. Override each keyed static
-  // icon slot rather than appending — otherwise the browser keeps preferring the
-  // bundled SVG. All slots point at the one logo so selection is deterministic.
-  link: [
-    ...seoLink.value,
-    ...(portal.value.logo
-      ? [
-          { key: 'favicon-svg', rel: 'icon' as const, href: portal.value.logo },
-          { key: 'favicon-png', rel: 'icon' as const, href: portal.value.logo },
-          { key: 'favicon-ico', rel: 'shortcut icon' as const, href: portal.value.logo },
-          { key: 'favicon-apple', rel: 'apple-touch-icon' as const, href: portal.value.logo },
-        ]
-      : []),
-  ],
+  link: [...seoLink.value, ...logoFaviconLinks(portal.value.logo)],
   meta: seoMeta.value,
-  style: brandCss.value ? [{ key: 'portal-brand-vars', innerHTML: brandCss.value }] : [],
-  script:
-    themed.value && mode.value === 'system'
-      ? [
-          {
-            key: 'portal-system-theme',
-            innerHTML:
-              "try{document.documentElement.classList.toggle('dark',window.matchMedia('(prefers-color-scheme: dark)').matches)}catch(e){}",
-          },
-        ]
-      : [],
+  style: brandStyles(brandCss.value),
+  script: systemThemeScripts(themed.value && mode.value === 'system'),
 }))
 </script>
 

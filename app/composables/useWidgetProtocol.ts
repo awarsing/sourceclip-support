@@ -1,5 +1,5 @@
 import type { InjectionKey } from 'vue'
-import { pageContext, type PageContext } from '#layers/feedlog/shared/agent/content'
+import { type PageContext, pageContext } from '../../shared/agent/content'
 
 const PROTOCOL_VERSION = 1
 
@@ -41,21 +41,38 @@ export function useWidgetProtocol() {
     window.parent.postMessage(message, parentOrigin.value)
   }
 
-  function receiveInit(event: MessageEvent) {
-    if (!embedded.value || !parentOrigin.value) return
-    if (event.source !== window.parent || event.origin !== parentOrigin.value) return
-    if (event.data?.v !== PROTOCOL_VERSION) return
-    const { type, payload } = event.data
-    if (type === 'init') {
-      const source = pageContext.safeParse({ origin: event.origin })
-      hostOrigin.value = source.success ? (source.data.origin ?? null) : null
-      supportsPageContext.value = payload?.capabilities?.pageContext === true
-      if (payload?.resumeState !== undefined) restoreState?.(payload.resumeState)
-    } else if (type === 'resume-state-request' && typeof payload?.requestId === 'string' && captureState) {
+  // The payload of a protocol message from the embedding page, or null for
+  // anything else: another window, another origin or another protocol version.
+  function hostMessage(event: MessageEvent): { type: unknown; payload: any } | null {
+    if (!embedded.value || event.source !== window.parent || event.origin !== parentOrigin.value) return null
+    return event.data?.v === PROTOCOL_VERSION ? { type: event.data.type, payload: event.data.payload } : null
+  }
+
+  function applyInit(payload: any, origin: string) {
+    const source = pageContext.safeParse({ origin })
+    hostOrigin.value = source.success ? (source.data.origin ?? null) : null
+    supportsPageContext.value = payload?.capabilities?.pageContext === true
+    if (payload?.resumeState !== undefined) restoreState?.(payload.resumeState)
+  }
+
+  function answerResumeRequest(payload: any) {
+    if (typeof payload?.requestId === 'string' && captureState)
       send('resume-state', { requestId: payload.requestId, state: captureState() })
-    } else if (type === 'set-theme' && ['light', 'dark', 'auto'].includes(payload?.theme)) {
-      theme.value = payload.theme
-    }
+  }
+
+  function applyTheme(payload: any) {
+    if (['light', 'dark', 'auto'].includes(payload?.theme)) theme.value = payload.theme
+  }
+
+  const hostHandlers = new Map<unknown, (payload: any, origin: string) => void>([
+    ['init', applyInit],
+    ['resume-state-request', answerResumeRequest],
+    ['set-theme', applyTheme],
+  ])
+
+  function receiveInit(event: MessageEvent) {
+    const message = hostMessage(event)
+    if (message) hostHandlers.get(message.type)?.(message.payload, event.origin)
   }
 
   function init() {
@@ -79,10 +96,9 @@ export function useWidgetProtocol() {
         resolve(context)
       }
       const receive = (event: MessageEvent) => {
-        if (event.source !== window.parent || event.origin !== parentOrigin.value) return
-        if (event.data?.v !== 1 || event.data.type !== 'page-context' || event.data.payload?.requestId !== requestId)
-          return
-        const parsed = pageContext.safeParse(event.data.payload.context)
+        const message = hostMessage(event)
+        if (message?.type !== 'page-context' || message.payload?.requestId !== requestId) return
+        const parsed = pageContext.safeParse(message.payload.context)
         finish(parsed.success ? { ...parsed.data, ...source } : source)
       }
       // A capable host can still fail to respond; context must not block sending.

@@ -1,5 +1,6 @@
-import type { GuestAction } from '#layers/feedlog/shared/utils/guest'
-import { GUEST_TOKEN_STORAGE_KEY } from '#layers/feedlog/shared/utils/guest'
+import type { GuestAction } from '../../shared/utils/guest'
+import { GUEST_TOKEN_STORAGE_KEY } from '../../shared/utils/guest'
+import { isRetryableClaimError } from '../lib/guest-claim'
 
 // Guest identity for the portal.
 //
@@ -36,6 +37,55 @@ function clearToken(): void {
   } catch {
     /* nothing left to do */
   }
+}
+
+// Whether the claim moved anything onto the account, or 'retry' when it should
+// be attempted again on the next page load.
+async function postClaim(anonymousToken: string): Promise<boolean | 'retry'> {
+  try {
+    const res = await $fetch<{ claimed?: boolean }>('/api/auth/claim-anonymous', {
+      method: 'POST',
+      body: { anonymousToken },
+    })
+    return res?.claimed === true
+  } catch (e) {
+    return isRetryableClaimError(e) ? 'retry' : false
+  }
+}
+
+async function runClaim(anonymousToken: string): Promise<void> {
+  const moved = await postClaim(anonymousToken)
+  if (moved === 'retry') return
+  // Cleared only once the call has answered. Clearing it up front would dedupe
+  // across contexts, but it also throws the claim away whenever the context
+  // dies mid-call — and the endpoint is idempotent, so a duplicate costs one
+  // no-op request while a dropped token costs the visitor their content.
+  clearToken()
+
+  // Everything already on screen was rendered before the rows changed owner —
+  // the feedback list keeps showing the guest it was fetched with, and it holds
+  // its posts in a plain ref, so there is no cached key to invalidate. Reload
+  // rather than teach each surface to re-fetch.
+  //
+  // force, because signing in already reloaded once: the auth-reload plugin
+  // fires on the account switch, and reloadNuxtApp leaves a 10-second marker
+  // that makes any further reload of the same path a no-op. Without force this
+  // call is swallowed and the list stays on the guest.
+  //
+  // Safe from looping even so: this only runs when the claim moved something,
+  // and the token is gone by now, so the next load has nothing to claim.
+  if (moved) reloadNuxtApp({ force: true })
+}
+
+// The lock is per-realm while the token is shared across the whole origin, so
+// it only dedupes within this context. Overlap between contexts is left to the
+// endpoint, which answers a spent token with claimed:false.
+function claimStoredGuest(): void {
+  const token = readToken()
+  if (!token || claimInFlight) return
+  claimInFlight = runClaim(token).finally(() => {
+    claimInFlight = null
+  })
 }
 
 export function useGuestSession() {
@@ -113,56 +163,11 @@ export function useGuestSession() {
     return await mint()
   }
 
-  async function runClaim(anonymousToken: string): Promise<void> {
-    let moved = false
-    try {
-      const res = await $fetch<{ claimed?: boolean }>('/api/auth/claim-anonymous', {
-        method: 'POST',
-        body: { anonymousToken },
-      })
-      moved = res?.claimed === true
-    } catch (e) {
-      const status = (e as { statusCode?: number })?.statusCode ?? 0
-      // Keep the token only while a retry could plausibly work; the next page
-      // load will try again. Anything else is permanent, and retrying it forever
-      // is worse than losing a claim that was never going to land.
-      if (status === 0 || status === 429 || status >= 500) return
-    }
-    // Cleared only once the call has answered. Clearing it up front would dedupe
-    // across contexts, but it also throws the claim away whenever the context
-    // dies mid-call — and the endpoint is idempotent, so a duplicate costs one
-    // no-op request while a dropped token costs the visitor their content.
-    clearToken()
-
-    // Everything already on screen was rendered before the rows changed owner —
-    // the feedback list keeps showing the guest it was fetched with, and it holds
-    // its posts in a plain ref, so there is no cached key to invalidate. Reload
-    // rather than teach each surface to re-fetch.
-    //
-    // force, because signing in already reloaded once: the auth-reload plugin
-    // fires on the account switch, and reloadNuxtApp leaves a 10-second marker
-    // that makes any further reload of the same path a no-op. Without force this
-    // call is swallowed and the list stays on the guest.
-    //
-    // Safe from looping even so: this only runs when the claim moved something,
-    // and the token is gone by now, so the next load has nothing to claim.
-    if (moved) reloadNuxtApp({ force: true })
-  }
-
   // Runs once, the first time a real account shows up with a guest token still
   // stored. Silent by design: the visitor is told nothing, because from their
   // side nothing happened — their feedback is simply still theirs.
   function claimIfPending(): void {
-    if (!import.meta.client || !hasAccount.value) return
-    const token = readToken()
-    if (!token) return
-    // The lock is per-realm while the token is shared across the whole origin,
-    // so it only dedupes within this context. Overlap between contexts is left
-    // to the endpoint, which answers a spent token with claimed:false.
-    if (claimInFlight) return
-    claimInFlight = runClaim(token).finally(() => {
-      claimInFlight = null
-    })
+    if (import.meta.client && hasAccount.value) claimStoredGuest()
   }
 
   return { isGuest, hasAccount, hasIdentity, guestMay, mayAct, ensureIdentity, claimIfPending }
