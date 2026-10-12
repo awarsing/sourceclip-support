@@ -5,18 +5,9 @@ import { post, comment, commentLike, vote } from '#layers/feedlog/server/db/sche
 // public it belongs to the community (others' upvotes/comments/status); the
 // author has no self-delete path, only edit via PATCH /api/posts/:id.
 export default defineEventHandler(async (event) => {
-  const { orgId } = await requireOrgPermission(event, { feedlog: ['moderate'] })
-  const id = getRouterParam(event, 'id')!
-  const db = useDB()
+  const { orgId, id, db } = await requireModeratedRoute(event)
 
-  const [existing] = await db
-    .select({ mergedTo: post.mergedTo })
-    .from(post)
-    .where(and(eq(post.id, id), eq(post.orgId, orgId)))
-    .limit(1)
-  if (!existing) {
-    throw createError({ statusCode: 404, message: 'Post not found' })
-  }
+  const existing = await requireOrgPost(db, orgId, id, ['mergedTo'])
   if (existing.mergedTo) {
     throw createError({ statusCode: 400, message: 'Cannot delete a merged post. Unmerge it first.' })
   }
@@ -36,10 +27,5 @@ export default defineEventHandler(async (event) => {
     .where(and(eq(post.id, id), eq(post.orgId, orgId)))
     .returning({ id: post.id })
 
-  if (!deleted) {
-    throw createError({ statusCode: 404, message: 'Post not found' })
-  }
-
-  setResponseStatus(event, 204)
-  return null
+  return respondDeleted(event, deleted, 'Post not found')
 })

@@ -11,8 +11,8 @@ export default defineEventHandler(async (event) => {
   const query = getQuery(event)
   const status = query.status as string | undefined
   const search = (query.search as string)?.trim()
-  const page = Math.max(Number(query.page) || 1, 1)
-  const pageSize = Math.min(Number(query.pageSize) || 10, 100)
+  const page = readPageNumber(query.page)
+  const pageSize = readPageSize(query.pageSize, 10, 100)
   const offset = (page - 1) * pageSize
 
   const db = useDB()

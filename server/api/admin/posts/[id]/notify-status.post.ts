@@ -1,7 +1,5 @@
 import { z } from 'zod'
-import { and, eq } from 'drizzle-orm'
 import { getRequestURL } from 'h3'
-import { post } from '#layers/feedlog/server/db/schemas'
 import {
   resolvePostThreadRecipients,
   resolveOrgBranding,
@@ -21,16 +19,7 @@ export default defineEventHandler(async (event) => {
   const body = await readValidatedBody(event, bodySchema.parse)
   const { session, orgId } = await requireOrgPermission(event, { feedlog: ['moderate'] })
 
-  const db = useDB()
-  const [existing] = await db
-    .select({ id: post.id, status: post.status })
-    .from(post)
-    .where(and(eq(post.id, id), eq(post.orgId, orgId)))
-    .limit(1)
-
-  if (!existing) {
-    throw createError({ statusCode: 404, message: 'Post not found' })
-  }
+  const existing = await requireOrgPost(useDB(), orgId, id, ['status'])
   // Optimistic lock: the admin acts on the status they saw on the card. If it
   // changed under them, refuse rather than announce a status they never saw.
   if (existing.status !== body.status) {

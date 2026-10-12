@@ -2,10 +2,7 @@ import { and, eq } from 'drizzle-orm'
 import { helpArticle, helpCollection } from '#layers/feedlog/server/db/schemas'
 
 export default defineEventHandler(async (event) => {
-  const { orgId } = await requireOrgPermission(event, { feedlog: ['moderate'] })
-
-  const id = getRouterParam(event, 'id')!
-  const db = useDB()
+  const { orgId, id, db } = await requireModeratedRoute(event)
 
   await db.transaction(async (tx) => {
     const [deleted] = await tx

@@ -1,21 +1,11 @@
 import { and, eq } from 'drizzle-orm'
-import { post, postSubscription } from '#layers/feedlog/server/db/schemas'
+import { postSubscription } from '#layers/feedlog/server/db/schemas'
 
 // DELETE /api/posts/:postId/subscription — unsubscribe. Removes the row.
 // Idempotent: deleting a non-existent row is a no-op.
 export default defineEventHandler(async (event) => {
-  const { session, orgId } = await requireAuthInOrg(event)
-  const postId = getRouterParam(event, 'postId')!
-  const db = useDB()
-
-  const [p] = await db
-    .select({ id: post.id })
-    .from(post)
-    .where(and(eq(post.id, postId), eq(post.orgId, orgId)))
-    .limit(1)
-  if (!p) {
-    throw createError({ statusCode: 404, message: 'Post not found' })
-  }
+  const { session, orgId, postId, db } = await requirePostRoute(event)
+  await requireOrgPost(db, orgId, postId)
 
   await db
     .delete(postSubscription)

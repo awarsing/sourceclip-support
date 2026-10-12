@@ -1,5 +1,5 @@
 import { eq, and, desc, sql, inArray, isNull } from 'drizzle-orm'
-import { post, user, vote } from '#layers/feedlog/server/db/schemas'
+import { post, user } from '#layers/feedlog/server/db/schemas'
 
 const ROADMAP_STATUSES = ['planned', 'in_progress', 'done'] as const
 const PAGE_SIZE = 10
@@ -62,53 +62,18 @@ export default defineEventHandler(async (event): Promise<RoadmapResponse> => {
   const countMap = new Map(counts.map((c) => [c.status, c.count]))
 
   // Batch query hasVoted
-  const allRows = results.flat()
-  let votedPostIds = new Set<string>()
-  if (session && allRows.length > 0) {
-    const postIds = allRows.map((r) => r.id)
-    const votes = await db
-      .select({ postId: vote.postId })
-      .from(vote)
-      .where(and(eq(vote.userId, session.user.id), inArray(vote.postId, postIds)))
-    votedPostIds = new Set(votes.map((v) => v.postId))
-  }
+  const voted = await findSessionVotedPostIds(db, session, results.flat())
 
   // Build response
   const response = {} as RoadmapResponse
-  for (let i = 0; i < ROADMAP_STATUSES.length; i++) {
-    const status = ROADMAP_STATUSES[i]!
-    const rows = results[i]!
-    const hasMore = rows.length > PAGE_SIZE
-    const items = hasMore ? rows.slice(0, PAGE_SIZE) : rows
-
-    const data: PostListItem[] = items.map((r) => ({
-      id: r.id,
-      slug: r.slug,
-      title: r.title,
-      excerpt: r.excerpt,
-      status: r.status,
-      boardId: r.boardId,
-      voteCount: r.voteCount,
-      commentCount: r.commentCount,
-      mergedCount: r.mergedCount,
-      hasVoted: votedPostIds.has(r.id),
-      author: { id: r.authorId, name: r.authorName, image: r.authorImage, isAnonymous: !!r.authorIsAnonymous },
-      createdAt: r.createdAt.toISOString(),
-    }))
-
-    const lastItem = data[data.length - 1]
-    const nextCursor = hasMore && lastItem ? encodeCursor({ s: lastItem.createdAt, id: lastItem.id }) : null
-
+  ROADMAP_STATUSES.forEach((status, i) => {
+    const { items, hasMore } = splitPage(results[i]!, PAGE_SIZE)
     response[status] = {
-      data,
+      data: items.map((r) => toPostListItem(r, voted)),
       total: countMap.get(status) ?? 0,
-      nextCursor,
+      nextCursor: nextListCursor(items, hasMore, (last) => ({ s: last.createdAt, id: last.id })),
     }
-  }
+  })
 
   return response
 })
-
-function encodeCursor(data: { s: unknown; id: string }): string {
-  return Buffer.from(JSON.stringify(data)).toString('base64url')
-}

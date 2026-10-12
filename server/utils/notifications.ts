@@ -115,13 +115,16 @@ export async function deliverToRecipients(
 
 // The actor is the same for every recipient — resolve once for the email.
 async function actorPayload(actorId: string, snippet: string): Promise<NotificationPayload> {
-  const rows = await useDB()
+  const [actor] = await useDB()
     .select({ name: user.name, image: user.image })
     .from(user)
     .where(eq(user.id, actorId))
     .limit(1)
-  const { name, image } = rows[0] ?? { name: null, image: null }
-  return { snippet: snippet.slice(0, 280), actorName: name ?? undefined, actorImage: image }
+  return {
+    snippet: snippet.slice(0, 280),
+    actorName: actor?.name ?? undefined,
+    actorImage: actor?.image ?? null,
+  }
 }
 
 // Comment path — resolve and deliver in one go; the caller doesn't need a count.
