@@ -36,19 +36,6 @@ export const useBoardStore = defineStore('board', () => {
     boards.value = boards.value.filter((b) => b.id !== id)
   }
 
-  // Admin: reorder
-  async function reorderBoards(ids: string[]) {
-    await useApiFetch('/api/admin/boards/reorder', { method: 'PATCH', body: { ids } })
-    // Reorder locally
-    const ordered = ids
-      .map((id, i) => {
-        const board = boards.value.find((b) => b.id === id)
-        return board ? { ...board, position: i } : null
-      })
-      .filter(Boolean) as BoardItem[]
-    boards.value = ordered
-  }
-
   return {
     boards,
     boardMap,
@@ -57,6 +44,5 @@ export const useBoardStore = defineStore('board', () => {
     createBoard,
     updateBoard,
     deleteBoard,
-    reorderBoards,
   }
 })
