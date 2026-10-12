@@ -12,7 +12,7 @@ type AuthContext = Awaited<typeof auth.$context>
 type CookieAttributes = AuthContext['authCookies']['sessionToken']['attributes']
 
 // Every enabled secret of this org (no `kid` — see schemas/sso.ts).
-export async function findEnabledSsoSecrets(db: SsoDB, orgId: string): Promise<string[]> {
+async function findEnabledSsoSecrets(db: SsoDB, orgId: string): Promise<string[]> {
   const rows = await db
     .select({ secret: organizationSso.secret })
     .from(organizationSso)

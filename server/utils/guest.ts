@@ -12,7 +12,7 @@ export function isGuestSession(session: { user: object }): boolean {
   return !!(session.user as { isAnonymous?: boolean | null }).isAnonymous
 }
 
-export async function getGuestAccess(event: H3Event): Promise<ResolvedGuestAccess> {
+async function getGuestAccess(event: H3Event): Promise<ResolvedGuestAccess> {
   const slug = event.context.orgSlug
   const info = slug ? await getOrgInfo(slug) : null
   return resolveGuestAccess(info?.metadata)

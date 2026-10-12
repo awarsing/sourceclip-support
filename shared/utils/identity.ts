@@ -3,7 +3,7 @@
 
 // FNV-1a folded to 16 bits. Not a hash for security — it only has to be stable
 // and evenly spread across ids.
-export function stableIdHash(seed: string): number {
+function stableIdHash(seed: string): number {
   let h = 0x811c9dc5
   for (let i = 0; i < seed.length; i++) {
     h ^= seed.charCodeAt(i)

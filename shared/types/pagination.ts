@@ -1,10 +1,10 @@
 // Cursor-based pagination response (for frontend)
-export interface CursorPagination {
+interface CursorPagination {
   nextCursor: string | null
 }
 
 // Page-based pagination response (for admin)
-export interface PagePagination {
+interface PagePagination {
   page: number
   pageSize: number
   total: number

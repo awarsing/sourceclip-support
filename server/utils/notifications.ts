@@ -19,7 +19,7 @@ import type { NotificationPayload } from '../db/schemas'
 //    waitUntil), so a failure is logged, never thrown.
 
 export type PostThreadType = 'post.status_changed' | 'post.admin_replied'
-export type OrgAdminType = 'post.created' | 'post.user_commented'
+type OrgAdminType = 'post.created' | 'post.user_commented'
 
 export interface CommentEmitInput {
   orgId: string
@@ -173,7 +173,7 @@ export interface AdminEmitInput {
   requestOrigin?: string
 }
 
-export async function resolveOrgAdminRecipients(orgId: string, actorId: string) {
+async function resolveOrgAdminRecipients(orgId: string, actorId: string) {
   return findStaffFeedbackRecipients(useDB(), orgId, actorId)
 }
 

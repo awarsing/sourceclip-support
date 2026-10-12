@@ -85,7 +85,7 @@ export async function findAdminAuthorIds(db: ThreadDB, orgId: string): Promise<S
   return new Set(rows.map((r) => r.userId))
 }
 
-export function formatComment(r: CommentRow & { hasLiked?: boolean }, adminIds: Set<string>) {
+function formatComment(r: CommentRow & { hasLiked?: boolean }, adminIds: Set<string>) {
   return {
     id: r.id,
     parentId: r.parentId,
@@ -131,13 +131,13 @@ async function withLikeStatus(ctx: ThreadContext, items: CommentRow[]): Promise<
 }
 
 // The merged post a `mergedPost` comment points at, if any.
-export function mergedPostIdOf(row: { type?: string | null; metadata?: unknown }): string | undefined {
+function mergedPostIdOf(row: { type?: string | null; metadata?: unknown }): string | undefined {
   if (row.type !== 'mergedPost' || !row.metadata) return undefined
   return (row.metadata as { merged_post_id?: string }).merged_post_id || undefined
 }
 
 // Groups rows by `key`, keeping at most `limit` per group in order.
-export function groupRows<T>(rows: T[], key: (row: T) => string, limit = Number.POSITIVE_INFINITY): Map<string, T[]> {
+function groupRows<T>(rows: T[], key: (row: T) => string, limit = Number.POSITIVE_INFINITY): Map<string, T[]> {
   const groups = new Map<string, T[]>()
   for (const row of rows) {
     const group = groups.get(key(row)) ?? []
@@ -169,13 +169,13 @@ export async function listReplies(ctx: ThreadContext, parentId: string) {
   }
 }
 
-export function topLevelCursorCondition(sort: string, cursor: ListCursor): SQL {
+function topLevelCursorCondition(sort: string, cursor: ListCursor): SQL {
   if (sort === 'top') return sql`(${comment.likeCount}, ${comment.id}) < (${cursor.s}::int, ${cursor.id}::uuid)`
   const compare = sort === 'newest' ? sql`<` : sql`>`
   return sql`(${comment.createdAt}, ${comment.id}) ${compare} (${cursor.s}::timestamptz, ${cursor.id}::uuid)`
 }
 
-export function topLevelOrder(sort: string): SQL[] {
+function topLevelOrder(sort: string): SQL[] {
   if (sort === 'newest') return [desc(comment.createdAt), desc(comment.id)]
   if (sort === 'top') return [desc(comment.likeCount), desc(comment.id)]
   return [asc(comment.createdAt), asc(comment.id)]

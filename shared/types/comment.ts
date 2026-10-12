@@ -1,4 +1,4 @@
-export interface CommentAuthor {
+interface CommentAuthor {
   id: string
   name: string | null
   image: string | null

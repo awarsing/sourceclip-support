@@ -4,7 +4,7 @@ import type { H3Event } from 'h3'
 // of. Safe because these endpoints carry no ambient authority — auth is an
 // explicit Bearer header, never a cookie, so credentials stay off.
 
-export const WIDGET_API_PREFIX = '/api/widget/'
+const WIDGET_API_PREFIX = '/api/widget/'
 
 const ALLOWED_HEADERS = 'Content-Type, Authorization'
 const ALLOWED_METHODS = 'GET, POST, OPTIONS'

@@ -17,7 +17,7 @@ export interface WidgetConfigRow {
 
 // Both wordings travel to the client: the admin page shows whichever matches
 // the dashboard locale, while `scenario` is what reaches the AI prompt.
-export interface ResolvedBuiltinRule {
+interface ResolvedBuiltinRule {
   id: string
   scenario: string
   scenarioZh: string
@@ -36,7 +36,7 @@ export interface ResolvedWidgetSettings {
   enabledCount: number
 }
 
-export function countEnabledRules(disabledBuiltins: string[], customRules: WidgetCustomRule[]): number {
+function countEnabledRules(disabledBuiltins: string[], customRules: WidgetCustomRule[]): number {
   const builtinsOn = WIDGET_BUILTIN_RULE_IDS.filter((id) => !disabledBuiltins.includes(id)).length
   const customOn = customRules.filter((r) => r.enabled).length
   return builtinsOn + customOn

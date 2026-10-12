@@ -1,8 +1,5 @@
-export const CHANGELOG_CATEGORIES = ['new', 'improved', 'fixed'] as const
+const CHANGELOG_CATEGORIES = ['new', 'improved', 'fixed'] as const
 export type ChangelogCategory = (typeof CHANGELOG_CATEGORIES)[number]
-
-export const CHANGELOG_STATUSES = ['draft', 'published', 'needs_update'] as const
-export type ChangelogStatus = (typeof CHANGELOG_STATUSES)[number]
 
 export const CHANGELOG_EMOJIS = [
   '\u{1F44D}',
@@ -12,12 +9,11 @@ export const CHANGELOG_EMOJIS = [
   '\u{1F440}',
   '\u{1F914}',
 ] as const
-export type ChangelogEmoji = (typeof CHANGELOG_EMOJIS)[number]
 
-export const AI_STYLES = ['concise', 'structured', 'benefit-led', 'witty'] as const
+const AI_STYLES = ['concise', 'structured', 'benefit-led', 'witty'] as const
 export type AiStyle = (typeof AI_STYLES)[number]
 
-export interface ChangelogAuthor {
+interface ChangelogAuthor {
   id: string
   name: string | null
   image: string | null

@@ -10,7 +10,7 @@ const CJK = new RegExp(`[${CJK_RANGE}]`)
 
 const shortId = customAlphabet(HELP_SHORT_ID_ALPHABET, HELP_SHORT_ID_LENGTH)
 
-export function generateHelpShortId(): string {
+function generateHelpShortId(): string {
   return shortId()
 }
 

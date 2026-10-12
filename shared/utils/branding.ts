@@ -1,13 +1,13 @@
 import { z } from 'zod/v4'
 
 export const DEFAULT_BRAND_COLOR = '#C45A46'
-export const DEFAULT_WELCOME_TITLE = ''
-export const DEFAULT_WELCOME_DESCRIPTION = ''
+const DEFAULT_WELCOME_TITLE = ''
+const DEFAULT_WELCOME_DESCRIPTION = ''
 
 export const portalThemeSchema = z.enum(['system', 'light', 'dark'])
-export type PortalTheme = z.infer<typeof portalThemeSchema>
+type PortalTheme = z.infer<typeof portalThemeSchema>
 
-export const brandingSchema = z.object({
+const brandingSchema = z.object({
   primaryColor: z
     .string()
     .regex(/^#[0-9a-fA-F]{6}$/)
@@ -111,7 +111,7 @@ export function pickBrandForegroundHex(brandHex: string): string {
 const round = (n: number, d = 3) => Number(n.toFixed(d))
 const oklchStr = ({ l, c, h }: Oklch) => `oklch(${round(l)} ${round(c)} ${round(h, 1)})`
 
-export function isValidBrandHex(hex: string): boolean {
+function isValidBrandHex(hex: string): boolean {
   return /^#[0-9a-fA-F]{6}$/.test(hex.trim())
 }
 
@@ -122,7 +122,7 @@ export function normalizeBrandHex(hex: string | undefined | null): string {
   return isValidBrandHex(normalized) ? normalized.toUpperCase() : DEFAULT_BRAND_COLOR
 }
 
-export function deriveBrandVars(seedHex: string, isDark: boolean): Record<string, string> {
+function deriveBrandVars(seedHex: string, isDark: boolean): Record<string, string> {
   const normalized = normalizeBrandHex(seedHex)
   const seed = linearToOklch(hexToLinear(normalized))
   const hue = round(seed.h, 1)
@@ -170,7 +170,7 @@ const DARK_NEUTRALS: Record<string, [number, number]> = {
   '--input': [0.32, 0],
 }
 
-export function deriveNeutralVars(isDark: boolean): Record<string, string> {
+function deriveNeutralVars(isDark: boolean): Record<string, string> {
   const set = isDark ? DARK_NEUTRALS : LIGHT_NEUTRALS
   return Object.fromEntries(Object.entries(set).map(([key, [l, c]]) => [key, `oklch(${l.toFixed(3)} ${c} 0)`]))
 }

@@ -95,16 +95,13 @@ async function searchSimilar(
 }
 
 // Search similar posts using pgvector cosine distance
-export async function searchSimilarByEmbedding(
-  embedding: number[],
-  options: SimilarSearchOptions,
-): Promise<SimilarPost[]> {
+async function searchSimilarByEmbedding(embedding: number[], options: SimilarSearchOptions): Promise<SimilarPost[]> {
   const vectorStr = `[${embedding.join(',')}]`
   return searchSimilar(options, postEmbedding, sql`${postEmbedding.embedding} <=> ${vectorStr}::vector`)
 }
 
 // Search similar posts using pg_trgm text distance
-export async function searchSimilarByTrgm(text: string, options: SimilarSearchOptions): Promise<SimilarPost[]> {
+async function searchSimilarByTrgm(text: string, options: SimilarSearchOptions): Promise<SimilarPost[]> {
   return searchSimilar(options, postSearch, sql`${postSearch.searchText} <-> ${text}`)
 }
 
