@@ -9,13 +9,22 @@ import { WIDGET_MAX_ENABLED_RULES } from '#layers/feedlog/shared/constants/widge
 import {
   WIDGET_LAUNCHER_ALIGNMENT_DEFAULT,
   WIDGET_LAUNCHER_CLOSE_BEHAVIOR_DEFAULT,
-  WIDGET_LAUNCHER_CLOSE_BEHAVIORS,
   WIDGET_LAUNCHER_OFFSET_DEFAULT,
   WIDGET_LAUNCHER_OFFSET_MIN,
   type WidgetLauncherAlignment,
   type WidgetLauncherCloseBehavior,
 } from '#layers/feedlog/shared/constants/widget-launcher'
 import { updateWidgetSettingsSchema } from '#layers/feedlog/shared/schemas/widget'
+import {
+  type DraftRule,
+  differsFrom,
+  isValidOffset,
+  isValidRetention,
+  ruleLabel,
+  saveBlocked,
+  toggleDraftRule,
+  upsertDraftRule,
+} from '~/lib/pages/widget-settings'
 
 definePageMeta({ layout: 'dashboard', middleware: ['admin'] })
 
@@ -38,7 +47,7 @@ const offsetDraft = reactive<Record<'bottom' | 'side', number | string>>({
 const closeDraft = ref<WidgetLauncherCloseBehavior>(WIDGET_LAUNCHER_CLOSE_BEHAVIOR_DEFAULT)
 const emailDraft = ref('')
 const retentionDraft = ref<number | string>(CONVERSATION_RETENTION_DEFAULT_DAYS)
-const rulesDraft = ref<{ id: string; scenario: string; enabled: boolean; builtin: boolean }[]>([])
+const rulesDraft = ref<DraftRule[]>([])
 
 function hydrateLauncher() {
   if (!settings.value) return
@@ -64,12 +73,9 @@ onMounted(async () => {
   hydrateAssistant()
 })
 
-function isValidOffset(value: number | string) {
-  return (
-    String(value).trim() !== '' && Number.isSafeInteger(Number(value)) && Number(value) >= WIDGET_LAUNCHER_OFFSET_MIN
-  )
-}
-const offsetValid = computed(() => Object.values(offsetDraft).every(isValidOffset))
+const offsetValid = computed(() =>
+  Object.values(offsetDraft).every((value) => isValidOffset(value, WIDGET_LAUNCHER_OFFSET_MIN)),
+)
 const launcherConfigDraft = computed(() => ({
   alignment: alignDraft.value,
   bottomOffset: Number(offsetDraft.bottom),
@@ -78,18 +84,10 @@ const launcherConfigDraft = computed(() => ({
 }))
 const launcherDirty = computed(
   () =>
-    !!settings.value &&
-    (!offsetValid.value ||
-      Object.entries(launcherConfigDraft.value).some(
-        ([key, value]) => value !== settings.value!.launcherConfig[key as keyof typeof launcherConfigDraft.value],
-      )),
+    !!settings.value && (!offsetValid.value || differsFrom(launcherConfigDraft.value, settings.value.launcherConfig)),
 )
-const retentionValid = computed(
-  () =>
-    String(retentionDraft.value).trim() !== '' &&
-    Number.isInteger(Number(retentionDraft.value)) &&
-    Number(retentionDraft.value) >= CONVERSATION_RETENTION_MIN_DAYS &&
-    Number(retentionDraft.value) <= CONVERSATION_RETENTION_MAX_DAYS,
+const retentionValid = computed(() =>
+  isValidRetention(retentionDraft.value, CONVERSATION_RETENTION_MIN_DAYS, CONVERSATION_RETENTION_MAX_DAYS),
 )
 const emailValid = computed(
   () =>
@@ -124,7 +122,7 @@ const assistantValid = computed(
 // Only the section that submitted is rehydrated. Other drafts, including invalid
 // input, must survive both successful saves and failed requests.
 async function saveLauncher() {
-  if (saving.value || !launcherDirty.value || !offsetValid.value) return
+  if (saveBlocked(saving.value, launcherDirty.value, offsetValid.value)) return
   savingSection.value = 'launcher'
   launcherError.value = await save({ launcherConfig: launcherConfigDraft.value })
   if (!launcherError.value) {
@@ -134,7 +132,7 @@ async function saveLauncher() {
   savingSection.value = null
 }
 async function saveAssistant() {
-  if (saving.value || !assistantDirty.value || !assistantValid.value) return
+  if (saveBlocked(saving.value, assistantDirty.value, assistantValid.value)) return
   savingSection.value = 'assistant'
   assistantError.value = await save(assistantPatch.value)
   if (!assistantError.value) {
@@ -174,26 +172,16 @@ function openEdit(id: string) {
   dialogOpen.value = true
 }
 function onRuleSubmit(scenario: string) {
-  if (editingId.value) {
-    const target = rulesDraft.value.find((rule) => rule.id === editingId.value)
-    if (target) target.scenario = scenario
-  } else rulesDraft.value.push({ id: `new-${crypto.randomUUID()}`, scenario, enabled: true, builtin: false })
+  upsertDraftRule(rulesDraft.value, editingId.value, scenario, () => crypto.randomUUID())
 }
 function toggleRule(id: string) {
-  const target = rulesDraft.value.find((rule) => rule.id === id)
-  if (!target) return
-  if (!target.enabled && atLimit.value) {
-    limitOpen.value = true
-    return
-  }
-  target.enabled = !target.enabled
+  if (toggleDraftRule(rulesDraft.value, id, atLimit.value) === 'limit') limitOpen.value = true
 }
 function removeRule(id: string) {
   rulesDraft.value = rulesDraft.value.filter((rule) => rule.id !== id)
 }
-function ruleText(rule: (typeof rulesDraft.value)[number]) {
-  const builtin = rule.builtin && settings.value?.rules.builtins.find((item) => item.id === rule.id)
-  return builtin ? (locale.value.startsWith('zh') ? builtin.scenarioZh : builtin.scenario) : rule.scenario
+function ruleText(rule: DraftRule) {
+  return ruleLabel(rule, settings.value?.rules.builtins, locale.value)
 }
 
 const dirty = computed(() => launcherDirty.value || assistantDirty.value)
@@ -281,114 +269,14 @@ onBeforeUnmount(() => window.removeEventListener('beforeunload', beforeUnload))
               </button>
             </div>
             <div class="px-6 py-6 grid lg:grid-cols-[270px_minmax(0,1fr)] gap-6 items-start">
-              <fieldset
-                :disabled="saving"
-                class="min-w-0 space-y-6"
-              >
-                <div>
-                  <p id="launcher-alignment-label" class="text-[11px] font-bold uppercase tracking-wider text-muted-foreground">
-                    {{ $t('settings.widget.alignLabel') }}
-                  </p>
-                  <ToggleGroup
-                    type="single"
-                    :spacing="1"
-                    class="mt-2 gap-0 rounded-lg border border-border bg-background p-1"
-                    :model-value="alignDraft"
-                    :disabled="saving"
-                    aria-labelledby="launcher-alignment-label"
-                    @update:model-value="value => { if (value === 'left' || value === 'right') alignDraft = value }"
-                  >
-                    <ToggleGroupItem
-                      v-for="option in (['left', 'right'] as const)"
-                      :key="option"
-                      :value="option"
-                      class="h-8 rounded-md px-3 text-xs font-semibold text-muted-foreground transition-colors hover:bg-transparent hover:text-foreground data-[state=on]:bg-primary data-[state=on]:text-primary-foreground disabled:cursor-not-allowed"
-                    >
-                      {{ $t(`settings.widget.align_${option}`) }}
-                    </ToggleGroupItem>
-                  </ToggleGroup>
-                  <div class="grid grid-cols-2 gap-4 mt-5">
-                    <div
-                      v-for="field in (['bottom', 'side'] as const)"
-                      :key="field"
-                      class="min-w-0"
-                    >
-                      <label
-                        :for="`launcher-${field}-offset`"
-                        class="text-[11px] font-bold uppercase tracking-wider text-muted-foreground"
-                      >{{ $t(field === 'bottom' ? 'settings.widget.offsetLabel' : `settings.widget.sideOffsetLabel_${alignDraft}`) }}</label>
-                      <div class="mt-2 flex items-center gap-2">
-                        <input
-                          :id="`launcher-${field}-offset`"
-                          v-model="offsetDraft[field]"
-                          type="number"
-                          :min="WIDGET_LAUNCHER_OFFSET_MIN"
-                          step="1"
-                          class="min-w-16 w-0 flex-1 h-10 px-3 rounded-lg border bg-background text-sm tabular-nums focus:outline-none focus:border-primary transition-colors"
-                          :class="isValidOffset(offsetDraft[field]) ? 'border-border' : 'border-destructive'"
-                          :aria-invalid="!isValidOffset(offsetDraft[field])"
-                          :aria-describedby="isValidOffset(offsetDraft[field]) ? undefined : `launcher-${field}-error`"
-                          @keydown.enter="saveLauncher"
-                        >
-                        <span class="shrink-0 whitespace-nowrap text-xs text-muted-foreground">{{ $t('settings.widget.offsetUnit') }}</span>
-                      </div>
-                      <p
-                        v-if="!isValidOffset(offsetDraft[field])"
-                        :id="`launcher-${field}-error`"
-                        class="text-[11px] text-destructive mt-2"
-                        role="alert"
-                      >
-                        {{ $t('settings.widget.offsetInvalid') }}
-                      </p>
-                    </div>
-                  </div>
-                  <p class="text-[11px] text-muted-foreground mt-3">
-                    {{ $t('settings.widget.placementHint') }}
-                  </p>
-                </div>
-                <div class="pt-5 border-t border-border">
-                  <label
-                    for="launcher-close-behavior"
-                    class="text-[11px] font-bold uppercase tracking-wider text-muted-foreground"
-                  >
-                    {{ $t('settings.widget.closeBehaviorLabel') }}
-                  </label>
-                  <Select
-                    :model-value="closeDraft"
-                    :disabled="saving"
-                    @update:model-value="value => { if (value === 'none' || value === 'collapse' || value === 'hide') closeDraft = value }"
-                  >
-                    <SelectTrigger
-                      id="launcher-close-behavior"
-                      class="mt-2 w-full data-[size=default]:h-10 rounded-lg border-border bg-background text-xs"
-                      aria-describedby="launcher-close-hint"
-                    >
-                      <SelectValue>{{ $t(`settings.widget.closeBehavior_${closeDraft}`) }}</SelectValue>
-                    </SelectTrigger>
-                    <SelectContent class="max-w-[calc(100vw-2rem)]">
-                      <SelectItem
-                        v-for="behavior in WIDGET_LAUNCHER_CLOSE_BEHAVIORS"
-                        :key="behavior"
-                        :value="behavior"
-                        :text-value="$t(`settings.widget.closeBehavior_${behavior}`)"
-                        class="py-2.5 text-xs"
-                      >
-                        <span class="block min-w-0">
-                          <span class="block font-medium leading-5">
-                            {{ $t(`settings.widget.closeBehavior_${behavior}`) }}
-                          </span>
-                          <span class="mt-0.5 block text-[11px] leading-snug opacity-70">
-                            {{ $t(`settings.widget.closeBehaviorHint_${behavior}`) }}
-                          </span>
-                        </span>
-                      </SelectItem>
-                    </SelectContent>
-                  </Select>
-                  <p id="launcher-close-hint" class="text-[11px] text-muted-foreground mt-3">
-                    {{ $t(`settings.widget.closeBehaviorHint_${closeDraft}`) }}
-                  </p>
-                </div>
-              </fieldset>
+              <WidgetPlacementFields
+                v-model:alignment="alignDraft"
+                v-model:bottom="offsetDraft.bottom"
+                v-model:side="offsetDraft.side"
+                v-model:close-behavior="closeDraft"
+                :saving="saving"
+                @submit="saveLauncher"
+              />
               <WidgetLauncherPreview
                 class="border-t border-border pt-6 lg:border-t-0 lg:border-l lg:pl-6 lg:pt-0"
                 :alignment="alignDraft"
@@ -425,131 +313,25 @@ onBeforeUnmount(() => window.removeEventListener('beforeunload', beforeUnload))
               :disabled="saving"
               class="px-6 py-6 space-y-6 min-w-0"
             >
-              <div>
-                <label
-                  for="widget-support-email"
-                  class="text-[11px] font-bold uppercase tracking-wider text-muted-foreground"
-                >{{ $t('settings.widget.emailLabel') }}</label>
-                <input
-                  id="widget-support-email"
-                  v-model="emailDraft"
-                  type="email"
-                  :placeholder="$t('settings.widget.emailPlaceholder')"
-                  class="mt-2 w-full min-w-0 h-10 px-3 rounded-lg border bg-background text-sm focus:outline-none focus:border-primary transition-colors"
-                  :class="emailValid ? 'border-border' : 'border-destructive'"
-                  :aria-invalid="!emailValid"
-                  @keydown.enter="saveAssistant"
-                >
-                <p
-                  class="text-[11px] mt-1.5"
-                  :class="emailValid ? 'text-muted-foreground' : 'text-destructive'"
-                >
-                  {{ $t(emailValid ? 'settings.widget.emailHint' : 'settings.widget.invalidEmail') }}
-                </p>
-              </div>
-              <div class="pt-5 border-t border-border">
-                <div class="flex flex-wrap items-center justify-between gap-4">
-                  <div>
-                    <p class="text-[11px] font-bold uppercase tracking-wider text-muted-foreground">
-                      {{ $t('settings.widget.rulesLabel') }}
-                    </p><p class="text-[11px] text-muted-foreground mt-1">
-                      {{ $t('settings.widget.rulesHint') }}
-                    </p>
-                  </div>
-                  <div class="flex items-center gap-3">
-                    <span
-                      v-if="showCount"
-                      class="text-[11px] text-muted-foreground tabular-nums"
-                    >{{ $t('settings.widget.activeCount', { count: activeCount, max: WIDGET_MAX_ENABLED_RULES }) }}</span><button
-                      type="button"
-                      class="h-8 px-3 rounded-lg border border-border bg-background text-xs font-semibold hover:bg-secondary transition-colors flex items-center gap-1.5"
-                      @click="openAdd"
-                    >
-                      <Icon
-                        name="lucide:plus"
-                        size="13"
-                      />{{ $t('settings.widget.addRule') }}
-                    </button>
-                  </div>
-                </div>
-                <ul class="mt-4 divide-y divide-border rounded-lg border border-border overflow-hidden">
-                  <li
-                    v-for="rule in rulesDraft"
-                    :key="rule.id"
-                    class="px-4 py-3 flex flex-wrap items-start gap-3 bg-background"
-                  >
-                    <Switch
-                      :id="`widget-rule-${rule.id}`"
-                      :model-value="rule.enabled"
-                      :disabled="saving"
-                      class="mt-0.5"
-                      :aria-label="ruleText(rule)"
-                      @update:model-value="toggleRule(rule.id)"
-                    />
-                    <label
-                      :for="`widget-rule-${rule.id}`"
-                      class="flex-1 min-w-24 text-xs leading-relaxed break-words"
-                      :class="rule.enabled ? '' : 'text-muted-foreground'"
-                    >{{ ruleText(rule) }}<span
-                      v-if="rule.builtin"
-                      class="ml-1.5 align-middle text-[10px] font-bold uppercase tracking-wider bg-secondary text-primary px-1.5 py-0.5 rounded"
-                    >{{ $t('settings.widget.builtinBadge') }}</span></label>
-                    <div
-                      v-if="!rule.builtin"
-                      class="flex items-center gap-1 shrink-0 ml-auto"
-                    >
-                      <button
-                        type="button"
-                        class="size-8 rounded-md hover:bg-secondary flex items-center justify-center text-muted-foreground"
-                        :aria-label="$t('settings.widget.editRule')"
-                        @click="openEdit(rule.id)"
-                      >
-                        <Icon
-                          name="lucide:pencil"
-                          size="13"
-                        />
-                      </button>
-                      <button
-                        type="button"
-                        class="size-8 rounded-md hover:bg-secondary flex items-center justify-center text-muted-foreground hover:text-destructive"
-                        :aria-label="$t('settings.widget.deleteConfirm')"
-                        @click="removeRule(rule.id)"
-                      >
-                        <Icon
-                          name="lucide:trash-2"
-                          size="13"
-                        />
-                      </button>
-                    </div>
-                  </li>
-                </ul>
-              </div>
-              <div class="pt-5 border-t border-border">
-                <label
-                  for="widget-retention"
-                  class="text-[11px] font-bold uppercase tracking-wider text-muted-foreground"
-                >{{ $t('settings.widget.retentionLabel') }}</label>
-                <div class="mt-2 flex items-center gap-2">
-                  <input
-                    id="widget-retention"
-                    v-model="retentionDraft"
-                    type="number"
-                    :min="CONVERSATION_RETENTION_MIN_DAYS"
-                    :max="CONVERSATION_RETENTION_MAX_DAYS"
-                    step="1"
-                    class="w-28 h-10 px-3 rounded-lg border bg-background text-sm tabular-nums focus:outline-none focus:border-primary transition-colors"
-                    :class="retentionValid ? 'border-border' : 'border-destructive'"
-                    :aria-invalid="!retentionValid"
-                    @keydown.enter="saveAssistant"
-                  ><span class="text-sm text-muted-foreground">{{ $t('settings.widget.retentionUnit') }}</span>
-                </div>
-                <p
-                  class="text-[11px] mt-1.5"
-                  :class="retentionValid ? 'text-muted-foreground' : 'text-destructive'"
-                >
-                  {{ retentionValid ? $t('settings.widget.retentionHint') : $t('settings.widget.retentionRange', { min: CONVERSATION_RETENTION_MIN_DAYS, max: CONVERSATION_RETENTION_MAX_DAYS }) }}
-                </p>
-              </div>
+              <WidgetContactFields
+                v-model:email="emailDraft"
+                v-model:retention="retentionDraft"
+                :email-valid="emailValid"
+                :retention-valid="retentionValid"
+                @submit="saveAssistant"
+              >
+                <WidgetRuleList
+                  :rules="rulesDraft"
+                  :saving="saving"
+                  :active-count="activeCount"
+                  :show-count="showCount"
+                  :label="ruleText"
+                  @add="openAdd"
+                  @toggle="toggleRule"
+                  @edit="openEdit"
+                  @remove="removeRule"
+                />
+              </WidgetContactFields>
             </fieldset>
             <WidgetSaveBar
               :dirty="assistantDirty"
