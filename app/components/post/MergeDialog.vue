@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import type { SimilarPost } from '#layers/feedlog/server/utils/similar'
+import { apiErrorMessage, mergeBody } from './-post-logic'
 
 const props = defineProps<{
   postId: string
@@ -71,24 +72,21 @@ async function handleMerge() {
   merging.value = true
   error.value = ''
 
-  const body =
-    props.direction === 'bring'
-      ? { canonicalPostId: props.postId, mergedPostId: selectedId.value }
-      : { canonicalPostId: selectedId.value, mergedPostId: props.postId }
+  const body = mergeBody(props.direction, props.postId, selectedId.value)
 
   try {
     await useApiFetch('/api/admin/posts/merge', { method: 'POST', body })
     open.value = false
     emit('merged')
-  } catch (e: any) {
-    error.value = e.data?.message || t('post.merge.failed')
+  } catch (e) {
+    error.value = apiErrorMessage(e, t('post.merge.failed'))
   } finally {
     merging.value = false
   }
 }
 
-function statusConfig(status: string) {
-  return STATUS_CONFIG[status as keyof typeof STATUS_CONFIG] ?? STATUS_CONFIG.open
+function toggleSelected(id: string) {
+  selectedId.value = selectedId.value === id ? null : id
 }
 </script>
 
@@ -133,57 +131,7 @@ function statusConfig(status: string) {
           {{ $t('post.merge.noResults') }}
         </div>
         <div v-else class="flex flex-col pb-4">
-          <div
-            v-for="r in results"
-            :key="r.id"
-            class="group relative flex items-start gap-4 p-4 rounded-xl transition-all cursor-pointer mb-1 border border-transparent"
-            :class="selectedId === r.id ? 'bg-primary/5 !border-primary/10' : 'hover:bg-background'"
-            @click="selectedId = selectedId === r.id ? null : r.id"
-          >
-            <!-- Radio circle -->
-            <div class="mt-1 flex-shrink-0">
-              <div
-                class="w-5 h-5 rounded-full transition-all"
-                :class="selectedId === r.id
-                  ? 'border-[6px] border-primary bg-card shadow-sm'
-                  : 'border-2 border-border bg-card group-hover:border-primary/30'"
-              />
-            </div>
-            <div class="flex-1 min-w-0">
-              <div class="flex items-center justify-between gap-4">
-                <div class="flex items-center gap-3 overflow-hidden">
-                  <h4
-                    class="text-[15px] font-bold font-heading truncate transition-colors"
-                    :class="selectedId === r.id ? 'text-primary' : 'group-hover:text-primary'"
-                  >
-                    {{ r.title }}
-                  </h4>
-                  <div class="flex items-center gap-3 text-muted-foreground/50 text-[12px] font-bold shrink-0">
-                    <span class="flex items-center gap-0.5">
-                      <Icon name="lucide:chevron-up" size="16" /> {{ r.voteCount }}
-                    </span>
-                    <span class="flex items-center gap-0.5">
-                      <Icon name="lucide:message-square" size="14" /> {{ r.commentCount }}
-                    </span>
-                  </div>
-                </div>
-              </div>
-              <div class="flex items-center justify-between gap-4 mt-1">
-                <p class="text-[13px] text-muted-foreground line-clamp-1 flex-1">{{ r.excerpt }}</p>
-                <span
-                  class="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[9px] font-bold uppercase tracking-wider shrink-0 border"
-                  :style="{
-                    color: `var(${statusConfig(r.status).cssVar})`,
-                    backgroundColor: `var(${statusConfig(r.status).cssVar}-bg)`,
-                    borderColor: `var(${statusConfig(r.status).cssVar}-border)`,
-                  }"
-                >
-                  <span class="w-1.5 h-1.5 rounded-full" :style="{ backgroundColor: `var(${statusConfig(r.status).cssVar})` }" />
-                  {{ $t(statusLabelKey(r.status)) }}
-                </span>
-              </div>
-            </div>
-          </div>
+          <MergeResultRow v-for="r in results" :key="r.id" :post="r" :selected="selectedId === r.id" @toggle="toggleSelected(r.id)" />
         </div>
       </div>
 
