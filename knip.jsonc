@@ -16,6 +16,9 @@
   "entry": [
     // @nuxtjs/tailwindcss loads its stylesheet from this conventional path.
     "app/assets/css/tailwind.css",
+    // shadcn-nuxt parses each barrel at build time and registers every
+    // capitalized export as a global component, so the barrels are the entry.
+    "app/components/ui/*/index.ts",
     // Cloudflare build stubs, aliased in nuxt.config.ts.
     "server/lib/agent/pg-native-unavailable.cjs",
     "server/lib/inbox/vercel-queue-unavailable.ts"

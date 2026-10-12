@@ -7,6 +7,7 @@
     "server/lib/agent/pg-native-unavailable.cjs",
     "server/lib/inbox/vercel-queue-unavailable.ts"
   ],
+  "ignoreExports": [{ "file": "app/components/ui/*/index.ts", "exports": ["*"] }],
   "ignorePatterns": [".nuxt/**", ".output/**", "coverage/**"],
   "ignoreDependencies": ["@nuxthub/blob", "@vercel/blob", "aws4fetch"]
 }
