@@ -1,8 +1,8 @@
 # Configuration reference
 
 Complete list of environment variables FeedLog reads. For deploy-specific
-guidance, see the [Cloudflare Workers](./deploy/cloudflare-workers.md),
-[Vercel](./deploy/vercel.md), and [Docker](./deploy/docker.md) guides.
+guidance, see the [Cloudflare Workers](./deploy/cloudflare-workers.md) and
+[Vercel](./deploy/vercel.md) guides.
 
 The annotated source of this list lives in [`.env.example`](../.env.example) —
 it's safe to copy that file to `.env` and edit in place.
@@ -178,9 +178,8 @@ no rebuild needed.
 - `S3_REGION` — required for AWS S3; optional elsewhere (signing falls back to `us-east-1`)
 
 When all required vars are absent the app falls back to NuxtHub's
-local-filesystem driver, which writes to `/app/.data/blob` inside the
-container. The bundled `compose.yml` mounts an `app-data` named volume
-on `/app/.data` so local uploads survive container restarts.
+local-filesystem driver, which writes to `/app/.data/blob`. Persist that
+directory (for example on a mounted volume) so local uploads survive restarts.
 
 #### Service cheat sheet
 
@@ -316,12 +315,10 @@ The domain must be verified with your email provider.
   **Preview** scopes, otherwise the build container can't run migrations.
 - Vercel Blob auto-injects `BLOB_READ_WRITE_TOKEN`; no manual config.
 
-### Docker / bare Node
+### Bare Node
 
 - Inbox restores persisted task timers on startup and runs recovery every five
   minutes. No external queue service or host crontab is required.
-- All env vars set via `-e` on `docker run`, `environment:` in
-  docker-compose, or your orchestrator's secret store. All values are
-  read at runtime — no rebuild needed when rotating credentials.
-- The bundled `compose.yml` mounts an `app-data` named volume on
-  `/app/.data` so the local-filesystem fallback survives restarts.
+- All env vars are set in the process environment or your orchestrator's secret
+  store. All values are read at runtime — no rebuild needed when rotating
+  credentials.

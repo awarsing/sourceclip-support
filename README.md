@@ -4,7 +4,7 @@
 
 # FeedLog
 
-**Open-source feedback & roadmap tool. Self-host on Cloudflare Workers, Vercel, or Docker.**
+**Open-source feedback & roadmap tool. Self-host on Cloudflare Workers or Vercel.**
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](./LICENSE)
 [![Discussions](https://img.shields.io/github/discussions/linkcraftstudio/feedlog)](https://github.com/linkcraftstudio/feedlog/discussions)
@@ -24,7 +24,7 @@ FeedLog is a feedback-collection and product-communication hub for software team
 
 ## Why FeedLog?
 
-- 🌐 **Deploy anywhere.** Cloudflare Workers, Vercel, or Docker — pick your stack, keep your data.
+- 🌐 **Deploy anywhere.** Cloudflare Workers or Vercel — pick your stack, keep your data.
 - 🤖 **AI-native, not AI-washed.** Similar-idea detection and AI-assisted changelog drafting — first-class features, not bolted-on chatbots.
 - 🎨 **Modern Vue stack.** Nuxt 4, TypeScript, Drizzle ORM, Tailwind CSS v4, shadcn-vue.
 - 🔓 **MIT licensed, open core.** This repository is the complete current product. Future enterprise add-ons live separately; the open-source version stays fully functional.
@@ -38,9 +38,8 @@ The roadmap, changelog, and feedback boards you see at that URL are all FeedLog 
 
 ## Self Hosting
 
-FeedLog is built to be self-hosted. Three deploy targets cover the common
-cases: serverless platforms (Cloudflare Workers, Vercel) for zero-ops
-managed hosting, and Docker for full control on a VPS / NAS / Docker PaaS.
+FeedLog is built to be self-hosted. Two deploy targets cover the common
+cases: Cloudflare Workers and Vercel, both zero-ops managed hosting.
 
 Whichever path you pick, you'll need a **PostgreSQL 17+** with the
 [`vector`](https://github.com/pgvector/pgvector) extension reachable from
@@ -78,52 +77,6 @@ Both platforms deploy from a fork of this repo, so to pick up upstream
 fixes you'll want either a manual `git pull` from `linkcraftstudio/feedlog`,
 or a scheduled GitHub Action (e.g. [`tgymnich/fork-sync`](https://github.com/tgymnich/fork-sync))
 that opens a PR against your fork's `main` whenever upstream changes.
-
-### `B` Deploy with Docker
-
-Multi-arch image (`linux/amd64` + `linux/arm64`) on
-`ghcr.io/linkcraftstudio/feedlog`. Works on any Linux host — VPS, NAS,
-Coolify, Dokploy, Portainer, Kubernetes.
-
-#### Quick start with the bundled `compose.yml`
-
-The repo ships a [`compose.yml`](./compose.yml) that brings up the app
-and a `pgvector`-enabled Postgres in one command. Three lines:
-
-```bash
-git clone https://github.com/linkcraftstudio/feedlog.git && cd feedlog
-echo "BETTER_AUTH_SECRET=$(openssl rand -hex 32)" > .env
-echo "SYSTEM_ADMIN_EMAILS=you@example.com" >> .env
-docker compose up -d
-```
-
-The app is at `http://localhost:3000`. Sign up with an email listed in
-`SYSTEM_ADMIN_EMAILS` to land as admin. Optional variables (OAuth, AI,
-transactional email) can be added to the same `.env` — `compose.yml`
-passes them through to the app container.
-
-#### Single-container run
-
-If you bring your own Postgres (with `pgvector`):
-
-```bash
-docker run -d --name feedlog -p 3000:3000 \
-  -e DATABASE_URL="postgresql://user:pass@host:5432/feedlog" \
-  -e BETTER_AUTH_SECRET="$(openssl rand -hex 32)" \
-  -e SYSTEM_ADMIN_EMAILS="you@example.com" \
-  ghcr.io/linkcraftstudio/feedlog:v0.1.0
-```
-
-The default image falls back to NuxtHub's local-filesystem driver for
-uploads — fine for a trial; mount a volume on `/app/.data` to make
-those uploads survive container restarts. For S3-compatible storage
-(AWS S3 / R2 / MinIO / Alibaba OSS / etc.), set the `S3_*` env vars at
-runtime — no rebuild needed. See [`docs/deploy/docker.md`](./docs/deploy/docker.md).
-
-> [!TIP]
-> Both quick starts pin to `:v0.1.0`. In production prefer an immutable
-> tag (`:vX.Y.Z` or `:sha-abc1234`) over `:latest` to avoid surprise
-> upgrades on `docker pull`.
 
 ### Environment variables
 
@@ -183,7 +136,7 @@ overrides, and authentication toggles.
 | State | Pinia |
 | UI | Tailwind CSS v4, shadcn-vue (new-york), Lucide icons |
 | Editor | md-editor-v3 |
-| Deploy targets | Cloudflare Workers, Vercel, Node.js Docker |
+| Deploy targets | Cloudflare Workers, Vercel |
 | Package manager | pnpm |
 
 ## Local Development

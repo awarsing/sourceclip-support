@@ -5,7 +5,7 @@ Thanks for opening a PR! A few quick checks before you submit:
    FeedLog uses DCO, not CLA. No form to fill out — just `-s` on every commit.
 2. Does your change need a discussion first?
    For anything non-trivial, please link the Issue or Discussion that led to it.
-3. Does CI pass locally? `pnpm build` and a docker build are the bare minimum.
+3. Does CI pass locally? `pnpm build` is the bare minimum.
 -->
 
 ## What this PR does

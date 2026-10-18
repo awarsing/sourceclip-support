@@ -175,8 +175,7 @@ Remember to add both the `*.vercel.app` URL and any custom domain.
 
 Vercel's free tier cold-starts Serverless Functions on first request after
 idle. FeedLog's first load is ~500ms–1s cold. If that bothers users,
-upgrade to Vercel's Pro plan which keeps functions warm, or switch to the
-[Docker deploy](./docker.md) on a long-running VPS.
+upgrade to Vercel's Pro plan which keeps functions warm.
 
 ### Hobby plan: deployment blocked because commit author isn't a team member
 
@@ -198,5 +197,4 @@ Or upgrade to Pro, which doesn't enforce this restriction.
 
 ## Next steps
 
-- **[Docker deploy](./docker.md)** — full self-hosting
 - **[Cloudflare Workers deploy](./cloudflare-workers.md)** — edge serverless
