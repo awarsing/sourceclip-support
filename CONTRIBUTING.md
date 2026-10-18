@@ -106,8 +106,7 @@ same PR.
 4. Push your branch and [open a PR](../../compare) against `main`.
 5. Fill in the PR template. Link the issue or discussion that motivated the
    change.
-6. CI runs on every PR (build). Please ensure it
-   passes before asking for review.
+6. Make sure `pnpm build` passes locally before asking for review.
 
 ### Commit message style
 
