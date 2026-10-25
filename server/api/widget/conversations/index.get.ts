@@ -3,7 +3,6 @@ import { and, desc, eq, gt, sql } from 'drizzle-orm'
 import { conversation, conversationItem } from '#layers/feedlog/server/db/schemas'
 import { withinRetention } from '#layers/feedlog/server/utils/conversation'
 
-// fallow-ignore-next-line unused-type -- imported by app/pages/widget/embed.vue and WidgetEmbedConversationList.vue through the #layers/feedlog alias, which Fallow does not resolve from .vue files
 export interface WidgetConversationItem {
   id: string
   title: string | null

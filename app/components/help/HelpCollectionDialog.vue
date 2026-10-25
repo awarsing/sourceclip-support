@@ -4,7 +4,6 @@ import type { HelpCollectionIcon } from '#layers/feedlog/shared/constants/help'
 import { apiErrorMessage } from '~/lib/form-errors'
 import { collectionBody, collectionFormValues } from './-help-logic'
 
-// fallow-ignore-next-line unused-type -- imported by app/pages/dashboard/help/index.vue through the #layers/feedlog alias, which Fallow does not resolve for .vue type imports
 export interface HelpCollectionFormValue {
   id: string
   name: string

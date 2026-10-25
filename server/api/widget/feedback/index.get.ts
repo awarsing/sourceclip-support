@@ -2,7 +2,6 @@ import { and, count, desc, eq, sql } from 'drizzle-orm'
 import { post, postUnread } from '#layers/feedlog/server/db/schemas'
 import type { CursorPaginatedList } from '#layers/feedlog/shared/types/pagination'
 
-// fallow-ignore-next-line unused-type -- imported by app/pages/widget/embed.vue and WidgetEmbedFeedbackList.vue through the #layers/feedlog alias, which Fallow does not resolve from .vue files
 export interface WidgetFeedbackItem {
   id: string
   slug: string

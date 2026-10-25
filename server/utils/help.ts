@@ -51,10 +51,27 @@ export async function withHelpShortId<T>(insert: (shortId: string) => Promise<T>
   throw createError({ statusCode: 500, message: 'Failed to generate article id' })
 }
 
-export async function findHelpArticleDetail(orgId: string, id: string) {
-  const db = useDB()
+/** Columns that describe an article's collection, selected alongside article columns. */
+export const helpCollectionColumns = {
+  collectionId: helpCollection.id,
+  collectionName: helpCollection.name,
+  collectionVisible: helpCollection.visible,
+}
 
-  const [row] = await db
+/** Joins each help article to its collection. */
+export const helpCollectionJoin = eq(helpArticle.collectionId, helpCollection.id)
+
+/** Nests the selected collection columns under `collection`. */
+export function withHelpCollection<
+  T extends { collectionId: string; collectionName: string; collectionVisible: boolean },
+>(row: T) {
+  const { collectionId, collectionName, collectionVisible, ...article } = row
+  return { ...article, collection: { id: collectionId, name: collectionName, visible: collectionVisible } }
+}
+
+/** Loads one help article joined with its collection; `where` selects the article. */
+export async function findHelpArticleRow(where: SQL | undefined) {
+  const [row] = await useDB()
     .select({
       id: helpArticle.id,
       shortId: helpArticle.shortId,
@@ -67,19 +84,18 @@ export async function findHelpArticleDetail(orgId: string, id: string) {
       publishedAt: helpArticle.publishedAt,
       createdAt: helpArticle.createdAt,
       updatedAt: helpArticle.updatedAt,
-      collectionId: helpCollection.id,
-      collectionName: helpCollection.name,
-      collectionVisible: helpCollection.visible,
+      ...helpCollectionColumns,
     })
     .from(helpArticle)
-    .innerJoin(helpCollection, eq(helpArticle.collectionId, helpCollection.id))
-    .where(and(eq(helpArticle.id, id), eq(helpArticle.orgId, orgId)))
+    .innerJoin(helpCollection, helpCollectionJoin)
+    .where(where)
     .limit(1)
+  return row
+}
 
-  if (!row) return null
-
-  const { collectionId, collectionName, collectionVisible, ...article } = row
-  return { ...article, collection: { id: collectionId, name: collectionName, visible: collectionVisible } }
+export async function findHelpArticleDetail(orgId: string, id: string) {
+  const row = await findHelpArticleRow(and(eq(helpArticle.id, id), eq(helpArticle.orgId, orgId)))
+  return row ? withHelpCollection(row) : null
 }
 
 export async function nextHelpArticlePosition(collectionId: string): Promise<number> {

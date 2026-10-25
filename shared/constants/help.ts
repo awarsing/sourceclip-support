@@ -11,7 +11,6 @@ export const HELP_COLLECTION_ICONS = [
 
 export type HelpCollectionIcon = (typeof HELP_COLLECTION_ICONS)[number]
 
-// fallow-ignore-next-line unused-export -- imported by app/components/help/HelpCollectionDialog.vue through the #layers/feedlog alias, which Fallow does not resolve in Vue SFCs
 export const HELP_COLLECTION_ICON_DEFAULT: HelpCollectionIcon = 'rocket'
 
 export const HELP_ARTICLE_STATUSES = ['draft', 'published', 'archived'] as const
