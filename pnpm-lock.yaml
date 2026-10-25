@@ -164,7 +164,6 @@ settings:
 
 overrides:
   '@vercel/oidc': 3.8.1
-  '@simple-git/argv-parser@<2.0.1': 2.0.1
   esbuild@<=0.24.2: ^0.25.12
   esbuild@>=0.27.3 <0.28.1: ^0.28.1
   sharp@<0.35.5: ^0.35.5
@@ -1773,10 +1772,6 @@ packages:
         optional: true
       '@rollup/plugin-babel':
         optional: true
-
-  '@nuxt/schema@4.5.2':
-    resolution: {integrity: sha512-h9g1kt9O2iU9nX6HDFu9gvwtpn+8oSJX0RSTWRBnEx/Pkz+WlOHtjuS0SbkTAXw5aT1+H1GysWVwNTjJfBY/0w==}
-    engines: {node: ^14.18.0 || >=16.10.0}
 
   '@nuxt/schema@4.6.2':
     resolution: {integrity: sha512-L+0YiNDh/5C079JiHweAbOJqWD/931N+aqwtRk/wrCpRmTmYgiyIelVbnOv0sevWvGcPouBJRgTC2fxlp3mxoQ==}
@@ -8903,15 +8898,6 @@ snapshots:
       - vite
       - webpack
       - xml2js
-
-  '@nuxt/schema@4.5.2':
-    dependencies:
-      '@vue/shared': 3.5.43
-      defu: 6.1.7
-      nostics: 1.3.0
-      pathe: 2.0.3
-      pkg-types: 2.3.3
-      std-env: 4.3.0
 
   '@nuxt/schema@4.6.2':
     dependencies:
