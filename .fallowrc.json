@@ -3,6 +3,7 @@
   "entry": [
     "app/assets/css/tailwind.css",
     "i18n/i18n.config.ts",
+    "modules/*/module.ts",
     "server/tasks/**/*.ts",
     "server/lib/agent/pg-native-unavailable.cjs",
     "server/lib/inbox/vercel-queue-unavailable.ts"

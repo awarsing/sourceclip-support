@@ -24,22 +24,17 @@ export default defineEventHandler(async (event) => {
       aiEnabled: helpArticle.aiEnabled,
       position: helpArticle.position,
       updatedAt: helpArticle.updatedAt,
-      collectionId: helpCollection.id,
-      collectionName: helpCollection.name,
-      collectionVisible: helpCollection.visible,
+      ...helpCollectionColumns,
     })
     .from(helpArticle)
-    .innerJoin(helpCollection, eq(helpArticle.collectionId, helpCollection.id))
+    .innerJoin(helpCollection, helpCollectionJoin)
     .where(where)
     .orderBy(asc(helpCollection.position), asc(helpArticle.position), asc(helpArticle.id))
     .limit(pageSize)
     .offset((page - 1) * pageSize)
 
   return {
-    data: rows.map(({ collectionId, collectionName, collectionVisible, ...a }) => ({
-      ...a,
-      collection: { id: collectionId, name: collectionName, visible: collectionVisible },
-    })),
+    data: rows.map(withHelpCollection),
     pagination: { page, pageSize, total: countResult?.total ?? 0 },
   }
 })
