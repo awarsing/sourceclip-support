@@ -6,7 +6,8 @@ export default defineNitroPlugin((nitroApp) => {
   })
 
   nitroApp.hooks.hook('afterResponse', (event) => {
-    const duration = Date.now() - (event.context._startTime || Date.now())
+    const startTime = event.context._startTime
+    const duration = typeof startTime === 'number' ? Date.now() - startTime : 0
     const method = getMethod(event)
     const url = getRequestURL(event)
     const status = getResponseStatus(event)
@@ -15,7 +16,8 @@ export default defineNitroPlugin((nitroApp) => {
   })
 
   nitroApp.hooks.hook('error', (error, { event }) => {
-    const duration = event ? Date.now() - (event.context?._startTime || Date.now()) : 0
+    const startTime = event?.context?._startTime
+    const duration = typeof startTime === 'number' ? Date.now() - startTime : 0
     const method = event ? getMethod(event) : '-'
     const path = event?.path || '-'
     const status = (error as any).statusCode || 500
