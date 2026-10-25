@@ -4,7 +4,7 @@
 export default defineNuxtPlugin(async () => {
   const portal = usePortalOrg()
   try {
-    portal.value = await $fetch('/api/portal-identity', {
+    portal.value = await $fetch<PortalOrg>('/api/portal-identity', {
       headers: useRequestHeaders(['host', 'x-forwarded-host', 'x-forwarded-proto']),
     })
   } catch {
