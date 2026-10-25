@@ -62,9 +62,9 @@ export const helpCollectionColumns = {
 export const helpCollectionJoin = eq(helpArticle.collectionId, helpCollection.id)
 
 /** Nests the selected collection columns under `collection`. */
-export function withHelpCollection<T extends { collectionId: string; collectionName: string; collectionVisible: boolean }>(
-  row: T,
-) {
+export function withHelpCollection<
+  T extends { collectionId: string; collectionName: string; collectionVisible: boolean },
+>(row: T) {
   const { collectionId, collectionName, collectionVisible, ...article } = row
   return { ...article, collection: { id: collectionId, name: collectionName, visible: collectionVisible } }
 }
