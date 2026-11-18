@@ -1,26 +1,8 @@
 [
   {
-    "id": "GHSA-pqhr-mp3f-hrpp",
-    "package": "nuxt-og-image",
-    "reason": "nuxt-og-image 5.x (pulled in by @nuxtjs/seo 3.4.0, the latest 3.x) has no patched release; the fix is in 6.2.5+, which only @nuxtjs/seo 4/5 depend on, and that upgrade moves sitemap, robots, schema-org and seo-utils a major version each. Not reachable: nuxt.config.ts sets ogImage.enabled false, so the module registers no image routes or components.",
-    "reviewBy": "2026-11-08"
-  },
-  {
-    "id": "GHSA-mg36-wvcr-m75h",
-    "package": "nuxt-og-image",
-    "reason": "nuxt-og-image 5.x (pulled in by @nuxtjs/seo 3.4.0, the latest 3.x) has no patched release; the fix is in 6.2.5+, which only @nuxtjs/seo 4/5 depend on, and that upgrade moves sitemap, robots, schema-org and seo-utils a major version each. Not reachable: nuxt.config.ts sets ogImage.enabled false, so the module registers no image routes or components.",
-    "reviewBy": "2026-11-08"
-  },
-  {
-    "id": "GHSA-c7xp-q6q8-hg76",
-    "package": "nuxt-og-image",
-    "reason": "nuxt-og-image 5.x (pulled in by @nuxtjs/seo 3.4.0, the latest 3.x) has no patched release; the fix is in 6.2.5+, which only @nuxtjs/seo 4/5 depend on, and that upgrade moves sitemap, robots, schema-org and seo-utils a major version each. Not reachable: nuxt.config.ts sets ogImage.enabled false, so the module registers no image routes or components.",
-    "reviewBy": "2026-11-08"
-  },
-  {
-    "id": "GHSA-86w9-cpqp-85rv",
-    "package": "node-forge",
-    "reason": "No patched release (1.4.0 is the latest). Reached only through listhen, the HTTPS helper of the Nuxt CLI dev server, the Nitro dev server and the ipx CLI; the built server does not load it.",
-    "reviewBy": "2026-11-08"
+    "id": "GHSA-fc5q-39xc-vjpf",
+    "package": "picomatch",
+    "reason": "Owner approved a support-repository exception on 2026-11-18 through 2026-11-24 while no patched release is available. The advisory affects picomatch through 4.0.7. Runtime unreachability has not been proven; this is explicit temporary risk acceptance, not a claim of safety. Track resolution with SourceClip issue 215; do not extend the deadline without a new owner decision.",
+    "reviewBy": "2026-11-24"
   }
 ]
