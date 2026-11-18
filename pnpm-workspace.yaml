@@ -47,3 +47,24 @@ overrides:
   undici@>=7.0.0 <7.30.1: ^7.30.1
   undici@>=8.0.0 <8.12.2: ^8.12.2
   zod@>=4.0.0 <4.6.6: ^4.6.6
+  # Advisory fixes (2026-11-18 audit), at the versions the SourceClip gate already
+  # runs. Each version cleared the 24-hour cooldown.
+  node-forge@<1.4.1: 1.4.3
+  glob@>=9.0.0 <14.0.2: 14.0.4
+  minimatch@>=7.0.0 <11.0.1: 11.0.5
+  fast-xml-parser@<5.12.0: 5.12.1
+  # vue-i18n and @intlify release in lockstep with exact cross-pins; move the
+  # whole 11.4 family together past the escapeParameter fixes (11.4.14).
+  vue-i18n@>=11.0.0 <11.4.21: 11.4.21
+  '@intlify/core@>=11.0.0 <11.4.21': 11.4.21
+  '@intlify/core-base@>=11.0.0 <11.4.21': 11.4.21
+  '@intlify/message-compiler@>=11.0.0 <11.4.21': 11.4.21
+  '@intlify/shared@>=11.0.0 <11.4.21': 11.4.21
+
+packageExtensions:
+  # nuxt-schema-org 5 and @unhead/schema-org 2 peer on @unhead/vue ^2. nuxt-og-image 5
+  # used to provide 2.1.17 in this scope; og-image 6 also accepts 3, so without this
+  # the schema.org peers bind to Nuxt's @unhead/vue 3.
+  '@nuxtjs/seo@4.0.2':
+    dependencies:
+      '@unhead/vue': 2.1.17
