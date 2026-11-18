@@ -348,6 +348,12 @@ importers:
       h3:
         specifier: 1.15.11
         version: 1.15.11
+      micromark:
+        specifier: 4.0.3
+        version: 4.0.3(supports-color@10.2.2)
+      micromark-util-decode-string:
+        specifier: 2.0.1
+        version: 2.0.1
       tailwindcss:
         specifier: ^4.3.3
         version: 4.3.3
